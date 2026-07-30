@@ -1,0 +1,3969 @@
+{
+ "run": "wf_879bf05f-24f",
+ "date": "2026-07-30",
+ "dims": [
+  {
+   "dimension": "aec",
+   "candidates": [
+    {
+     "name": "SpeexDSP AEC (libspeexdsp, mdf.c)",
+     "type": "oss",
+     "what": "Xiph 的音频 DSP 库,回声消除器基于 MDF(多延迟块频域自适应滤波)实现,C 语言、支持定点/浮点编译,尾长(filter length)可配置,可与其 preprocess 模块联动做残余回声抑制。是嵌入式闭源产品里最常被移植的 AEC 基线。",
+     "maps_to": [
+      "AEC 512ms 尾长自适应滤波核心",
+      "嵌入式 C 固件直接移植",
+      "双讲鲁棒自适应(内置 Valin 2007 学习率控制)"
+     ],
+     "license": "BSD-3-Clause",
+     "license_source": "https://github.com/xiph/speexdsp/blob/master/COPYING",
+     "maturity": "成熟但低活跃:代码久经生产验证(1.2.x 系列),GitHub 为镜像、开发在 gitlab.xiph.org,提交稀疏,近年基本只做维护性修改",
+     "relevance": "采用候选",
+     "risks": "维护活跃度低;512ms 尾长下(48kHz 约 24576 抽头)收敛速度与 CPU 开销需实测;双讲/回声路径突变时性能弱于现代方案;残余回声抑制较简单,大概率需自研后滤波补强;代码为通用 C,需针对目标 DSP(未定平台)做 FFT/SIMD 适配",
+     "links": [
+      "https://github.com/xiph/speexdsp",
+      "https://github.com/xiph/speexdsp/blob/master/libspeexdsp/mdf.c",
+      "https://www.speex.org/docs/api/speex-api-reference/group__SpeexEchoState.html"
+     ]
+    },
+    {
+     "name": "WebRTC AEC3 (modules/audio_processing/aec3)",
+     "type": "oss",
+     "what": "Google WebRTC 的第三代回声消除器,Chrome/Meet 生产级:分带处理、内置延迟估计、非线性残余回声抑制与舒适噪声,双讲表现是开源方案中的标杆。C++ 实现,与 WebRTC 构建体系(abseil 等)耦合较深。",
+     "maps_to": [
+      "AEC 双讲鲁棒性参考标杆",
+      "残余回声抑制器结构参考",
+      "延迟估计模块思路"
+     ],
+     "license": "BSD-3-Clause(另附 PATENTS 专利授权文件)",
+     "license_source": "https://webrtc.googlesource.com/src/+/refs/heads/main/LICENSE",
+     "maturity": "非常成熟,持续活跃开发,Chrome 生产环境亿级设备验证",
+     "relevance": "评估",
+     "risks": "C++/STL/abseil 依赖,移植到裸机嵌入式 DSP 成本高(更现实的是上位机/测试基准角色);AEC3 面向消费级设备可变延迟场景设计,线性滤波器较短、靠延迟估计对齐,能否覆盖会议室 512ms 混响尾长需专项验证;内部接口按 10ms 块/分带结构组织,定制成本高",
+     "links": [
+      "https://webrtc.googlesource.com/src/+/refs/heads/main/modules/audio_processing/aec3/",
+      "https://switchboard.audio/hub/how-webrtc-aec3-works/"
+     ]
+    },
+    {
+     "name": "webrtc-audio-processing (freedesktop/PulseAudio 提取版)",
+     "type": "oss",
+     "what": "PulseAudio 项目把 WebRTC AudioProcessing(含 AEC3、AECM、NS、AGC)从完整 WebRTC 源码树剥离成可独立构建的库(meson 构建),是获取 AEC3 而不拖整个 WebRTC 的主流途径。",
+     "maps_to": [
+      "AEC3 的可独立构建打包途径",
+      "PC 上位机侧回声处理/算法对比基准"
+     ],
+     "license": "BSD-3-Clause[待核]",
+     "license_source": "上游 WebRTC LICENSE 已核为 BSD-3(https://webrtc.googlesource.com/src/+/refs/heads/main/LICENSE);本打包仓库 COPYING 文件因 gitlab.freedesktop.org 反爬未成功抓取,Gentoo 打包信息标 BSD",
+     "maturity": "成熟,随上游 WebRTC 周期性同步,GStreamer/PulseAudio 生态在用",
+     "relevance": "评估",
+     "risks": "同 AEC3:桌面/服务器目标,非嵌入式 DSP;版本同步滞后于上游;作为固件方案不现实,定位应是测试基准与上位机组件",
+     "links": [
+      "https://gitlab.freedesktop.org/pulseaudio/webrtc-audio-processing",
+      "https://freedesktop.org/software/pulseaudio/webrtc-audio-processing/"
+     ]
+    },
+    {
+     "name": "Soo & Pang: Multidelay Block Frequency Domain Adaptive Filter (MDF)",
+     "type": "paper",
+     "what": "J.-S. Soo, K. K. Pang, \"Multidelay block frequency domain adaptive filter\", IEEE Trans. Acoustics, Speech, and Signal Processing, vol. 38, no. 2, pp. 373-376, Feb 1990。MDF/PBFDAF 的奠基论文:把长冲激响应分块到频域,FFT 块长与滤波器总长解耦,小块长=低延迟,是 512ms 长尾+<12ms 延迟约束下的标准算法结构(SpeexDSP 即此实现)。",
+     "maps_to": [
+      "512ms 尾长分块频域自适应滤波算法选型",
+      "块延迟 vs FFT 效率权衡设计依据"
+     ],
+     "license": "N/A(论文,算法本身 1990 年发表,无已知在效专利)",
+     "license_source": "https://www.semanticscholar.org/paper/101a1b1907854590d2a0a0dc889115729ab90b5c",
+     "maturity": "经典定论,教科书级",
+     "relevance": "采用候选",
+     "risks": "原始 MDF 收敛控制简单,需叠加现代步长控制(见 Valin 2007 / Enzner-Vary Kalman)才能达到会议双讲要求",
+     "links": [
+      "https://www.semanticscholar.org/paper/Multidelay-block-frequency-domain-adaptive-filter-Soo-Pang/101a1b1907854590d2a0a0dc889115729ab90b5c",
+      "https://handwiki.org/wiki/Multidelay_block_frequency_domain_adaptive_filter"
+     ]
+    },
+    {
+     "name": "Valin: 频域回声消除的双讲学习率调节",
+     "type": "paper",
+     "what": "J.-M. Valin, \"On Adjusting the Learning Rate in Frequency Domain Echo Cancellation With Double-Talk\", IEEE Trans. Audio, Speech and Language Processing, vol. 15, no. 3, pp. 1030-1034, 2007(arXiv:1602.08044 可开放获取)。推导噪声/双讲下 NLMS 最优学习率,按泄漏系数连续调节步长,替代硬判决双讲检测器;与 MDF 配合,即 SpeexDSP AEC 的实际控制策略。",
+     "maps_to": [
+      "双讲期间滤波器发散控制",
+      "免硬判决 DTD 的工程化方案"
+     ],
+     "license": "N/A(论文,arXiv 开放获取)",
+     "license_source": "https://arxiv.org/abs/1602.08044",
+     "maturity": "经生产验证(SpeexDSP 落地),被广泛引用",
+     "relevance": "采用候选",
+     "risks": "泄漏估计在强非线性回声(小扬声器失真)下会偏差;需与残余回声抑制配合",
+     "links": [
+      "https://arxiv.org/abs/1602.08044",
+      "https://jmvalin.ca/publications.html"
+     ]
+    },
+    {
+     "name": "Hänsler & Schmidt: Acoustic Echo and Noise Control: A Practical Approach",
+     "type": "paper",
+     "what": "E. Hänsler, G. Schmidt, Wiley-IEEE Press, 2004, ISBN 9780471453468。声学回声与噪声控制的工程圣经:自适应滤波、步长/系统距离统计控制理论、双讲检测、残余回声与噪声联合后滤波、免提系统整体架构,全部面向可实现的实用方法。",
+     "maps_to": [
+      "AEC 全链路(自适应+控制+后滤波)设计总纲",
+      "统计最优控制参数推导",
+      "双讲检测方法体系"
+     ],
+     "license": "N/A(版权书籍,需购买)",
+     "license_source": "https://onlinelibrary.wiley.com/doi/book/10.1002/0471678406",
+     "maturity": "领域标准教材",
+     "relevance": "采用候选",
+     "risks": "无(内容许可仅限阅读参考,算法思想可自由实现)",
+     "links": [
+      "https://onlinelibrary.wiley.com/doi/book/10.1002/0471678406",
+      "https://www.wiley.com/en-us/Acoustic+Echo+and+Noise+Control%3A+A+Practical+Approach-p-x000247998"
+     ]
+    },
+    {
+     "name": "Benesty/Gänsler 系列:互相关类双讲检测器(NCC/FNCC)",
+     "type": "paper",
+     "what": "J. Benesty, D. R. Morgan, J. H. Cho, \"A new class of doubletalk detectors based on cross-correlation\", IEEE Trans. Speech and Audio Processing, 8(2), 2000;T. Gänsler, J. Benesty, \"A frequency-domain double-talk detector based on a normalized cross-correlation vector\", Signal Processing 81, 1783-1787, 2001;及 \"The fast normalized cross-correlation double-talk detector\", Signal Processing 86(6), 1124-1139, 2006。归一化互相关 DTD 的定义性论文系列,性能显著优于经典 Geigel 能量比较法,且对回声路径衰减不敏感。",
+     "maps_to": [
+      "会议双讲检测算法选型",
+      "DTD 性能评价方法(与 Geigel 对比基线)"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "https://www.sciencedirect.com/science/article/abs/pii/S0165168405003166",
+     "maturity": "经典定论,广泛引用",
+     "relevance": "评估",
+     "risks": "FNCC 依赖 FRLS 中间量,若主滤波器走 MDF 路线需重新推导计算复用;若采用 Valin 连续学习率方案,硬判决 DTD 可降级为辅助逻辑",
+     "links": [
+      "https://www.sciencedirect.com/science/article/abs/pii/S0165168405003166",
+      "https://www.researchgate.net/publication/4137090_Noise-robust_double-talk_detection_based_on_normalized_cross_correlation_and_a_noise_offset"
+     ]
+    },
+    {
+     "name": "Enzner & Vary: 频域自适应 Kalman 滤波回声控制",
+     "type": "paper",
+     "what": "G. Enzner, P. Vary, \"Frequency-domain adaptive Kalman filter for acoustic echo control in hands-free telephones\", Signal Processing, 86(6), pp. 1140-1156, 2006。用频域状态空间模型对回声路径建模,Kalman 框架天然给出时变最优步长(等效内置双讲控制),并与残余回声抑制后滤波联合最优推导;是无需显式 DTD 的现代主流路线,分块版(PBFDKF)适配长尾。",
+     "maps_to": [
+      "AEC 主滤波器+步长控制一体化方案",
+      "残余回声抑制后滤波联合设计",
+      "双讲免检测路线"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "https://www.sciencedirect.com/science/article/abs/pii/S0165168405003178",
+     "maturity": "被大量后续工作与工业实现采用,方法成熟",
+     "relevance": "采用候选",
+     "risks": "过程噪声/观测噪声协方差估计的工程调参是实际难点;分块化(partitioned-block Kalman)后需注意数值稳定性与定点化难度",
+     "links": [
+      "https://www.sciencedirect.com/science/article/abs/pii/S0165168405003178",
+      "https://dl.acm.org/doi/10.1016/j.sigpro.2005.09.013"
+     ]
+    },
+    {
+     "name": "Breining et al.: Acoustic Echo Control — An Application of Very-High-Order Adaptive Filters",
+     "type": "paper",
+     "what": "C. Breining, P. Dreiseitel, E. Hänsler, A. Mader, B. Nitsch, H. Puder, T. Schertler, G. Schmidt, J. Tilp, IEEE Signal Processing Magazine, vol. 16, no. 4, pp. 42-69, July 1999。超高阶自适应滤波回声控制的权威综述/教程:步长控制、双讲、残余回声抑制、系统架构,适合作团队入门与方案评审的公共参考。",
+     "maps_to": [
+      "AEC 系统级架构与控制策略综述",
+      "团队技术共识基线"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "https://ieeexplore.ieee.org/document/774933/",
+     "maturity": "经典综述",
+     "relevance": "评估",
+     "risks": "1999 年综述,不含 Kalman 频域路线与现代残余回声抑制进展,需与 Enzner-Vary 等互补",
+     "links": [
+      "https://ieeexplore.ieee.org/document/774933/"
+     ]
+    },
+    {
+     "name": "ITU-T G.168: Digital Network Echo Cancellers",
+     "type": "standard",
+     "what": "ITU-T 建议书,数字网络回声消除器的特性与测试方法;ERLE(Echo Return Loss Enhancement)等指标的规范性出处,含收敛时间、双讲、窄带信号等成套测试序列与合成/复合源信号(CSS)。最新为 2015 版+2022 勘误。虽然对象是线路回声消除器,但 ERLE 定义与测试方法论是 AEC 评测的通用参照。",
+     "maps_to": [
+      "ERLE 指标定义与测量方法出处",
+      "收敛/双讲测试用例设计参照",
+      "产品验收测试规程"
+     ],
+     "license": "ITU-T 建议书,PDF 可从 ITU 免费下载,标准文本版权归 ITU(实现不受限)",
+     "license_source": "https://www.itu.int/rec/T-REC-G.168/en",
+     "maturity": "现行有效(2015 + Cor.1 2022)",
+     "relevance": "采用候选",
+     "risks": "面向网络(线路)EC 而非声学 EC,尾长/双讲场景设定与会议室声学不完全对应,直接照搬测试限值会失真",
+     "links": [
+      "https://www.itu.int/rec/T-REC-G.168/en",
+      "https://www.sageinst.com/assets/download_doc/G168-Test-Suite-White-Paper.pdf"
+     ]
+    },
+    {
+     "name": "ITU-T G.167(1993,已被 P.340 取代)+ ITU-T P.340",
+     "type": "standard",
+     "what": "G.167 \"Acoustic echo controllers\"(1993-03)是声学回声控制器性能要求的历史标准(收敛速度、双讲衰减、残余回声电平等);后被 P.340 \"Transmission characteristics and speech quality parameters of hands-free terminals\" 承接,免提终端(即会议设备)的回声与语音质量参数以 P.340 为现行依据。商用测试仪(GL、HEAD acoustics 类)仍按 G.167/P.340 组合做 AEC 合规测试。",
+     "maps_to": [
+      "声学 AEC 性能指标体系(双讲衰减、收敛时间)",
+      "产品级 AEC 验收规格制定"
+     ],
+     "license": "ITU-T 建议书,ITU 官网获取;G.167 状态为已被取代(withdrawn/superseded)",
+     "license_source": "https://www.itu.int/rec/T-REC-G.167-199303-W/en",
+     "maturity": "G.167 历史标准;P.340 现行",
+     "relevance": "评估",
+     "risks": "G.167 年代久远、限值宽松,仅作框架参照;正式规格应以 P.340 现行版为准(P.340 具体版本条款本次未逐条核阅)",
+     "links": [
+      "https://www.itu.int/rec/T-REC-G.167-199303-W/en",
+      "https://www.gl.com/acousticechosimulation.html"
+     ]
+    },
+    {
+     "name": "Microsoft AEC Challenge 数据集(ICASSP 2021/2022/2023, INTERSPEECH 2021)",
+     "type": "dataset",
+     "what": "microsoft/AEC-Challenge 仓库:数万条真实设备采集的远端单讲/近端单讲/双讲回声场景录音(含真实非线性失真与延迟抖动)+ 合成数据集,是目前最大的公开 AEC 测试语料;并附 AECMOS 评测脚本。虽为 NN 挑战赛而建,语料本身对传统算法的双讲/收敛测试同样有效。",
+     "maps_to": [
+      "AEC 双讲/收敛性能回归测试语料",
+      "真实设备非线性回声样本库"
+     ],
+     "license": "代码 MIT;数据按其原始来源条款混合提供(AudioSet CC-BY-4.0、Freesound CC0、DEMAND CC-BY-SA-3.0 等),微软以 AS-IS 免责声明分发",
+     "license_source": "https://github.com/microsoft/AEC-Challenge",
+     "maturity": "成熟,仓库持续可用,覆盖 4 届挑战赛",
+     "relevance": "评估",
+     "risks": "用于商用产品的内部测试一般可行,但数据子集 license 不一(CC-BY-SA 部分有传染性、CC-BY 需署名),若测试语料进入对外发布物需逐子集核对;真实录音多为消费级设备近场,会议室长混响(512ms 尾长)场景覆盖不足,需自采会议室语料补充",
+     "links": [
+      "https://github.com/microsoft/AEC-Challenge",
+      "https://github.com/microsoft/AEC-Challenge/blob/main/README.md"
+     ]
+    },
+    {
+     "name": "AECMOS(微软回声损伤感知质量评估模型)",
+     "type": "tool",
+     "what": "Purin et al., \"AECMOS: A speech quality assessment metric for echo impairment\", ICASSP 2022(Microsoft Research)。基于人工评分训练的无参考回声质量评分模型,提供 ONNX 模型与 Web API,可替代 ERLE/PESQ 做与主观感受更相关的离线评测。注意:模型本身是 NN,但仅作离线评测工具,不进固件,不违反'固件无 NN'约束。",
+     "maps_to": [
+      "AEC 效果离线评测(补充 ERLE/PESQ)",
+      "双讲回声泄漏感知质量量化"
+     ],
+     "license": "评测脚本随 AEC-Challenge 仓库 MIT 分发;ONNX 模型文件的单独使用条款[待核]",
+     "license_source": "https://github.com/microsoft/AEC-Challenge(代码 MIT 已核;模型文件条款未单独核到)",
+     "maturity": "在 AEC 学术/工业评测中已成事实标准之一",
+     "relevance": "观望",
+     "risks": "NN 评测模型,评分对专业会议音频设备(48kHz 全带宽)场景的校准性未知——其训练数据以通信场景为主;模型使用条款需核实后再纳入 CI",
+     "links": [
+      "https://www.microsoft.com/en-us/research/publication/aecmos-a-speech-quality-assessment-metric-for-echo-impairment/",
+      "https://github.com/microsoft/AEC-Challenge"
+     ]
+    },
+    {
+     "name": "pyaec (ewan-xu)",
+     "type": "tool",
+     "what": "自适应滤波算法的 Python 参考实现合集:时域(LMS/NLMS/RLS/AP/Kalman)、非线性(Volterra、FLAF)、频域(FDAF、频域 Kalman)等,面向 AEC,代码短小可读。适合算法组做原型对比与定点化前的黄金参考,不用于产品。",
+     "maps_to": [
+      "算法原型验证与黄金参考(bit-exact 对照)",
+      "候选算法横向对比试验台"
+     ],
+     "license": "Apache-2.0",
+     "license_source": "https://api.github.com/repos/ewan-xu/pyaec(GitHub API spdx_id=Apache-2.0)",
+     "maturity": "个人项目,425 stars,2021 年后未更新;作教学/原型定位足够",
+     "relevance": "评估",
+     "risks": "无生产级工程化(无双讲控制完整链路);个人维护,正确性需自行复核公式",
+     "links": [
+      "https://github.com/ewan-xu/pyaec"
+     ]
+    },
+    {
+     "name": "PFDKF (echocatzh)",
+     "type": "oss",
+     "what": "分块频域 Kalman 滤波(partitioned-block frequency domain Kalman filter)的 Python 实现,对应 Kuech/Mabande/Enzner \"State-space architecture of the partitioned-block-based acoustic echo controller\"(ICASSP 2014)一文;是 Enzner 路线长尾化的直接参考实现。",
+     "maps_to": [
+      "512ms 长尾 + Kalman 步长控制的分块实现参考",
+      "C 固件实现前的算法验证"
+     ],
+     "license": "MIT",
+     "license_source": "https://api.github.com/repos/echocatzh/PFDKF(GitHub API spdx_id=MIT)",
+     "maturity": "个人项目,58 stars,2023 年初后未更新",
+     "relevance": "评估",
+     "risks": "仅算法核心,无完整 AEC 系统(无延迟估计/残余抑制);需按论文自行核对实现正确性",
+     "links": [
+      "https://github.com/echocatzh/PFDKF"
+     ]
+    },
+    {
+     "name": "PJSIP pjmedia 回声消除框架",
+     "type": "oss",
+     "what": "pjmedia 提供统一 EC API,后端可挂 Speex AEC、WebRTC AEC/AEC3、简单回声抑制器;其框架代码展示了 EC 抽象层/延迟缓冲管理的工程做法。",
+     "maps_to": [
+      "EC 抽象层/多后端架构思路参考"
+     ],
+     "license": "GPL-2.0-or-later(另有 Teluu 商业授权)",
+     "license_source": "https://docs.pjsip.org/en/2.17/overview/license_pjsip.html",
+     "maturity": "成熟,VoIP 领域广泛使用,持续维护",
+     "relevance": "规避",
+     "risks": "GPL,闭源固件不可链接——仅参考架构思路,不引入代码;其 EC 后端本体(Speex/WebRTC)可直接从原始 BSD 上游获取,无必要经由 PJSIP",
+     "links": [
+      "https://docs.pjsip.org/en/latest/api/generated/pjmedia/group/group__PJMEDIA__Echo__Cancel.html",
+      "https://docs.pjsip.org/en/2.17/overview/license_pjsip.html"
+     ]
+    }
+   ],
+   "not_covered": [
+    "中文生态盲区:国内厂商(声网/腾讯/科大讯飞等)的会议 AEC 均为闭源 SDK,未发现可商用的国产开源 AEC 实现;中文期刊论文与国内数据集未覆盖",
+    "未找到'开箱即用、明确支持 512ms 尾长、含完整双讲控制'的生产级开源 C 库——SpeexDSP 尾长可配置但该量级下的收敛/算力表现需实测验证,此为本维度最大缺口",
+    "非线性回声(小扬声器谐波失真、功放削波)的传统补偿方法(Volterra、级联记忆多项式等)未专项调查",
+    "商用授权 AEC 库(VOCAL Technologies、Adaptive Digital、Fraunhofer IIS 等)存在但授权条款与价格未逐家核实",
+    "ITU-T P.831/P.832(回声消除器主观评测规程)及 P.340 现行版具体条款未核主源",
+    "房间冲激响应数据库(如 RWTH Aachen AIR)可用于回声路径仿真,但其 license 是否允许商用产品测试未核,未收录",
+    "webrtc-audio-processing 打包仓库自身 COPYING 文件因 freedesktop GitLab 反爬未能直接核验(上游 WebRTC LICENSE 已核为 BSD-3)",
+    "NN 类 AEC(DTLN-aec、DeepFilterNet 系等)按项目约束属范围外,未展开记录"
+   ],
+   "search_log": [
+    "WebRTC AEC3 acoustic echo cancellation license BSD source code",
+    "SpeexDSP echo canceller MDF license maintenance status",
+    "webrtc-audio-processing freedesktop standalone library PulseAudio license",
+    "Microsoft AEC Challenge dataset GitHub license commercial use CC-BY",
+    "Soo Pang \"multidelay block frequency domain adaptive filter\" 1990 IEEE",
+    "Valin \"On Adjusting the Learning Rate in Frequency Domain Echo Cancellation With Double-Talk\" 2007",
+    "double-talk detection normalized cross-correlation Benesty Gänsler Geigel echo cancellation paper",
+    "Hänsler Schmidt \"Acoustic Echo and Noise Control\" Wiley 2004 book",
+    "residual echo suppression postfilter Enzner Vary frequency-domain Kalman filter acoustic echo control 2006",
+    "ITU-T G.168 digital network echo cancellers ERLE definition G.167 acoustic echo controllers status",
+    "open source acoustic echo cancellation C library embedded DSP \"partitioned block\" OR \"frequency domain adaptive filter\" github",
+    "pjsip pjmedia echo canceller license GPL commercial",
+    "Breining \"Acoustic echo control\" IEEE Signal Processing Magazine 1999 tutorial high-order adaptive filters",
+    "AECMOS microsoft echo cancellation evaluation tool github license ERLE PESQ evaluation",
+    "WebFetch 核验: webrtc.googlesource.com LICENSE (BSD-3), xiph/speexdsp COPYING (BSD-3), microsoft/AEC-Challenge (MIT代码+AS-IS数据条款), api.github.com pyaec (Apache-2.0) 与 PFDKF (MIT), gitlab.freedesktop.org webrtc-audio-processing (反爬失败)"
+   ]
+  },
+  {
+   "candidates": [
+    {
+     "name": "WebRTC Noise Suppression (modules/audio_processing/ns)",
+     "type": "oss",
+     "what": "Google WebRTC 音频处理库中的稳态噪声抑制模块:基于噪声谱估计+维纳增益的谱域抑制,含语音/噪声概率模型;有历史定点版(nsx,C)与现行浮点版(C++)。量产于 Chrome/Meet 等,支持 48kHz。",
+     "maps_to": [
+      "稳态谱域抑制",
+      "噪声估计",
+      "嵌入式C固件参考实现"
+     ],
+     "license": "BSD-3-Clause(另附 PATENTS 专利授权文件)",
+     "license_source": "https://webrtc.googlesource.com/src/+/refs/heads/main/LICENSE",
+     "maturity": "量产级(Chrome/Meet 大规模部署,持续维护)",
+     "relevance": "采用候选",
+     "risks": "需从庞大 WebRTC 树中抽取(有第三方抽取仓如 cpuimage/WebRTC_NS、PulseAudio 的 webrtc-audio-processing,但抽取版 license 溯源需自行核对到上游);现行版为 C++ 且面向通用 CPU,移植到嵌入式 DSP 需改写;旧 nsx 定点版已从主干移除,需取历史版本。",
+     "links": [
+      "https://webrtc.googlesource.com/src/+/refs/heads/main/modules/audio_processing/ns/",
+      "https://github.com/cpuimage/WebRTC_NS",
+      "https://github.com/jagger2048/WebRtc_noise_suppression"
+     ]
+    },
+    {
+     "name": "SpeexDSP preprocessor(speex_preprocess)",
+     "type": "oss",
+     "what": "Xiph 的纯 C 语音预处理器:MCRA 类噪声估计 + Ephraim-Malah/贝叶斯增益的谱域降噪,附 VAD/AGC/残余回声抑制;定点友好,广泛用于嵌入式。",
+     "maps_to": [
+      "稳态谱域抑制",
+      "噪声估计",
+      "嵌入式C固件参考实现"
+     ],
+     "license": "BSD-3-Clause(revised BSD)",
+     "license_source": "https://raw.githubusercontent.com/xiph/speexdsp/master/COPYING",
+     "maturity": "成熟稳定但低活跃(算法约 2004-2008 年代水平,仓库仍在)",
+     "relevance": "采用候选",
+     "risks": "算法水平老(单通道 MCRA+固定增益规则),对非稳态/瞬态噪声无能为力;默认帧长/采样率配置需按 48kHz 低延迟目标重调;宣称 patent-free。",
+     "links": [
+      "https://github.com/xiph/speexdsp",
+      "https://www.speex.org/"
+     ]
+    },
+    {
+     "name": "Martin 2001 最小值统计噪声估计(Minimum Statistics)",
+     "type": "paper",
+     "what": "R. Martin, \"Noise Power Spectral Density Estimation Based on Optimal Smoothing and Minimum Statistics\", IEEE Trans. Speech and Audio Processing, 9(5):504-512, 2001。经典噪声 PSD 估计:最优平滑+滑窗最小值跟踪+偏差补偿,不依赖 VAD。",
+     "maps_to": [
+      "噪声估计"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "N/A",
+     "maturity": "领域基石,引用近两千次,大量工程复现",
+     "relevance": "采用候选",
+     "risks": "最小值跟踪对噪声突升有约 1-1.5s 的固有跟踪滞后;滑窗最小值缓存有一定内存开销。",
+     "links": [
+      "https://ieeexplore.ieee.org/document/928915",
+      "https://www.scirp.org/reference/referencespapers?referenceid=909002"
+     ]
+    },
+    {
+     "name": "Cohen 2003 IMCRA 噪声估计",
+     "type": "paper",
+     "what": "I. Cohen, \"Noise Spectrum Estimation in Adverse Environments: Improved Minima Controlled Recursive Averaging\", IEEE Trans. Speech and Audio Processing, 11(5):466-475, 2003。两次平滑+最小值控制递归平均,按语音存在概率调节平滑因子,低 SNR/非稳态下优于最小值统计。",
+     "maps_to": [
+      "噪声估计"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "N/A",
+     "maturity": "领域标准方法之一,工程复现众多(athena-signal 等即用 MCRA 系)",
+     "relevance": "采用候选",
+     "risks": "实现细节多(双迭代、多组常数),调参不当易漏跟踪或吃字;计算量高于最小值统计。",
+     "links": [
+      "https://ieeexplore.ieee.org/document/1223596/",
+      "https://cris.technion.ac.il/en/publications/noise-spectrum-estimation-in-adverse-environments-improved-minima-2/"
+     ]
+    },
+    {
+     "name": "Cohen & Berdugo 2001 OM-LSA 增益规则",
+     "type": "paper",
+     "what": "I. Cohen, B. Berdugo, \"Speech enhancement for non-stationary noise environments\", Signal Processing 81(11):2403-2418, 2001。按语音存在概率最优修正的 LSA 增益(OM-LSA),配 MCRA/IMCRA 噪声估计,是非稳态环境单通道降噪的事实标准组合;也是后续瞬态抑制工作的基座。",
+     "maps_to": [
+      "稳态谱域抑制",
+      "音乐噪声抑制",
+      "脉冲噪声抑制(作为基座)"
+     ],
+     "license": "N/A(论文;作者官网附 MATLAB 参考代码,授权条款未核)",
+     "license_source": "N/A",
+     "maturity": "事实标准,大量商用产品采用同类结构",
+     "relevance": "采用候选",
+     "risks": "增益下限/先验 SNR 平滑参数需按会议场景调优;作者官网 MATLAB 代码不可直接假定可商用,仅作对照。",
+     "links": [
+      "https://israelcohen.com/wp-content/uploads/2018/05/sp_Nov2001.pdf",
+      "https://israelcohen.com/software/"
+     ]
+    },
+    {
+     "name": "Ephraim & Malah MMSE-STSA / Log-MMSE",
+     "type": "paper",
+     "what": "Y. Ephraim, D. Malah, \"Speech enhancement using a minimum mean-square error short-time spectral amplitude estimator\", IEEE Trans. ASSP 32(6):1109-1121, 1984;及 log-spectral amplitude 版, IEEE Trans. ASSP 33(2):443-445, 1985。统计最优谱幅度增益,配合判决引导(decision-directed)先验 SNR 估计,音乐噪声显著低于谱减法。",
+     "maps_to": [
+      "稳态谱域抑制",
+      "音乐噪声抑制"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "N/A",
+     "maturity": "领域基石(40 年验证)",
+     "relevance": "采用候选",
+     "risks": "原始增益含贝塞尔/指数积分函数,嵌入式上需查表或近似;判决引导平滑系数与延迟/拖尾之间需折衷。",
+     "links": [
+      "https://ieeexplore.ieee.org/document/1164453",
+      "https://www.researchgate.net/publication/3177676_D_Malah_Speech_enhancement_using_a_minimum_mean-square_error_short-time_spectral_amplitude_estimator_J_IEEE_Trans_Acoust_Speech_Signal_Process_32_1109-1121"
+     ]
+    },
+    {
+     "name": "Cappé 1994 音乐噪声机理分析",
+     "type": "paper",
+     "what": "O. Cappé, \"Elimination of the musical noise phenomenon with the Ephraim and Malah noise suppressor\", IEEE Trans. Speech and Audio Processing 2(2):345-349, 1994。解析判决引导机制为何抑制音乐噪声,给出参数选择依据——做谱域降噪调参的必读文献。",
+     "maps_to": [
+      "音乐噪声抑制"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "N/A",
+     "maturity": "经典参考",
+     "relevance": "采用候选",
+     "risks": "无实现,纯机理/调参指导。",
+     "links": [
+      "https://ieeexplore.ieee.org/document/279283"
+     ]
+    },
+    {
+     "name": "Gerkmann & Hendriks 2012 SPP 噪声估计(unbiased MMSE)",
+     "type": "paper",
+     "what": "T. Gerkmann, R. C. Hendriks, \"Unbiased MMSE-Based Noise Power Estimation With Low Complexity and Low Tracking Delay\", IEEE Trans. Audio, Speech, and Language Processing 20(4):1383-1393, 2012。基于固定先验语音存在概率的噪声 PSD 估计:无需偏差补偿、复杂度低、跟踪延迟小——比最小值统计更适合低延迟嵌入式。",
+     "maps_to": [
+      "噪声估计"
+     ],
+     "license": "N/A(论文;作者主页提供 MATLAB 参考实现,授权条款未核)",
+     "license_source": "N/A",
+     "maturity": "被广泛采用为现代非 NN 降噪的默认噪声估计器",
+     "relevance": "采用候选",
+     "risks": "对长时间稳定语音(如持续发言)存在轻微噪声高估的场景需护栏;MATLAB 参考代码授权未核,只可对照不可照搬。",
+     "links": [
+      "https://www.uni-oldenburg.de/fileadmin/user_upload/mediphysik/ag/speech/download/paper/gerkmann_unbiasedMMSE_TASL2012.pdf",
+      "https://www.inf.uni-hamburg.de/en/inst/ab/sp/publications/taslp12noisepsd.html"
+     ]
+    },
+    {
+     "name": "WebRTC Transient Suppressor(键盘瞬态抑制)",
+     "type": "oss",
+     "what": "WebRTC modules/audio_processing/transient:基于小波分解的瞬态(键盘敲击)检测与抑制,替代早期 TypingDetection;可结合按键事件门控,也可纯音频检测。",
+     "maps_to": [
+      "脉冲噪声抑制(键盘/敲击)"
+     ],
+     "license": "BSD-3-Clause(随 WebRTC 主仓)",
+     "license_source": "https://webrtc.googlesource.com/src/+/refs/heads/main/LICENSE",
+     "maturity": "曾在产品线启用但长期标记 experimental,新版本中逐步被下线/移除",
+     "relevance": "评估",
+     "risks": "上游已趋于放弃该模块(被 NN 方案取代),需锁定历史版本自维护;误杀辅音/齿音风险需实测;会议矩阵场景无按键事件可用,只能纯音频检测。",
+     "links": [
+      "https://chromium.googlesource.com/external/webrtc/+/ad34dbe934/webrtc/modules/audio_processing/transient/transient_suppressor.cc",
+      "https://groups.google.com/g/discuss-webrtc/c/cnCbJyxOvto"
+     ]
+    },
+    {
+     "name": "Talmon/Hirszhorn/Cohen/Gannot 瞬态干扰抑制系列",
+     "type": "paper",
+     "what": "非 NN 单通道瞬态(键盘/敲门)抑制文献线:R. Talmon, I. Cohen, S. Gannot, \"Transient noise reduction using nonlocal diffusion filters\", IEEE Trans. Audio, Speech, Lang. Process. 19(6):1584-1599, 2011;A. Hirszhorn, D. Dov, R. Talmon, I. Cohen, \"Transient Interference Suppression in Speech Signals Based on the OM-LSA Algorithm\", IWAENC 2012。利用瞬态的脉冲时域结构+谱结构估计瞬态谱方差,嵌入 OM-LSA 框架。",
+     "maps_to": [
+      "脉冲噪声抑制(键盘/敲击)"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "N/A",
+     "maturity": "学术验证充分,无现成可商用开源实现",
+     "relevance": "评估",
+     "risks": "部分方法(非局部滤波/图方法)计算量大、需缓冲,不满足 <12ms 全链路延迟;工程上更可行的是其 OM-LSA 框架内的简化版;需自行实现。",
+     "links": [
+      "https://israelcohen.com/wp-content/uploads/2018/05/IWAENC2012_Hirszhorn.pdf",
+      "https://www.researchgate.net/publication/261053222_Transient_Interference_Suppression_in_Speech_Signals_Based_on_the_OM-LSA_Algorithm"
+     ]
+    },
+    {
+     "name": "Rangachari & Loizou 2006 快速噪声跟踪(MCRA-2)",
+     "type": "paper",
+     "what": "S. Rangachari, P. C. Loizou, \"A noise-estimation algorithm for highly non-stationary environments\", Speech Communication 48(2):220-231, 2006。低复杂度、快速跟踪的噪声估计,适合高非稳态环境;附对比综述价值。",
+     "maps_to": [
+      "噪声估计"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "N/A",
+     "maturity": "常被引用为工程折衷方案",
+     "relevance": "评估",
+     "risks": "快速跟踪与吃语音之间折衷需实测;Loizou 书配套 MATLAB 代码有出版社版权,不可直接入固件。",
+     "links": [
+      "https://ecs.utdallas.edu/loizou/speech/noise_estim_article_feb2006.pdf"
+     ]
+    },
+    {
+     "name": "Godsill & Rayner《Digital Audio Restoration》(点击/脉冲噪声修复)",
+     "type": "paper",
+     "what": "S. J. Godsill, P. J. W. Rayner, Digital Audio Restoration: A Statistical Model Based Approach, Springer, 1998。AR 模型脉冲检测 + 样本插值修复(click removal)的系统性方法,含 EM/MCMC 变体;检测-插值范式可简化为低延迟实时版(AR 残差阈值检测 + 短窗插值)。",
+     "maps_to": [
+      "脉冲噪声抑制(键盘/敲击)",
+      "去咔嗒/爆音"
+     ],
+     "license": "N/A(专著)",
+     "license_source": "N/A",
+     "maturity": "音频修复领域经典,广泛用于商用修复软件思路",
+     "relevance": "评估",
+     "risks": "原始方法偏离线;实时化需限制 AR 阶数与插值窗,延迟预算内可行性需原型验证。",
+     "links": [
+      "https://www.semanticscholar.org/paper/Digital-Audio-Restoration:-A-Statistical-Model-Godsill-Rayner/f76a56fc0a985a5424855e959a4ff098b4cceaf9",
+      "http://www-igm.univ-mlv.fr/~jyt/digital_audio_restoration.pdf"
+     ]
+    },
+    {
+     "name": "athena-signal(滴滴)",
+     "type": "oss",
+     "what": "滴滴开源的 C 语言语音前端库:AEC/HPF/DOA/MVDR/GSC/VAD/NS/AGC,其 NS 基于 MCRA 噪声估计;中文生态里少见的可商用许可全链路参考。",
+     "maps_to": [
+      "稳态谱域抑制",
+      "噪声估计",
+      "嵌入式C固件参考实现"
+     ],
+     "license": "Apache-2.0",
+     "license_source": "https://raw.githubusercontent.com/athena-team/athena-signal/master/LICENSE",
+     "maturity": "低活跃/基本停更(2020 前后),代码可读性一般",
+     "relevance": "评估",
+     "risks": "无社区维护,质量需逐模块审;16kHz 语音场景为主,48kHz 会议音质目标下需重做滤波器组/参数;作为算法参考价值大于直接复用。",
+     "links": [
+      "https://github.com/athena-team/athena-signal"
+     ]
+    },
+    {
+     "name": "libspecbleach / noise-repellent",
+     "type": "oss",
+     "what": "Luciano Dato 的 C 谱降噪库(noise-repellent LV2 插件的内核):STFT 谱处理器 + 掩蔽阈值估计 + onset 检测改进的谱减,支持自适应与学习噪声档两种模式。",
+     "maps_to": [
+      "稳态谱域抑制",
+      "音乐噪声抑制(掩蔽阈值思路)"
+     ],
+     "license": "LGPL-2.1(仓库 LICENSE 文件文本为 LGPL v2.1;项目页另有标 LGPL-3.0 的说法,采用前须再核)",
+     "license_source": "https://raw.githubusercontent.com/lucianodato/libspecbleach/main/LICENSE",
+     "maturity": "个人项目,插件生态内使用较广,非量产级",
+     "relevance": "观望",
+     "risks": "LGPL:固件静态链接场景基本不可行(嵌入式 DSP 无动态链接),仅可作思路参考或上位机侧评估;实时延迟(默认 STFT 配置)偏大。",
+     "links": [
+      "https://github.com/lucianodato/libspecbleach",
+      "https://github.com/lucianodato/noise-repellent"
+     ]
+    },
+    {
+     "name": "DEMAND 多通道环境噪声库",
+     "type": "dataset",
+     "what": "J. Thiemann, N. Ito, E. Vincent, \"The Diverse Environments Multi-channel Acoustic Noise Database (DEMAND)\", Proc. Meetings on Acoustics (ICA) 2013。18 种环境、16 通道实录噪声(含办公室/会议室类),48kHz,适合做降噪测试底噪。",
+     "maps_to": [
+      "测试噪声数据(稳态/环境)"
+     ],
+     "license": "CC BY 4.0(Zenodo 版权利页;描述中另提早期 CC BY-SA 3.0——商用测试两者均可,再分发衍生数据时注意 SA 条款差异)",
+     "license_source": "https://zenodo.org/records/1227121",
+     "maturity": "学界广泛使用",
+     "relevance": "采用候选",
+     "risks": "作内部测试无碍;若把混合后的音频对外发布需按 license 署名(及可能的 SA 传染)。",
+     "links": [
+      "https://zenodo.org/records/1227121",
+      "https://hal.science/hal-00796707"
+     ]
+    },
+    {
+     "name": "ETSI ES 202 396-1 背景噪声数据库",
+     "type": "standard",
+     "what": "ETSI STQ 标准附带的实录背景噪声库(办公室、cafeteria、车内等,双耳/立体声),是终端语音质量测试(含会议设备)业界常用噪声源;标准文本免费下载,噪声文件在 ETSI docbox 公开目录。",
+     "maps_to": [
+      "测试噪声数据(稳态/环境)",
+      "测试方法学(噪声回放标定)"
+     ],
+     "license": "ETSI 标准附件条款 [待核]",
+     "license_source": "https://docbox.etsi.org/stq/Open/EG%20202%20396-1%20Background%20noise%20database",
+     "maturity": "行业标准,测试实验室普遍采用",
+     "relevance": "评估",
+     "risks": "文件可公开取得,但用于商用产品测试报告/再分发的具体条款需向 ETSI 核实;内部研发测试通常无争议。",
+     "links": [
+      "https://docbox.etsi.org/stq/Open/EG%20202%20396-1%20Background%20noise%20database",
+      "https://www.intertekinform.com/en-au/standards/etsi-es-202-396-1-v1-8-1-2022-05--1398234_saig_etsi_etsi_3593823/"
+     ]
+    },
+    {
+     "name": "QUT-NOISE 数据库",
+     "type": "dataset",
+     "what": "QUT SAIVT 的长时实录环境噪声库(café、街道、家居、车内等,单场景数十分钟),配 BSD 许可的混合协议代码(QUT-NOISE-TIMIT)。",
+     "maps_to": [
+      "测试噪声数据(稳态/环境)"
+     ],
+     "license": "数据 CC BY-SA,代码 BSD(官方页声明)",
+     "license_source": "https://research.qut.edu.au/saivt/databases/qut-noise-databases-and-protocols/",
+     "maturity": "学界常用(VAD/降噪评测)",
+     "relevance": "评估",
+     "risks": "CC BY-SA 允许商用但衍生再分发需同许可;会议室场景占比不高。",
+     "links": [
+      "https://research.qut.edu.au/saivt/databases/qut-noise-databases-and-protocols/",
+      "https://github.com/qutsaivt/QUT-NOISE"
+     ]
+    },
+    {
+     "name": "Microsoft DNS-Challenge 噪声语料",
+     "type": "dataset",
+     "what": "微软深度噪声抑制挑战赛的训练/测试语料脚本仓,噪声部分汇编自 Audioset/Freesound 等多来源,含键盘敲击等瞬态噪声类别,规模大。",
+     "maps_to": [
+      "测试噪声数据(含瞬态/键盘)"
+     ],
+     "license": "逐源混合许可(README 声明按原始来源条款提供,含 CC 系及可能的 NC 成分)[待核]",
+     "license_source": "https://github.com/microsoft/DNS-Challenge/blob/master/README.md",
+     "maturity": "近年降噪评测事实基准",
+     "relevance": "观望",
+     "risks": "商用测试须逐源核许可(Freesound 素材含 CC BY-NC),不能整包默认可商用;仓库主要面向 NN 训练,但其测试集与瞬态噪声类别对非 NN 评测同样有用。",
+     "links": [
+      "https://github.com/microsoft/DNS-Challenge"
+     ]
+    },
+    {
+     "name": "WHAM! 噪声库",
+     "type": "dataset",
+     "what": "Whisper.ai 在旧金山湾区实录的环境噪声(餐馆/咖啡馆/酒吧/公园),常与 WSJ0 组合用于分离/降噪评测。",
+     "maps_to": [
+      "测试噪声数据(稳态/环境)"
+     ],
+     "license": "CC BY-NC 4.0(官方页声明,非商用)",
+     "license_source": "http://wham.whisper.ai/",
+     "maturity": "学界常用",
+     "relevance": "规避",
+     "risks": "NC 条款:商用产品研发/测试使用存在合规风险,直接排除;另 WSJ0 语音部分为 LDC 付费授权。",
+     "links": [
+      "http://wham.whisper.ai/",
+      "https://arxiv.org/abs/1907.01160"
+     ]
+    },
+    {
+     "name": "RNNoise(范围外:NN 降噪)",
+     "type": "oss",
+     "what": "[范围外——NN 推理,项目明确排除] Xiph/Mozilla 的 RNN+DSP 混合降噪(J.-M. Valin, \"A Hybrid DSP/Deep Learning Approach to Real-Time Full-Band Speech Enhancement\", MMSP 2018):GRU 估计每带增益+基音滤波,48kHz、低算力、纯 C。记录备查:若未来放开 NN 红线,它是嵌入式最轻量的候选。",
+     "maps_to": [
+      "(范围外)稳态+非稳态降噪"
+     ],
+     "license": "BSD-3-Clause",
+     "license_source": "https://raw.githubusercontent.com/xiph/rnnoise/main/COPYING",
+     "maturity": "开源界广泛使用(OBS/Mumble 等),持续维护",
+     "relevance": "观望",
+     "risks": "含 NN 推理,违反本项目算法路线红线;定点 DSP 上跑 GRU 需额外工程;训练数据与目标场景失配时需自行重训。",
+     "links": [
+      "https://github.com/xiph/rnnoise",
+      "https://jmvalin.ca/demo/rnnoise/"
+     ]
+    }
+   ],
+   "dimension": "anc",
+   "not_covered": [
+    "中文生态未系统覆盖:仅命中 athena-signal(滴滴);国内厂商(讯飞、声加、全志/炬芯等芯片方案商)的闭源降噪 SDK 与中文社区实现未调查,属已知盲区",
+    "商用授权库未逐一调查:Alango Voice Suite、Fraunhofer、Cirrus/ADI/TI 等 DSP 芯片厂商 SDK 自带 NS 模块(与芯片平台强耦合,平台未定前暂缓)",
+    "键盘/敲击类脉冲噪声的专用公开测试集:未找到明确可商用的独立数据集(FSD50K 等逐条 CC 许可混杂,未核;DNS-Challenge 瞬态类别需逐源核),测试素材可能需自录",
+    "Cohen(israelcohen.com)与 Gerkmann 主页 MATLAB 参考代码的具体授权条款未核,只按'不可假定可商用'处理",
+    "音乐噪声的心理声学掩蔽类方法(Virag 1999 等)未单独立项,仅由 libspecbleach 的掩蔽阈值实现间接覆盖",
+    "谱减法源头文献(Boll 1979、Berouti 1979)未单列条目——被 Ephraim-Malah/OM-LSA 线覆盖,工程上不建议直接采用"
+   ],
+   "search_log": [
+    "WebRTC noise suppression module standalone C library license",
+    "SpeexDSP preprocessor noise suppression license BSD",
+    "Martin minimum statistics noise power estimation 2001 IEEE paper",
+    "Cohen IMCRA improved minima controlled recursive averaging noise estimation paper 2003",
+    "Ephraim Malah MMSE short-time spectral amplitude estimator 1984 log-spectral 1985 musical noise",
+    "keyboard typing transient noise suppression speech paper Talmon Cohen Gannot",
+    "Gerkmann Hendriks noise power estimation speech presence probability 2012 unbiased MMSE",
+    "DEMAND noise database license Creative Commons multichannel environmental noise",
+    "libspecbleach spectral noise reduction C library license noise-repellent",
+    "Microsoft DNS Challenge noise dataset license commercial use github",
+    "WebRTC transient suppression keyboard detection audio_processing module",
+    "ETSI ES 202 396-1 background noise database download license",
+    "Godsill Rayner digital audio restoration click removal autoregressive interpolation impulsive noise",
+    "WHAM! noise dataset license CC BY-NC WSJ0 whisper.ai",
+    "athena-signal didi github license noise suppression speech signal processing library",
+    "QUT-NOISE database license commercial use CC-BY-SA",
+    "Cohen Berdugo 2001 \"speech enhancement for non-stationary noise environments\" OM-LSA Signal Processing",
+    "[license verify] raw.githubusercontent.com/xiph/rnnoise/main/COPYING → BSD-3",
+    "[license verify] raw.githubusercontent.com/xiph/speexdsp/master/COPYING → BSD-3",
+    "[license verify] raw.githubusercontent.com/lucianodato/libspecbleach/main/LICENSE → LGPL-2.1 文本",
+    "[license verify] webrtc.googlesource.com/src/+/refs/heads/main/LICENSE → BSD-3",
+    "[license verify] raw.githubusercontent.com/athena-team/athena-signal/master/LICENSE → Apache-2.0",
+    "[license verify] zenodo.org/records/1227121 (DEMAND) → CC BY 4.0"
+   ]
+  },
+  {
+   "candidates": [
+    {
+     "name": "van Waterschoot & Moonen, \"Comparative Evaluation of Howling Detection Criteria in Notch-Filter-Based Howling Suppression\", JAES vol.58 no.11, 2010",
+     "type": "paper",
+     "what": "陷波式啸叫抑制的检测判据统一框架与对比评测:PTPR/PAPR/PHPR/PNPR(谱域)、IPMP/IMSD(时域持续性)单判据与多判据组合(如 PHPR&IPMP、PNPR&IMSD),给出误检/漏检与音质权衡。是每通道16点陷波方案的检测器设计直接依据。",
+     "maps_to": [
+      "啸叫检测判据",
+      "16点陷波抑制",
+      "检测阈值与音质权衡"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "https://www.aes.org/e-lib/browse.cfm?elib=15738",
+     "maturity": "经典文献,被后续实现广泛引用",
+     "relevance": "采用候选",
+     "risks": "AES付费下载;判据阈值需按48kHz/会议扩声场景自行标定,论文实验偏实验室条件",
+     "links": [
+      "https://www.aes.org/e-lib/browse.cfm?elib=15738",
+      "https://www.researchgate.net/publication/279481999"
+     ]
+    },
+    {
+     "name": "van Waterschoot & Moonen, \"Fifty Years of Acoustic Feedback Control: State of the Art and Future Challenges\", Proc. IEEE 99(2):288-327, 2011",
+     "type": "paper",
+     "what": "声反馈控制总纲综述:相位/频移调制、陷波抑制(NHS)、增益自动调节、自适应反馈消除(AFC/PEM)四大路线的系统对比与MSG评估方法。作为架构选型与评测方法论基座。",
+     "maps_to": [
+      "AFC总体架构选型",
+      "MSG(最大稳定增益)评估方法"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "https://ieeexplore.ieee.org/document/5595487",
+     "maturity": "领域权威综述",
+     "relevance": "采用候选",
+     "risks": "2011年止,NN类后续进展不含(本项目范围外,影响小);IEEE付费",
+     "links": [
+      "https://ieeexplore.ieee.org/document/5595487",
+      "https://tvanwate.github.io/publications/"
+     ]
+    },
+    {
+     "name": "chapro (Boys Town National Research Hospital)",
+     "type": "oss",
+     "what": "助听器信号处理C库,含自适应反馈消除的纯C实现(afc_process.c,时域NLMS类AFC+带限处理)与IIR滤波器组设计代码。平台无关纯C,是少有的license极宽松、可直接读改进固件的AFC参考实现。",
+     "maps_to": [
+      "自适应反馈消除(AFC)",
+      "C固件实现参考"
+     ],
+     "license": "CC0-1.0",
+     "license_source": "https://github.com/BoysTownOrg/chapro/blob/master/LICENSE",
+     "maturity": "研究级,25 stars,2024年仍有提交",
+     "relevance": "评估",
+     "risks": "面向助听器场景(短反馈路径、单通道、低采样率假设),移植到PA扩声(反馈路径长、48kHz、多通道)需重调收敛/去相关策略;工程化程度一般,无正式发布流程",
+     "links": [
+      "https://github.com/BoysTownOrg/chapro",
+      "https://github.com/BoysTownOrg/chapro/blob/master/afc_process.c"
+     ]
+    },
+    {
+     "name": "Mounir, Bernardi & van Waterschoot, \"Robust and early howling detection based on a sparsity measure\", EURASIP J. Audio Speech Music Process., 2025(NINOS²-T)",
+     "type": "paper",
+     "what": "van Waterschoot 团队2011综述后的最新检测方向:基于频bin时间轨迹 l2/l4 范数稀疏度的 NINOS²-T 特征,可在啸叫早期(低能量、ringing阶段)检出,优于传统峰值判据;附自动标注数据集与PR评测方法。配套MIT许可Python实现。",
+     "maps_to": [
+      "啸叫检测判据",
+      "早期/振铃检测",
+      "检测器评测数据集"
+     ],
+     "license": "MIT(配套代码);论文开放获取",
+     "license_source": "https://github.com/maganino/Howling-Detection-NINOS2T",
+     "maturity": "2025年新发布,代码为论文复现级(9 stars)",
+     "relevance": "评估",
+     "risks": "Python参考实现需自行C化并评估DSP算力;新方法缺少产品级现场验证",
+     "links": [
+      "https://link.springer.com/article/10.1186/s13636-025-00399-1",
+      "https://github.com/maganino/Howling-Detection-NINOS2T",
+      "https://doi.org/10.48804/EOW7OF"
+     ]
+    },
+    {
+     "name": "Gil-Cacho, van Waterschoot, Moonen & Jensen, \"Regularized adaptive notch filters for acoustic howling suppression\", EUSIPCO 2009",
+     "type": "paper",
+     "what": "正则化自适应陷波(RANF):三滤波器并行做频率跟踪/检测/抑制,时域参数化方法,零帧延迟、复杂度极低,并通过正则化避免误陷波源信号中的纯音成分。适合<12ms延迟预算下替代FFT帧法检测。",
+     "maps_to": [
+      "自适应陷波",
+      "低延迟啸叫检测",
+      "纯音误检防护"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "https://vbn.aau.dk/en/publications/regularized-adaptive-notch-filters-for-acoustic-howling-suppressi/",
+     "maturity": "会议论文,思路被后续工作引用",
+     "relevance": "评估",
+     "risks": "无公开代码;梯度法频率跟踪在多啸叫点同时出现时的行为需仿真验证",
+     "links": [
+      "https://vbn.aau.dk/en/publications/regularized-adaptive-notch-filters-for-acoustic-howling-suppressi/",
+      "https://ieeexplore.ieee.org/document/7077829/"
+     ]
+    },
+    {
+     "name": "Alkaher & Cohen, \"Temporal Howling Detector for Speech Reinforcement Systems\", Acoustics (MDPI) 4(4):60, 2022",
+     "type": "paper",
+     "what": "面向扩声(speech reinforcement)的时域啸叫检测器,针对语音存在时的检测鲁棒性,是2011综述判据体系在扩声场景的后续实现向工作;开放获取。",
+     "maps_to": [
+      "啸叫检测判据",
+      "语音下误检抑制"
+     ],
+     "license": "N/A(论文, CC BY开放获取)",
+     "license_source": "https://www.mdpi.com/2624-599X/4/4/60",
+     "maturity": "期刊论文,无官方代码",
+     "relevance": "评估",
+     "risks": "无公开实现,复现成本自担",
+     "links": [
+      "https://www.mdpi.com/2624-599X/4/4/60",
+      "https://israelcohen.com/wp-content/uploads/2022/11/acoustics-04-00060.pdf"
+     ]
+    },
+    {
+     "name": "dbx AFS2(Harman Advanced Feedback Suppression)",
+     "type": "commercial",
+     "what": "PA域啸叫抑制标杆硬件:每通道最多24个陷波,Q最高1/80倍频程(Q≈116),Fixed(系统预扫)+Live(演出中实时)双模式,自适应滤波带宽。作为本项目16点陷波+固定/动态分配的规格与竞品基准。",
+     "maps_to": [
+      "竞品规格基准",
+      "16点陷波抑制",
+      "Fixed/Live滤波器分配策略"
+     ],
+     "license": "商用专有",
+     "license_source": "https://dbxpro.com/en-US/products/afs2",
+     "maturity": "量产产品,市场验证多年",
+     "relevance": "观望",
+     "risks": "其 Precision Frequency Detection 曾标 patent pending,自研时避免照抄其宣传的具体实现细节;算法细节不公开,仅白皮书级描述",
+     "links": [
+      "https://dbxpro.com/en-US/products/afs2",
+      "https://help.harmanpro.com/Documents/395/AFS%20-%20How%20It%20Works.pdf",
+      "https://www.soundonsound.com/reviews/dbx-afs2"
+     ]
+    },
+    {
+     "name": "Berdahl & Harris, \"Frequency Shifting for Acoustic Howling Suppression\", DAFx 2010(上溯 Schroeder, JASA 1964)",
+     "type": "paper",
+     "what": "频移法(整带上移几Hz)平滑环路增益,可额外获得数dB MSG,与陷波法正交互补;Schroeder 1964 为原始理论(约2-3dB增益裕量结论)。可作为会议扩声模式下的可选辅助开关。",
+     "maps_to": [
+      "MSG提升辅助手段",
+      "频移/相位调制"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "https://ccrma.stanford.edu/~eberdahl/Papers/DAFx2010BerdahlHarris.pdf",
+     "maturity": "方法本身在Behringer/Sabine等产品中量产验证数十年",
+     "relevance": "评估",
+     "risks": "频移对音乐信号有可闻音准伤害,仅适合语音模式;与陷波并用时检测器需感知频移量",
+     "links": [
+      "https://ccrma.stanford.edu/~eberdahl/Papers/DAFx2010BerdahlHarris.pdf",
+      "https://ccrma.stanford.edu/~eberdahl/Projects/FreqShift/"
+     ]
+    },
+    {
+     "name": "Tympan_Library(含 AudioEffectFeedbackCancel_F32,BTNRH AFC 移植)",
+     "type": "oss",
+     "what": "开源可穿戴听力研究平台库,MIT许可,浮点(F32)实时AFC实现(源自Boys Town算法),运行于 Teensy(ARM Cortex-M7)。与chapro互为印证的第二份可商用AFC参考码。",
+     "maps_to": [
+      "自适应反馈消除(AFC)",
+      "浮点实时实现参考"
+     ],
+     "license": "MIT",
+     "license_source": "https://github.com/Tympan/Tympan_Library/blob/main/LICENSE",
+     "maturity": "活跃维护(2026-07仍有提交),149 stars",
+     "relevance": "评估",
+     "risks": "与 Teensy/Arduino 生态强耦合(平台耦合:ARM Cortex-M7/Teensy 4),需剥离框架依赖;助听器场景假设同chapro",
+     "links": [
+      "https://github.com/Tympan/Tympan_Library",
+      "https://github.com/Tympan/Tympan_Library/blob/main/src/AudioEffectFeedbackCancel_F32.h"
+     ]
+    },
+    {
+     "name": "openMHA (HoerTech gGmbH)",
+     "type": "oss",
+     "what": "开源主流助听器算法平台,含 adaptive_feedback_canceller 插件(NLMS AFC)及预滤波/PEM类研究实现,算法文档完备。仅作AFC算法结构与参数设定的思路参考。",
+     "maps_to": [
+      "自适应反馈消除(AFC)",
+      "算法结构参考"
+     ],
+     "license": "AGPL-3.0",
+     "license_source": "https://github.com/HoerTech-gGmbH/openMHA",
+     "maturity": "成熟,持续维护(2026-07仍有提交),326 stars,有配套论文",
+     "relevance": "规避",
+     "risks": "AGPL-3.0:闭源固件与上位机均不可链接/移植代码,只能读文档与论文参考思路;照抄代码结构亦有传染风险",
+     "links": [
+      "https://github.com/HoerTech-gGmbH/openMHA",
+      "https://github.com/HoerTech-gGmbH/openMHA/blob/master/README.md"
+     ]
+    },
+    {
+     "name": "Li et al., \"Howling Detection and Suppression Based on Segmented Notch Filtering\", Sensors 21(23), 2021",
+     "type": "paper",
+     "what": "闭式解线性相位FIR陷波:任意陷波频率、极深衰减(报告-330dB)、系数对称保线性相位,分段拼接消除瞬态。可作FIR陷波设计参考,但注意群延迟。",
+     "maps_to": [
+      "陷波器设计",
+      "线性相位FIR方案"
+     ],
+     "license": "N/A(论文, 开放获取)",
+     "license_source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8659983/",
+     "maturity": "期刊论文,无官方代码",
+     "relevance": "观望",
+     "risks": "分段处理+线性相位FIR的群延迟与<12ms全链路预算冲突,大概率仍选IIR双二阶陷波;能量阈值检测判据偏简单",
+     "links": [
+      "https://pmc.ncbi.nlm.nih.gov/articles/PMC8659983/"
+     ]
+    },
+    {
+     "name": "chenwj1989/python_howling_suppression",
+     "type": "oss",
+     "what": "陷波法啸叫抑制的Python教学示例(检测+IIR陷波闭环仿真),中文作者配套博客讲解,适合作为算法仿真起点的思路参照。",
+     "maps_to": [
+      "16点陷波抑制",
+      "算法仿真参考"
+     ],
+     "license": "无license(默认保留所有权利)",
+     "license_source": "https://github.com/chenwj1989/python_howling_suppression",
+     "maturity": "示例级,85 stars,2020年后未更新",
+     "relevance": "规避",
+     "risks": "无license,代码不可进产品(固件/上位机均不可);仅参考思路并自写实现",
+     "links": [
+      "https://github.com/chenwj1989/python_howling_suppression"
+     ]
+    },
+    {
+     "name": "marc1701/FACT (Feedback Analysis and Cancellation Toolkit)",
+     "type": "oss",
+     "what": "啸叫检测/消除方法的测试工具箱,含8陷波滤波器组消啸与多种检测判据对比框架,可借鉴其评测harness设计(检测判据A/B测试)。",
+     "maps_to": [
+      "啸叫检测判据评测",
+      "陷波滤波器组"
+     ],
+     "license": "无license(默认保留所有权利)",
+     "license_source": "https://github.com/marc1701/FACT",
+     "maturity": "学生/研究项目,26 stars,2018年停更",
+     "relevance": "规避",
+     "risks": "无license且已停更,仅参考评测思路,代码不可复用",
+     "links": [
+      "https://github.com/marc1701/FACT"
+     ]
+    },
+    {
+     "name": "yewentai/Real-time-2nd-order-Adaptive-Notch-Filter-design",
+     "type": "oss",
+     "what": "ANF-LMS 二阶自适应陷波的实时C+汇编实现(课程项目),MIT许可,可作为自适应陷波C实现的最小参考。",
+     "maps_to": [
+      "自适应陷波",
+      "C固件实现参考"
+     ],
+     "license": "MIT",
+     "license_source": "https://github.com/yewentai/Real-time-2nd-order-Adaptive-Notch-Filter-design",
+     "maturity": "课程项目级,7 stars",
+     "relevance": "观望",
+     "risks": "平台耦合:TI TMS320C5515(定点C55x汇编部分不可移植);单陷波点,成熟度低,仅作实现样例",
+     "links": [
+      "https://github.com/yewentai/Real-time-2nd-order-Adaptive-Notch-Filter-design"
+     ]
+    }
+   ],
+   "dimension": "afc",
+   "not_covered": [
+    "PA/扩声域不存在生产级、license友好的开源啸叫抑制库:WebRTC AudioProcessing 与 SpeexDSP 均无啸叫检测/陷波/AFC模块,可用者只有教学/研究级仓库;产品级须自研,以 JAES 2010 判据 + IIR双二阶陷波组 + (可选)chapro式AFC 为拼装路线",
+    "陷波器音质损伤的专项主观评估文献(如针对陷波深度/Q/数量的MUSHRA听感研究)未检索到独立论文,现有文献多以SDR/PESQ及MSG提升附带评估;若需主观音质验收标准需自建听测方案",
+    "中文生态确认为薄弱区:检索到的中文资源均为CSDN/简书博客与无license示例代码(含移频/陷波/自适应MATLAB资源包),未发现可商用的中文开源实现或国内厂商开放算法",
+    "NN路线(Deep AHS (Zhang et al., arXiv 2302.09252)、NN增强Kalman AHS (arXiv 2309.16049)、混合Kalman+DL (YIXUANZ/AHS_2023)) 按项目要求标记范围外,仅记录存在",
+    "商用可授权算法IP(如 Waves X-FDBK、Sabine FBX 授权、Music Tribe 各品牌FBQ实现)之授权模式未调查;Dugan类自动混音属另一维度未涉及",
+    "openMHA 的 AGPL 结论已核实(GitHub license API + 仓库badge, AGPL-3.0),不存在双许可迹象;如需商用授权须直接联系 HoerTech/其继任机构,未调查其商业授权可行性"
+   ],
+   "search_log": [
+    "openMHA adaptive feedback cancellation license open source hearing aid",
+    "open source howling suppression acoustic feedback notch filter github",
+    "GitHub API license查询: chenwj1989/python_howling_suppression, marc1701/FACT, cirilln/Automatic_Feedback_Suppression, yiliang2333/Real-time-howling-suppression, yewentai/Real-time-2nd-order-Adaptive-Notch-Filter-design, HoerTech-gGmbH/openMHA, maganino/Howling-Detection-NINOS2T, BoysTownOrg/chapro, Tympan/Tympan_Library(+LICENSE原文抽查)",
+    "howling detection criteria PAPR PHPR PNPR IPMP interframe peak magnitude persistence paper",
+    "van Waterschoot Moonen \"fifty years of acoustic feedback control\" 2011 follow-up survey acoustic feedback",
+    "notch filter howling suppression sound quality degradation evaluation depth bandwidth audibility study",
+    "WebFetch: link.springer.com/article/10.1186/s13636-025-00399-1 (NINOS2T 2025)",
+    "WebFetch: vbn.aau.dk RANF EUSIPCO 2009",
+    "WebFetch: pmc.ncbi.nlm.nih.gov/articles/PMC8659983 (Segmented Notch Filtering, Sensors 2021)",
+    "dbx AFS2 Shure DFR Sabine FBX feedback suppressor algorithm live fixed notch filters commercial",
+    "\"howling\" suppression frequency shifting Schroeder 1964 phase modulation sound reinforcement gain margin",
+    "Boys Town chapro C library adaptive feedback cancellation license github Tympan",
+    "van Waterschoot Moonen \"Comparative evaluation of howling detection criteria\" Journal Audio Engineering Society 2010",
+    "啸叫抑制 陷波 开源 算法 扩声 github 会议"
+   ]
+  },
+  {
+   "candidates": [
+    {
+     "name": "Dugan, D. (1975) \"Automatic Microphone Mixing\", JAES Vol.23 No.6, pp.442-449 (AES Convention 51, Paper 1034)",
+     "type": "paper",
+     "what": "增益共享自动混音的原始论文：提出主动/被动语音区分析、指出VOX开关式门控的缺陷、提出自适应阈值门控；是 gain-sharing 类 automix 的原理主源",
+     "maps_to": [
+      "automix增益共享核心算法",
+      "自适应阈值门控判决"
+     ],
+     "license": "N/A（版权文献，仅原理参考，AES E-Library 付费下载）",
+     "license_source": "https://www.aes.org/e-lib/browse.cfm?elib=2683",
+     "maturity": "50年经典，被 Biamp/Yamaha/Waves 等全行业实现验证",
+     "relevance": "采用候选",
+     "risks": "论文本身无实现代码；具体工程参数（攻击/释放时间常数）需参照厂商文档与自行调优",
+     "links": [
+      "https://www.aes.org/e-lib/browse.cfm?elib=2683",
+      "https://www.dandugan.com/"
+     ]
+    },
+    {
+     "name": "US3992584A \"Automatic microphone mixer\"（Dan Dugan, 申请1975-05-09, 授权1976-11-16）",
+     "type": "paper",
+     "what": "增益共享算法的专利文本：每通道衰减量(dB)=该通道电平低于所有通道电平之和的dB数，系统总增益恒定；权利要求即算法规格，可直接作为C固件实现的规格书",
+     "maps_to": [
+      "automix增益共享核心算法（自由实施依据）"
+     ],
+     "license": "专利已过期（Google Patents 状态 Expired - Lifetime，届满 1993-11-16），技术进入公有领域",
+     "license_source": "https://patents.google.com/patent/US3992584A/en",
+     "maturity": "已过期专利，公有领域，实施无专利障碍",
+     "relevance": "采用候选",
+     "risks": "算法可自由实施，但 \"Dugan\"/\"Dugan Speech System\" 为在用商标（Dan Dugan Sound Design，授权 Yamaha/Waves），产品命名与宣传中不得使用该名称，宜称 gain sharing automix",
+     "links": [
+      "https://patents.google.com/patent/US3992584A/en"
+     ]
+    },
+    {
+     "name": "Biamp Cornerstone 技术文档（Automixer basics / Gain Sharing vs. Gating Automixer / Microphone Isolation Factor）",
+     "type": "paper",
+     "what": "门控与增益共享两类 automix 的最系统厂商公开文档：NOM 补偿公式 10log(NOM)（每倍增开麦数衰减3dB，示例上限8麦/9dB）、off-attenuation 默认-40dB、hold time 默认1000ms、last mic hold/designated mic、增益共享的 Microphone Isolation Factor（0.0-2.0，默认1.0）等工程参数基准",
+     "maps_to": [
+      "NOM增益补偿",
+      "门控参数默认值基准",
+      "增益共享隔离因子设计"
+     ],
+     "license": "N/A（公开网页文档，版权保留，仅作设计参考）",
+     "license_source": "https://support.biamp.com/General/Audio/Automixer_basics",
+     "maturity": "成熟商用平台（Audia/Nexia/Tesira）的现行支持文档",
+     "relevance": "采用候选",
+     "risks": "只描述行为与参数、不给实现细节；Isolation Factor 等具体扩展的实现方式可能涉及 Biamp 自有 IP，照行为自研即可、勿抄权利要求",
+     "links": [
+      "https://support.biamp.com/General/Audio/Automixer_basics",
+      "https://support.biamp.com/Tesira/Programming/Gain_Sharing_vs._Gating_Automixer",
+      "https://tesira-help.biamp.com/Component_Objects/Audio/Mixers/Gain_Sharing_Automixer.htm"
+     ]
+    },
+    {
+     "name": "Shure SCM820 Digital IntelliMix 用户指南 + Shure insights 技术文章",
+     "type": "paper",
+     "what": "门控判决工程惯例的权威厂商资料：NOMA（开麦数衰减器，NOM=2时-3dB维持等效NOM=1防啸叫）、NAT（噪声自适应门限）、MaxBus、Last Mic Lock-On、主席优先（Chairperson Override/Mute 经逻辑口触发压掉其他通道）、多开麦导致 gain-before-feedback 裕度下降的定量说明",
+     "maps_to": [
+      "门控判决/主席优先逻辑",
+      "NOM增益补偿与稳定裕度",
+      "噪声自适应门限"
+     ],
+     "license": "N/A（公开手册/文章，版权保留，仅作设计参考）",
+     "license_source": "https://www.avc-group.com/assets/products/Shure/pdfs/shure-um-scm820.pdf",
+     "maturity": "成熟量产产品（SCM820）现行文档，行业事实惯例来源",
+     "relevance": "采用候选",
+     "risks": "IntelliMix 为 Shure 商标；Shure 持有后续自动混音专利（如 US7440577, 2008 授权）可能仍在有效期——按经典 NOM/门控惯例实现无碍，但勿逐条复刻其专利权利要求（只记录，不深挖）",
+     "links": [
+      "https://www.avc-group.com/assets/products/Shure/pdfs/shure-um-scm820.pdf",
+      "https://www.shure.com/en-US/insights/why-automatic-mixing-is-crucial-for-conferencing",
+      "https://www.shure.com/en-US/insights/tips-for-avoiding-feedback-in-meeting-room-audio-systems",
+      "https://patents.justia.com/patent/7440577"
+     ]
+    },
+    {
+     "name": "leafac/reaper — Automixer JSFX（含 track priority 的增益共享实现）",
+     "type": "oss",
+     "what": "REAPER JSFX(EEL2脚本) 的增益共享 automixer，带通道优先级（可做主席优先的参考做法），最多64通道；代码短小、算法透明，适合作为C固件自研实现的算法对照样例",
+     "maps_to": [
+      "automix增益共享核心算法参考实现",
+      "通道优先级/主席优先思路"
+     ],
+     "license": "MIT",
+     "license_source": "https://raw.githubusercontent.com/leafac/reaper/main/LICENSE",
+     "maturity": "活跃维护（约365 commits），但属个人项目、DAW插件形态，无嵌入式验证",
+     "relevance": "评估",
+     "risks": "JSFX 脚本无法直接移植到DSP固件，只能读算法后用C重写（MIT允许）；无测试集、无性能数据；单人维护",
+     "links": [
+      "https://github.com/leafac/reaper"
+     ]
+    },
+    {
+     "name": "QSC Q-SYS / BSS Soundweb London 门控 automixer 组件帮助文档",
+     "type": "paper",
+     "what": "另两家主流DSP平台的门控 automixer 参数惯例交叉验证：绝对/相对阈值两种门限判决、hold/decay、off attenuation、NOM 上限、first-come 优先与 chairman 类优先级；Q-SYS 另有增益结构最佳实践篇",
+     "maps_to": [
+      "门控判决参数交叉验证",
+      "相对阈值(环境噪声跟踪)门限设计"
+     ],
+     "license": "N/A（公开帮助文档，版权保留，仅作设计参考）",
+     "license_source": "https://q-syshelp.qsc.com/Content/Schematic_Library/auto_mixer_gated.htm",
+     "maturity": "成熟商用平台现行文档",
+     "relevance": "评估",
+     "risks": "行为级描述，无实现细节；与 Biamp/Shure 文档存在术语差异，需自建统一参数表",
+     "links": [
+      "https://q-syshelp.qsc.com/Content/Schematic_Library/auto_mixer_gated.htm",
+      "https://q-syshelp.qsc.com/Content/Schematic_Library/auto_mixer_gating_adaptive.htm",
+      "https://adn.harmanpro.com/static/archimedia/aa_help/Soundweb_London/Signal_Processing_Objects/Mixers_Gains/Automixer_Gated.htm"
+     ]
+    },
+    {
+     "name": "Waves Dugan Automixer 官方手册（dandugan.com 托管 PDF）",
+     "type": "commercial",
+     "what": "正版 Dugan 算法商业插件的行为说明书：weight/override/last-hold 等参数语义与米表行为，可作为自研增益共享实现的对标验收基准（A/B行为对齐）",
+     "maps_to": [
+      "增益共享实现对标/验收基准",
+      "weight参数与主席优先语义"
+     ],
+     "license": "N/A（商业产品文档，版权保留，仅作行为对标）",
+     "license_source": "https://www.dandugan.com/Assets/manuals/Waves-Dugan-Automixer-Manual.pdf",
+     "maturity": "量产商业产品文档",
+     "relevance": "观望",
+     "risks": "仅行为描述；对标测试可用其试用版，但不得逆向其代码；Dugan 商标不可用于宣传",
+     "links": [
+      "https://www.dandugan.com/Assets/manuals/Waves-Dugan-Automixer-Manual.pdf"
+     ]
+    },
+    {
+     "name": "Perez-Gonzalez, E. & Reiss, J. (2009) \"Automatic gain and fader control for live mixing\", IEEE WASPAA 2009",
+     "type": "paper",
+     "what": "跨自适应(cross-adaptive)自动增益/推子控制：用累积统计的响度比值实时优化各通道增益，属传统统计方法（非NN），是 Dugan 之外的另一条 automix 学术路线",
+     "maps_to": [
+      "automix备选算法路线（响度比值优化）"
+     ],
+     "license": "N/A（IEEE 版权文献）",
+     "license_source": "https://www.researchgate.net/publication/224086775_Automatic_gain_and_fader_control_for_live_mixing",
+     "maturity": "学术原型，面向音乐现场混音而非会议语音",
+     "relevance": "观望",
+     "risks": "目标是音乐多轨平衡而非会议开麦管理，不解决 NOM 稳定裕度问题；无公开可用实现",
+     "links": [
+      "https://www.researchgate.net/publication/224086775_Automatic_gain_and_fader_control_for_live_mixing"
+     ]
+    },
+    {
+     "name": "De Man, B., Reiss, J.D., Stables, R. (2017) \"Ten Years of Automatic Mixing\", 3rd Workshop on Intelligent Music Production (WIMP)",
+     "type": "paper",
+     "what": "自动混音领域十年综述（含传统规则/统计方法谱系），可用于快速盘点 Dugan/NOM 之外的传统方法并确认无遗漏；PDF 在作者主页公开",
+     "maps_to": [
+      "automix算法路线盘点/查漏"
+     ],
+     "license": "N/A（作者自存档公开PDF，版权文献）",
+     "license_source": "https://joshreiss.github.io/documents/2017/WIMP2017_DeManEtAl.pdf",
+     "maturity": "被广泛引用的综述",
+     "relevance": "观望",
+     "risks": "综述偏音乐智能混音，会议扩声相关内容占比小；其后续方向多转向NN（本项目范围外）",
+     "links": [
+      "https://joshreiss.github.io/documents/2017/WIMP2017_DeManEtAl.pdf"
+     ]
+    },
+    {
+     "name": "Sound Devices \"Automatic Mixing 101\"（厂商技术科普）",
+     "type": "paper",
+     "what": "自动混音历史与两大流派（门控NOM vs 增益共享）的取舍讲解（含其 MixAssist 的设计考量），适合团队入门共识材料",
+     "maps_to": [
+      "门控 vs 增益共享选型论证材料"
+     ],
+     "license": "N/A（公开网页文章，版权保留）",
+     "license_source": "https://www.sounddevices.com/automatic-mixing-101/",
+     "maturity": "厂商科普文章，非规格文档",
+     "relevance": "观望",
+     "risks": "无定量参数，仅概念层面",
+     "links": [
+      "https://www.sounddevices.com/automatic-mixing-101/"
+     ]
+    },
+    {
+     "name": "shadowfaxster/AutomixerVST",
+     "type": "oss",
+     "what": "Dugan Speech System(增益共享) 的 Windows VST2 (C++, VST SDK 2.4) 实现",
+     "maps_to": [
+      "增益共享参考实现（仅思路）"
+     ],
+     "license": "仓库无 LICENSE 文件（默认版权保留，不可复用代码）",
+     "license_source": "https://github.com/shadowfaxster/AutomixerVST",
+     "maturity": "极不成熟：仅5次提交、无release、作者自述 still in development",
+     "relevance": "规避",
+     "risks": "无 license 即不可将代码引入商用闭源固件；且依赖闭源 VST2 SDK；仅可作思路参考",
+     "links": [
+      "https://github.com/shadowfaxster/AutomixerVST"
+     ]
+    }
+   ],
+   "dimension": "automix",
+   "not_covered": [
+    "未找到可直接嵌入C固件、宽松license的门控NOM或增益共享开源库——现有开源全部是DAW插件/脚本形态（JSFX、VST），核心算法需按论文/专利文本+厂商参数惯例自研C实现（算法本身很小，自研成本低）",
+    "Shure 经典白皮书《Audio Systems Guide for Meeting Facilities》（NAG/PAG 与 NOM 稳定裕度公式的正式出处）未定位到官方现行下载页，只找到 Shure blog/insights 的摘要性文章",
+    "REAPER Stash 上另有一个 \"Dugan AutoMixer\" 脚本（有 YouTube 演示），其license与代码质量未核实",
+    "主席优先/门限判决没有正式标准（AES/IEC无对应标准），只有厂商手册层面的事实惯例（Shure/Biamp/QSC/BSS 已收录）",
+    "中文生态：仅见 Waves Dugan 商业插件的论坛讨论（midifan/audioapp），未发现中文开源实现或深度技术白皮书，属盲区",
+    "NN类自动混音（如 csteinmetz1/automix-toolkit 及 Reiss 组后续深度学习工作）按项目要求标记范围外，未展开"
+   ],
+   "search_log": [
+    "Dugan automixer gain sharing open source implementation github",
+    "gated automixer NOM attenuation open source implementation",
+    "Dugan patent gain sharing automatic microphone mixing US patent 3992584 expired",
+    "Shure white paper automatic microphone mixing NOM attenuation stability margin feedback",
+    "REAPER JSFX automixer Dugan gain sharing script free",
+    "Dugan \"automatic microphone mixing\" AES paper 1975 Journal Audio Engineering Society",
+    "github automixer juce OR faust OR puredata gain sharing \"open microphones\"",
+    "Biamp \"Gain Sharing vs. Gating Automixers\" Tesira",
+    "Shure SCM820 IntelliMix chairman override last mic lock-on maximum NOM gating logic manual",
+    "\"automix\" OR \"automixer\" github python OR C \"gain sharing\" dugan implementation",
+    "Perez-Gonzalez Reiss automatic mixing gain fader control live 2009",
+    "Shure \"Audio Systems Guide\" meeting facilities NOM \"gain before feedback\" 10 log NOM",
+    "自动混音器 增益共享 Dugan 算法 开源 实现 会议",
+    "WebFetch: github.com/shadowfaxster/AutomixerVST (license核查)",
+    "WebFetch: github.com/leafac/reaper + raw LICENSE (MIT核实)",
+    "WebFetch: patents.google.com/patent/US3992584A (法律状态核实)",
+    "WebFetch: support.biamp.com Automixer basics (NOM参数核实)",
+    "WebFetch: dandugan.com (公开资料核查)"
+   ]
+  },
+  {
+   "dimension": "dsp-blocks",
+   "candidates": [
+    {
+     "name": "CMSIS-DSP (Arm)",
+     "type": "oss",
+     "what": "Arm 官方嵌入式计算库:FIR/IIR(biquad cascade DF1/DF2T)、卷积、FFT、向量/矩阵运算,f32/f16/q31/q15 全覆盖,含纯 C 参考实现",
+     "maps_to": [
+      "参量EQ(biquad执行)",
+      "FIR执行",
+      "分频(级联biquad)",
+      "基础向量运算/延时缓冲"
+     ],
+     "license": "Apache-2.0(个别 aarch64 贡献代码 MIT)",
+     "license_source": "https://github.com/ARM-software/CMSIS-DSP/blob/main/LICENSE",
+     "maturity": "非常成熟,Arm 官方持续维护,嵌入式事实标准",
+     "relevance": "采用候选",
+     "risks": "SIMD 优化耦合 Arm Cortex-M(MVE/DSP扩展)/Cortex-A(Neon);若 DSP 选型非 Arm 核,只能用其纯 C 参考路径,失去性能优势",
+     "links": [
+      "https://github.com/ARM-software/CMSIS-DSP",
+      "https://arm-software.github.io/CMSIS-DSP/main/"
+     ]
+    },
+    {
+     "name": "RBJ Audio EQ Cookbook(W3C Working Group Note 版)",
+     "type": "standard",
+     "what": "Robert Bristow-Johnson 的 biquad 系数公式集(LPF/HPF/BPF/notch/APF/peaking/低高架),W3C 2021-06-08 经作者授权正式发布,即参量EQ 系数计算的权威出处",
+     "maps_to": [
+      "参量EQ",
+      "高低架滤波",
+      "分频(二阶节原型)"
+     ],
+     "license": "N/A(公式/技术文档;W3C Note,原文 Audio-EQ-Cookbook.txt 经 RBJ 授权收录;公式实现无许可障碍)",
+     "license_source": "https://www.w3.org/TR/audio-eq-cookbook/",
+     "maturity": "行业事实标准,已并入 Web Audio 规范",
+     "relevance": "采用候选",
+     "risks": "无实质风险;注意数字化用 BLT 存在奈奎斯特附近频率翘曲,48kHz 下高频 EQ 需失真校正(可按 Orfanidis 等改进公式,属实现细节)",
+     "links": [
+      "https://www.w3.org/TR/audio-eq-cookbook/",
+      "https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html",
+      "https://www.musicdsp.org/en/latest/Filters/197-rbj-audio-eq-cookbook.html"
+     ]
+    },
+    {
+     "name": "SciPy signal(firwin/firwin2/remez/minimum_phase)",
+     "type": "tool",
+     "what": "PC 侧离线 FIR/IIR 设计工具链:窗函数法、Parks-McClellan 等纹波、最小相位变换、freqz 验证;系数导出到固件,不进产品",
+     "maps_to": [
+      "FIR设计(分频/房间校正)",
+      "IIR原型设计",
+      "滤波器验证"
+     ],
+     "license": "BSD-3-Clause",
+     "license_source": "https://github.com/scipy/scipy/blob/main/LICENSE.txt",
+     "maturity": "非常成熟",
+     "relevance": "采用候选",
+     "risks": "仅设计工具,无固件 license 问题;线性相位 FIR 群延迟=(N-1)/2 样本,48kHz 下 12ms 预算内长 FIR 分频需改最小相位或混合 IIR/FIR 方案——这是设计约束不是工具风险",
+     "links": [
+      "https://github.com/scipy/scipy",
+      "https://docs.scipy.org/doc/scipy/reference/signal.html"
+     ]
+    },
+    {
+     "name": "Giannoulis/Massberg/Reiss, \"Digital Dynamic Range Compressor Design—A Tutorial and Analysis\", JAES 60(6) pp.399-408, 2012",
+     "type": "paper",
+     "what": "数字压缩器设计权威教程:前馈/反馈拓扑、log域增益计算、peak/RMS 检波、攻击释放包络平滑的系统比较,是压缩/限幅器固件实现的标准参考",
+     "maps_to": [
+      "动态处理(压缩器)",
+      "限幅器包络/检波器设计",
+      "噪声门(同一框架)"
+     ],
+     "license": "N/A(JAES 论文,版权 AES)",
+     "license_source": "https://secure.aes.org/forum/pubs/journal/?ID=174",
+     "maturity": "被广泛引用的教程级论文,QMUL 团队",
+     "relevance": "采用候选",
+     "risks": "无;按论文自实现即可,无 license 传染",
+     "links": [
+      "https://secure.aes.org/forum/pubs/journal/?ID=174",
+      "https://www.semanticscholar.org/paper/f1b20a5681e6ef7080e5b5fbce81911c6873543c"
+     ]
+    },
+    {
+     "name": "ITU-R BS.1770-5 (2023) 真峰值测量算法",
+     "type": "standard",
+     "what": "响度/真峰值国际建议书:附件规定 4x 过采样+低通插值的 true-peak 估计算法,是真峰值限幅器检波级的规范出处;PDF 免费公开",
+     "maps_to": [
+      "真峰值限幅(检波)",
+      "输出表头/峰值指示"
+     ],
+     "license": "N/A(ITU-R 建议书,免费获取;实现规范算法通行做法)",
+     "license_source": "https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.1770-5-202311-I!!PDF-E.pdf",
+     "maturity": "国际标准,第5修订版",
+     "relevance": "采用候选",
+     "risks": "4x 过采样检波有额外算力与约 0.5-1ms 级附加延迟,需计入 <12ms 预算;会议扩声场景可评估是否降级为采样峰值限幅",
+     "links": [
+      "https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.1770-5-202311-I!!PDF-E.pdf"
+     ]
+    },
+    {
+     "name": "Signalsmith Audio: \"Designing a straightforward limiter\" + dsp/basics 库",
+     "type": "oss",
+     "what": "Geraint Luff 的 lookahead 限幅器设计文章(peak-hold 移动最大值+平滑增益曲线,保证增益严格不越界)及配套 MIT C++ 实现(basics 库含 Limiter 类,lookahead 最大 100ms)",
+     "maps_to": [
+      "限幅器(lookahead)",
+      "延时(peak-hold/移动最大值结构)"
+     ],
+     "license": "MIT",
+     "license_source": "https://signalsmith-audio.co.uk/code/dsp/",
+     "maturity": "个人工作室维护,代码质量好、文章配套推导完整;非大厂背书",
+     "relevance": "评估",
+     "risks": "C++ header-only,移植到定点/受限 DSP 需改写;单人维护的持续性风险",
+     "links": [
+      "https://signalsmith-audio.co.uk/writing/2022/limiter/",
+      "https://github.com/Signalsmith-Audio/dsp",
+      "https://github.com/Signalsmith-Audio/basics"
+     ]
+    },
+    {
+     "name": "Iir1 (Bernd Porr,源自 Vinnie Falco DSPFilters)",
+     "type": "oss",
+     "what": "实时逐样本 C++ IIR 库:Butterworth/Chebyshev I/II/RBJ 系数生成+级联执行,可直接导入 scipy 系数;适合分频器(如级联 Butterworth 组 Linkwitz-Riley)与 EQ 原型",
+     "maps_to": [
+      "分频(Butterworth/LR)",
+      "参量EQ(RBJ实现)",
+      "高低通滤波"
+     ],
+     "license": "MIT",
+     "license_source": "https://github.com/berndporr/iir1",
+     "maturity": "成熟稳定,学术作者长期维护;上游 DSPFilters 亦为 MIT",
+     "relevance": "评估",
+     "risks": "C++/双精度取向,嵌入式 DSP 上需裁剪;更适合当系数生成参考实现而非直接跑在固件里",
+     "links": [
+      "https://github.com/berndporr/iir1",
+      "https://berndporr.github.io/iir1/"
+     ]
+    },
+    {
+     "name": "FFTConvolver (HiFi-LoFi)",
+     "type": "oss",
+     "what": "实时分块(partitioned)FFT 卷积 C++ 库,含非均匀分块 TwoStageFFTConvolver,处理期零额外算法延迟、无锁无分配;适合低延迟长 FIR(房间校正/FIR分频)执行",
+     "maps_to": [
+      "FIR执行(低延迟长FIR)",
+      "分频(FIR方案)"
+     ],
+     "license": "MIT",
+     "license_source": "https://github.com/HiFi-LoFi/FFTConvolver",
+     "maturity": "小而稳,被多个项目移植(含 Rust 移植);更新不频繁",
+     "relevance": "评估",
+     "risks": "FFT 后端需替换为目标 DSP 的优化 FFT(如 CMSIS/厂商库)才有性能;线性相位 FIR 本身的群延迟仍占 12ms 预算",
+     "links": [
+      "https://github.com/HiFi-LoFi/FFTConvolver"
+     ]
+    },
+    {
+     "name": "音箱保护限幅文献组:W. Klippel JAES 2016 \"Mechanical Overload Protection of Loudspeaker Systems\" + Klippel AN28 + Linea Research \"Setting up Limiters\" 应用笔记",
+     "type": "paper",
+     "what": "扬声器保护限幅的公开知识源:Klippel 论文/应用笔记讲热限幅(全带衰减)与位移限幅(低频选择性衰减)的模型与评估方法;Linea Research 笔记给工程侧 RMS/峰值限幅参数整定方法",
+     "maps_to": [
+      "音箱保护限幅(热/位移)",
+      "多段限幅(输出通道)"
+     ],
+     "license": "N/A(论文©AES;白皮书©Klippel/Linea Research,公开可下载)",
+     "license_source": "https://www.klippel.de/fileadmin/klippel/Files/Know_How/Application_Notes/AN_28_Evaluation_of_Loudspeaker_Protection_Systems.pdf",
+     "maturity": "Klippel 为该领域权威;工程笔记实操性强",
+     "relevance": "评估",
+     "risks": "智能功放/扬声器保护领域专利密集(Klippel KCS、NXP/Goodix TFA 系、多项激励限幅美国专利在检索中可见),自研实现宜绕开模型自适应类权利要求,走静态热/位移限幅",
+     "links": [
+      "https://www.klippel.de/fileadmin/klippel/Files/Know_How/Application_Notes/AN_28_Evaluation_of_Loudspeaker_Protection_Systems.pdf",
+      "https://linea-research.co.uk/wp-content/uploads/LR%20Download%20Assets/Tech%20Docs/LR%20Setting%20Up%20Limiters%20App%20Note.pdf",
+      "https://audioxpress.com/article/klippel-controlled-sound-kcs-controlled-sound-technology-for-nonlinear-compensation-of-loudspeakers"
+     ]
+    },
+    {
+     "name": "Faust(函数式音频 DSP 代码生成)",
+     "type": "tool",
+     "what": "DSP 描述语言,编译生成 C/C++ 等目标代码;官方 FAQ 明确:编译器的 LGPL 不适用于生成代码,生成代码 license 只取决于输入文件(自己写的 .dsp + 所引用的 Faust 库文件),整体上未修改的标准库与架构文件兼容闭源商用",
+     "maps_to": [
+      "参量EQ",
+      "动态处理",
+      "分频",
+      "延时",
+      "算法原型到C代码流水线"
+     ],
+     "license": "编译器 LGPL(不传染生成代码);生成代码取决于输入 .lib/.dsp 的 license",
+     "license_source": "https://faustdoc.grame.fr/manual/faq/",
+     "maturity": "GRAME 维护 20 余年,学术+工业均有使用",
+     "relevance": "评估",
+     "risks": "标准库函数会被内联进生成代码,个别库函数许可需逐个核(官方称整体兼容闭源,但应对所用到的每个 .lib 复核);生成代码风格对定点 DSP/内存受限平台不一定友好,通常需人工优化",
+     "links": [
+      "https://github.com/grame-cncm/faust",
+      "https://faustdoc.grame.fr/manual/faq/"
+     ]
+    },
+    {
+     "name": "MATLAB DSP System Toolbox / Audio Toolbox(filterDesigner 等)",
+     "type": "commercial",
+     "what": "商用滤波器设计与验证工具:FIR/IIR 设计、定点量化仿真、C 代码生成;作为 PC 侧设计工具与 scipy 互补",
+     "maps_to": [
+      "FIR设计",
+      "IIR/分频设计",
+      "定点量化验证"
+     ],
+     "license": "商业(MathWorks 许可)",
+     "license_source": "https://www.mathworks.com/products/dsp-system.html",
+     "maturity": "非常成熟",
+     "relevance": "评估",
+     "risks": "许可成本;MATLAB Coder 生成代码的部署条款需在采用前核对(生成代码可再分发,但以 MathWorks 当期条款为准)",
+     "links": [
+      "https://www.mathworks.com/products/dsp-system.html",
+      "https://www.mathworks.com/products/audio.html"
+     ]
+    },
+    {
+     "name": "TI DSPLIB + MATHLIB(C66x/C674x)",
+     "type": "oss",
+     "what": "TI DSP 平台优化的信号处理函数库(FIR/IIR/卷积/FFT/自适应滤波)与快速数学库;Processor SDK RTOS 软件清单中列为 BSD-3-Clause(源码+二进制)",
+     "maps_to": [
+      "FIR执行",
+      "IIR执行",
+      "基础数学/向量运算"
+     ],
+     "license": "BSD-3-Clause(以 Processor SDK 清单所列版本为准;历史独立安装包曾用 TI 自有条款,采用时按所取版本再核)",
+     "license_source": "https://software-dl.ti.com/processor-sdk-rtos/esd/AM57X/08_01_00_09/exports/Processor-SDK_RTOS_AM57XX_Manifest.html",
+     "maturity": "成熟但平台老化,C6000 系新品动能弱",
+     "relevance": "观望",
+     "risks": "强耦合 TI C64x+/C66x/C674x DSP 内联指令与流水线优化,非 TI 选型完全不可用;仅当芯片选 TI DSP 时升级为采用候选",
+     "links": [
+      "https://www.ti.com/tool/SPRC265",
+      "https://software-dl.ti.com/processor-sdk-rtos/esd/AM57X/08_01_00_09/exports/Processor-SDK_RTOS_AM57XX_Manifest.html"
+     ]
+    },
+    {
+     "name": "XMOS lib_audio_dsp",
+     "type": "oss",
+     "what": "XMOS 官方 xcore.ai 音频 DSP 库,功能映射与本产品几乎一一对应:biquad/FIR、压缩器/限幅器/噪声门/包络检波、增益/混音、延时/混响,附 Python 流水线设计工具",
+     "maps_to": [
+      "参量EQ",
+      "动态处理(压缩/限幅/门)",
+      "FIR",
+      "延时",
+      "混音矩阵"
+     ],
+     "license": "XMOS Public Licence V1(仅限在 XMOS 器件上商用;含专利反诉终止条款)",
+     "license_source": "https://github.com/xmos/lib_audio_dsp/blob/develop/LICENSE.rst",
+     "maturity": "XMOS 官方活跃维护",
+     "relevance": "观望",
+     "risks": "license 把商用绑死在 XMOS 硬件上,等同平台锁定;仅当 DSP 选型定为 xcore.ai 时升级为采用候选,否则只可参考其模块划分思路(注意条款非典型开源,参考代码细节也需谨慎)",
+     "links": [
+      "https://github.com/xmos/lib_audio_dsp",
+      "https://www.xmos.com/audio-dsp"
+     ]
+    },
+    {
+     "name": "ADI SigmaStudio / SigmaStudio+(SigmaDSP、SHARC 算法库)",
+     "type": "commercial",
+     "what": "ADI 图形化音频开发环境,内置 100+ 优化算法块(FIR/IIR、动态、混音、电平)及第三方付费算法;若选型 ADI SigmaDSP/SHARC 可大幅缩短通道条开发",
+     "maps_to": [
+      "参量EQ",
+      "动态处理",
+      "分频",
+      "延时",
+      "混音矩阵"
+     ],
+     "license": "专有(ADI 点击许可 SLA;随 ADI 芯片免费使用,部分算法块需单独付费授权)",
+     "license_source": "https://wiki.analog.com/_media/resources/tools-software/sigmastudio/2018-09-18-ss_click_thru_sla.pdf",
+     "maturity": "会议/商用音频行业广泛使用,非常成熟",
+     "relevance": "观望",
+     "risks": "完全耦合 ADI 平台;算法闭源黑盒,自定义算法需另走 CCES/C++ 流程;绑定后供应链议价力下降。仅当选型 ADI 时升级为采用候选",
+     "links": [
+      "https://www.analog.com/en/resources/evaluation-hardware-and-software/software/sh_sigst_00.html",
+      "https://wiki.analog.com/resources/tools-software/sigmastudio/toolbox/licensedalgorithms"
+     ]
+    },
+    {
+     "name": "ESP-DSP (Espressif)",
+     "type": "oss",
+     "what": "ESP-IDF 的 DSP 库:FIR/IIR biquad(含 RBJ 式系数生成)、FFT、向量运算,汇编优化+ANSI C 双路径",
+     "maps_to": [
+      "参量EQ(biquad)",
+      "FIR执行"
+     ],
+     "license": "Apache-2.0",
+     "license_source": "https://github.com/espressif/esp-dsp",
+     "maturity": "官方维护,成熟",
+     "relevance": "观望",
+     "risks": "优化耦合 ESP32 系(Xtensa/RISC-V);ESP32 做 8x8 全矩阵+全通道条算力吃紧,该平台本身对本产品大概率不成立;ANSI C 部分可当干净的参考实现",
+     "links": [
+      "https://github.com/espressif/esp-dsp"
+     ]
+    },
+    {
+     "name": "DaisySP (Electrosmith)",
+     "type": "oss",
+     "what": "可移植浮点 C++ DSP 库(滤波、动态、延时线、工具函数),偏合成器/效果器取向,但基础块干净、依赖少",
+     "maps_to": [
+      "延时线",
+      "动态处理(基础压缩)",
+      "滤波器"
+     ],
+     "license": "MIT",
+     "license_source": "https://github.com/electro-smith/DaisySP/blob/master/LICENSE",
+     "maturity": "活跃社区,面向 Daisy 硬件但代码本身平台无关",
+     "relevance": "观望",
+     "risks": "算法为音乐效果取向,品质规格(THD/噪声/参数精度)未按专业扩声标准验证;适合借结构不适合直接整库采用",
+     "links": [
+      "https://github.com/electro-smith/DaisySP"
+     ]
+    },
+    {
+     "name": "Cycfi Q",
+     "type": "oss",
+     "what": "现代 C++ 音频 DSP 库(biquad、包络跟随、动态、移调检测等),声称可跑小型 MCU;乐器信号处理取向",
+     "maps_to": [
+      "参量EQ(biquad)",
+      "动态处理(包络/压缩)"
+     ],
+     "license": "MIT",
+     "license_source": "https://github.com/cycfi/q/blob/master/LICENSE",
+     "maturity": "v1.0 已稳定,单一作者主导,v1.5 在大改",
+     "relevance": "观望",
+     "risks": "重度模板化 C++,对嵌入式 DSP 工具链(常为 C 或受限 C++)不友好;API 在 1.5 有破坏性变更",
+     "links": [
+      "https://github.com/cycfi/q"
+     ]
+    },
+    {
+     "name": "KFR (kfrlib)",
+     "type": "oss",
+     "what": "高性能 C++ DSP 框架:FFT、FIR/IIR 设计与执行、biquad、重采样,SIMD 优化质量高",
+     "maps_to": [
+      "FIR设计与执行",
+      "参量EQ",
+      "重采样"
+     ],
+     "license": "双许可:GPL-2.0+ / 商业付费",
+     "license_source": "https://www.kfrlib.com/purchase/",
+     "maturity": "成熟活跃",
+     "relevance": "规避",
+     "risks": "GPL 路径对闭源固件不可用;除非采购商业授权否则仅可参考思路(不可参考代码细节以免传染);且 SIMD 优化面向 x86/ARM 桌面级,对嵌入式 DSP 收益有限",
+     "links": [
+      "https://github.com/kfrlib/kfr",
+      "https://www.kfrlib.com/purchase/"
+     ]
+    },
+    {
+     "name": "chowdsp_utils (Chowdhury DSP)",
+     "type": "oss",
+     "what": "JUCE 生态 DSP 工具模块集(高阶 Butterworth/Chebyshev/Elliptic 滤波器、延时线、动态等),按模块分许可:common 类 BSD,DSP/plugin 模块 GPLv3",
+     "maps_to": [
+      "分频(高阶滤波器)",
+      "延时线",
+      "动态处理"
+     ],
+     "license": "混合:部分模块 BSD-3-Clause,DSP/plugin 模块 GPLv3,仓库非模块代码 GPLv3",
+     "license_source": "https://github.com/Chowdhury-DSP/chowdsp_utils",
+     "maturity": "活跃,插件圈口碑好",
+     "relevance": "规避",
+     "risks": "固件侧需要的恰是 GPLv3 的 DSP 模块,闭源固件不可用;BSD 的 common 模块价值有限;仅参考架构思路",
+     "links": [
+      "https://github.com/Chowdhury-DSP/chowdsp_utils"
+     ]
+    }
+   ],
+   "not_covered": [
+    "中文生态盲区:国产 DSP/音频 SoC(如进芯 ADP32、杰理、中科蓝讯、全志)SDK 附带的音频算法库未能覆盖,其存在性与 license 均未核",
+    "Cadence/Tensilica HiFi 系 NatureDSP 库(若选型 HiFi EP/HiFi4 核则高度相关)license 与获取渠道未核",
+    "ADI CCES / SHARC Audio Module 附带 C 运行库与示例算法的具体 license 未核(仅核了 SigmaStudio SLA)",
+    "未找到license干净、生产级的独立开源『真峰值 lookahead 限幅』C 库(现有均为 C++ 或嵌在大框架内);该块大概率需按 BS.1770 + Signalsmith/Giannoulis 文献自研",
+    "rePhase 等免费 FIR 相位校正设计工具的 license/可商用性未核",
+    "NXP(i.MX RT/DSP 融合)与 ST 官方音频算法包(如 ST AcousticSL 系列)未逐一核查 license 条款"
+   ],
+   "search_log": [
+    "CMSIS-DSP library GitHub license Apache",
+    "KFR DSP framework license GPL commercial dual license",
+    "RBJ Audio EQ Cookbook Robert Bristow-Johnson authoritative source W3C",
+    "Faust compiler generated code license ownership GPL exception architecture files",
+    "TI DSPLIB C6000 license terms TSPA proprietary",
+    "XMOS lib_audio_dsp GitHub license biquad limiter",
+    "DaisySP DSP library MIT license GitHub",
+    "chowdsp_utils GitHub license BSD audio DSP library",
+    "Giannoulis Massberg Reiss \"Digital Dynamic Range Compressor Design\" tutorial JAES 2012",
+    "lookahead peak limiter design paper AES true peak ITU-R BS.1770 oversampling",
+    "loudspeaker protection limiter excursion thermal white paper Klippel AES",
+    "Analog Devices SigmaStudio SigmaDSP license algorithms proprietary SHARC audio module library",
+    "Cycfi Q audio DSP library MIT license GitHub",
+    "pyfda python filter design analysis tool GitHub license MIT",
+    "Signalsmith Audio straightforward limiter lookahead smoothing article dsp library MIT",
+    "Espressif esp-dsp GitHub Apache license FIR IIR biquad",
+    "Bernd Porr Iir1 GitHub license MIT realtime IIR filter library DSPFilters",
+    "HiFi-LoFi FFTConvolver GitHub license partitioned convolution zero latency",
+    "[fetch] github.com/ARM-software/CMSIS-DSP/blob/main/LICENSE — 核实 Apache-2.0",
+    "[fetch] faustdoc.grame.fr/manual/faq/ — 核实生成代码不受编译器license约束",
+    "[fetch] github.com/xmos/lib_audio_dsp/blob/develop/LICENSE.rst — 核实 XMOS Public Licence V1 仅限XMOS器件",
+    "[fetch] github.com/Chowdhury-DSP/chowdsp_utils — 核实按模块混合 BSD/GPLv3",
+    "[fetch] github.com/berndporr/iir1 — 核实 MIT",
+    "[fetch] github.com/HiFi-LoFi/FFTConvolver — 核实 MIT",
+    "[fetch] github.com/scipy/scipy/blob/main/LICENSE.txt — 核实 BSD-3-Clause",
+    "[fetch] ti.com/tool/SPRC265 — 页面未标license",
+    "[fetch] TI Processor-SDK AM57X 软件清单 — DSPLIB/MATHLIB 列为 BSD-3-Clause"
+   ]
+  },
+  {
+   "dimension": "aoip",
+   "candidates": [
+    {
+     "name": "AES67-2023 标准(AES67 High-performance Streaming Audio-over-IP Interoperability)",
+     "type": "standard",
+     "what": "AoIP 互通标准本体:规定同步(IEEE 1588 PTP,2023 版支持 1588-2019)、媒体时钟、RTP/UDP 传输(L16/L24,48kHz 强制)、SDP 会话描述与连接管理。获取途径:AES 官网标准商店,AES 会员免费下载,非会员付费(约 $50-100);2023-12 曾公开 Call-for-Comment 草案 PDF 可免费预览大意。CONF-DSP-88 若做网络音频扩展卡,这是必读规范。",
+     "maps_to": [
+      "网络音频接口(AoIP)",
+      "时钟同步",
+      "多机级联"
+     ],
+     "license": "AES 标准文档(会员免费/非会员付费,文档版权非软件license)",
+     "license_source": "https://www.aes.org/standards/blog/2024/2/aes67-2023-aes-standard-for-audio",
+     "maturity": "成熟。2013 首版,2015/2018/2023 多次修订,广播与 ProAV 业界广泛落地,数千款产品支持",
+     "relevance": "采用候选",
+     "risks": "标准只定义互通最小集,发现/连接管理(SAP vs RTSP vs 厂商私有)留白,实际互通仍需对端逐一验证;2018→2023 差异条款未核(正文付费)。",
+     "links": [
+      "https://aes2.org/standards-blog/call-for-comment-on-draft-revised-aes67-xxxx-high-performance-streaming-audio-over-ip-interoperability/",
+      "https://en.wikipedia.org/wiki/AES67",
+      "https://aimsalliance.org/aes67-faq/"
+     ]
+    },
+    {
+     "name": "Audinate Dante OEM 平台(Brooklyn 3 / Ultimo(X) / Broadway / Dante Embedded Platform / Dante IP Core)",
+     "type": "commercial",
+     "what": "会议/ProAV 市场事实标准的商用 AoIP 方案。集成路径:硬件模块(Brooklyn 3 最高 64x64 通道、Ultimo 面向 2-4 通道端点、Broadway 折中)、DEP(纯软件实现,跑在 32/64 位 Arm Cortex-A + Linux,在线授权激活)、FPGA IP Core。需签 Audinate OEM 授权协议后从其开发者站点获取 SDK/固件;Brooklyn/DEP 支持 AES67 兼容模式。价格与合同条款非公开,不猜。",
+     "maps_to": [
+      "网络音频接口(AoIP)",
+      "多机级联",
+      "生态互通(Dante)"
+     ],
+     "license": "商业闭源,OEM 授权协议 + 按模块/激活收费(条款非公开)",
+     "license_source": "https://www.audinate.com/legal/software-licensing/",
+     "maturity": "非常成熟:官方称 3000+ 款设备、500+ 厂商获授权;会议室市场渗透率最高的 AoIP 生态",
+     "relevance": "采用候选",
+     "risks": "供应商锁定(单一供应商、闭源协议栈);DEP 绑定 Arm Cortex-A Linux 平台(若 CONF-DSP-88 选裸机 DSP 则只能走外挂模块路线,占 PCB/BOM);授权成本与最小起订未知需商务接触;产品需通过 Audinate 认证流程。audinate.com 产品页反爬(403),细节以商务渠道为准。",
+     "links": [
+      "https://www.audinate.com/press/audinate-announces-new-oem-modules-provides-supply-chain-update/",
+      "https://audioxpress.com/news/audinate-confirms-dante-audio-networking-licensed-to-more-than-500-manufacturers"
+     ]
+    },
+    {
+     "name": "flexPTP",
+     "type": "oss",
+     "what": "面向微控制器的紧凑 IEEE 1588 PTP 实现:OC 主/从、E2E+P2P、L2/L4 传输、单步/两步、可作 802.1AS 时钟;底层支持 lwIP 与 EtherLib,已移植 STM32F4/F7/H7、TI TM4C1294、NXP FRDM-K64F(Cortex-M4/M7),实测达数十 ns 级同步。若 AES67 网口由外挂 MCU/网络协处理器承担,这是最对口的开源 PTP 从时钟起点。",
+     "maps_to": [
+      "时钟同步(嵌入式PTP)",
+      "网络音频接口(AoIP)"
+     ],
+     "license": "MIT",
+     "license_source": "https://github.com/epagris/flexPTP",
+     "maturity": "中等:代码可用、文档齐全、有学术论文背书,但社区小(commit 数少),非大厂维护",
+     "relevance": "评估",
+     "risks": "平台强耦合:需按目标 MCU 的 MAC 硬件时间戳能力改写底层驱动(lwIP ethernetif 插桩);耦合 STM32/TM4C/Kinetis 一类 Cortex-M+EMAC 平台,DSP 芯片自带 EMAC 是否有 1588 时戳硬件是选型前提;仅 PTP,RTP/SAP 仍需自研。",
+     "links": [
+      "https://github.com/epagris/flexPTP",
+      "https://epagris.github.io/flexPTP/"
+     ]
+    },
+    {
+     "name": "PTPd (ptpd/ptpd)",
+     "type": "oss",
+     "what": "经典 PTPv2(IEEE 1588-2008)守护进程,BSD-2 许可,微秒级同步;历史上被大量移植到嵌入式(含 lwIP/FreeRTOS 移植,如 hasseb/stm32h7_atsame70_ptpd 的 STM32H7/ATSAME70 移植)。license 干净,适合作为裸机/RTOS 上自研 PTP 从时钟的代码基或参考。",
+     "maps_to": [
+      "时钟同步(嵌入式PTP)"
+     ],
+     "license": "BSD-2-Clause",
+     "license_source": "https://github.com/ptpd/ptpd",
+     "maturity": "成熟但近年停滞(最后正式版 2.3.1 时代,上游不活跃);代码经长期实战检验",
+     "relevance": "评估",
+     "risks": "上游基本停更,不支持 1588-2019 新特性;移植版散落各 fork,质量参差;README 明确提示 IEEE 1588 协议本身可能含专利技术(IEEE 专利政策/LOA 范畴),商用一般无实际障碍但顺带记录。",
+     "links": [
+      "https://github.com/ptpd/ptpd",
+      "https://github.com/hasseb/stm32h7_atsame70_ptpd",
+      "https://en.wikipedia.org/wiki/PTPd"
+     ]
+    },
+    {
+     "name": "linuxptp (ptp4l/phc2sys)",
+     "type": "oss",
+     "what": "Linux 事实标准 PTP 栈:ptp4l+phc2sys,支持硬件/软件时间戳(SO_TIMESTAMPING)、PHC 子系统、OC/BC/TC、UDP v4/v6 与 raw Ethernet、802.1AS gPTP 及多行业 profile。若产品架构含嵌入式 Linux SoC(网络/控制面),它是 AES67 PTP 同步的默认答案。",
+     "maps_to": [
+      "时钟同步(嵌入式PTP)",
+      "网络音频接口(AoIP)"
+     ],
+     "license": "GPL(官网仅注明 GNU GPL,通说 GPLv2,版本未核到主源)[待核]",
+     "license_source": "https://linuxptp.sourceforge.net/",
+     "maturity": "非常成熟,活跃维护,各大发行版与 TI/NXP 等芯片 SDK 默认集成",
+     "relevance": "规避",
+     "risks": "按项目红线 GPL 固件内不可用故标规避;但注意:在嵌入式 Linux 上作为独立进程调用(不链接)是业界普遍做法且一般不构成衍生作品,若最终架构含 Linux SoC 建议法务专项评估后解禁;裸机 DSP 平台则完全不适用。",
+     "links": [
+      "https://linuxptp.sourceforge.net/"
+     ]
+    },
+    {
+     "name": "GStreamer(rtpL24/rtpL16 + GstPtpClock)",
+     "type": "oss",
+     "what": "多媒体框架,自带 RTP L16/L24 收发与 PTP 网络时钟(GstPtpClock),可直接收发 AES67 兼容流(Collabora 有公开教程与现成 pipeline 示例)。适合:PC 上位机做 AES67 流监听/录制/注入,以及研发期互通测试脚手架;不适合塞进 DSP 固件。",
+     "maps_to": [
+      "上位机",
+      "互通测试",
+      "网络音频接口(AoIP)"
+     ],
+     "license": "LGPL(core 与官方插件模块均要求 LGPL)",
+     "license_source": "https://gstreamer.freedesktop.org/documentation/frequently-asked-questions/licensing.html",
+     "maturity": "非常成熟,活跃维护,跨平台",
+     "relevance": "评估",
+     "risks": "LGPL:上位机动态链接可议(项目约束较松),仍需构建方式评估;其 PTP 为软件时间戳,同步精度低于硬件 PHC,做测试对端够用、做产品级同步不够;注意个别插件依赖 GPL 外部库,选插件时逐个过 license。",
+     "links": [
+      "https://www.collabora.com/news-and-blog/blog/2017/04/25/receiving-an-aes67-stream-with-gstreamer/",
+      "https://gist.github.com/philhartung/6f2905ea566bf5dbf5b0b3298008d1d3"
+     ]
+    },
+    {
+     "name": "bondagit/aes67-linux-daemon",
+     "type": "oss",
+     "what": "最完整的开源 AES67 端到端参考实现:守护进程处理 PTP 同步、RTP 流、SAP/mDNS 发现,带 REST 接口与 React WebUI,底层用 Merging RAVENNA ALSA 内核模块;活跃维护(适配 6.x 内核)。对本项目价值:①架构/协议行为的参考读物;②研发期廉价 AES67 互通测试对端(跑在一台 Linux 盒子上)。",
+     "maps_to": [
+      "互通测试",
+      "网络音频接口(AoIP)",
+      "参考实现"
+     ],
+     "license": "GPL-3.0(daemon 与 WebUI)",
+     "license_source": "https://github.com/bondagit/aes67-linux-daemon",
+     "maturity": "中高:544 星、持续 commit、CI 完备,单人主导社区项目",
+     "relevance": "规避",
+     "risks": "GPL-3.0 按红线固件内不可用,标规避=仅参考思路;但作为内部开发/测试工具使用完全不受限(不随产品分发);依赖的内核模块绑定 Linux 平台。",
+     "links": [
+      "https://github.com/bondagit/aes67-linux-daemon"
+     ]
+    },
+    {
+     "name": "Merging RAVENNA/AES67 ALSA 驱动(ravenna-alsa-lkm,bondagit fork)",
+     "type": "oss",
+     "what": "Merging Technologies 开源的 Linux 内核模块:注册为 ALSA 声卡,PTP 驱动的中断循环内收发 RTP 音频包,最高 384kHz/64 通道;原版配套闭源用户态守护 Butler(双许可:非商用公开版/商用 OEM 版),bondagit fork 去 Butler 化供 aes67-linux-daemon 使用。是 Linux 平台 AES67 数据面的少数开源实现之一。",
+     "maps_to": [
+      "网络音频接口(AoIP)",
+      "参考实现"
+     ],
+     "license": "GPL-3.0(内核模块;Butler 闭源双许可)",
+     "license_source": "https://github.com/bondagit/ravenna-alsa-lkm",
+     "maturity": "中等:源自商用产品线(Horus/Hapi),fork 随 aes67-linux-daemon 维护",
+     "relevance": "规避",
+     "risks": "GPL 按红线标规避(内核模块留在内核态、自有应用走 ALSA API 的合规路径存在,但需法务评估);强耦合 Linux 内核;商用集成 Merging 官方推 OEM 版 Butler(商务接触)。",
+     "links": [
+      "https://github.com/bondagit/ravenna-alsa-lkm",
+      "https://www.merging.com/products/alsa_ravenna_aes67_driver"
+     ]
+    },
+    {
+     "name": "SMPTE ST 2110-30(PCM 音频)与 AES67 的关系",
+     "type": "standard",
+     "what": "广播 IP 制播体系的音频部分:ST 2110-30 直接引用 AES67 并加约束——PTP 改用 ST 2059-2 profile、媒体时钟与 RTP 时钟 offset 必须为 0、强制信令声明 PTP follower-only、不要求 SIP,收端按 A/B/C/AX/BX/CX 六个符合级别分级(Level A 基本即 AES67 48kHz/1ms)。ST 2110-30-2017 正文 PDF 在 SMPTE pub 站点公开可读。做对广播市场的兼容声明时需要,会议室场景非必需。",
+     "maps_to": [
+      "网络音频接口(AoIP)",
+      "生态互通(广播ST2110)"
+     ],
+     "license": "SMPTE 标准(2017 版官方公开 PDF;新版付费)",
+     "license_source": "https://pub.smpte.org/pub/st2110-30/st2110-30-2017.pdf",
+     "maturity": "成熟,广播行业主流(JT-NM Tested 体系)",
+     "relevance": "观望",
+     "risks": "同时声明 AES67+ST 2110-30 兼容需处理两套 PTP profile 参数与 offset 约束的交集(AES-R16 专门讲这个);会议产品做到 AES67 即可,2110 兼容属加分项。",
+     "links": [
+      "https://pub.smpte.org/pub/st2110-30/st2110-30-2017.pdf",
+      "https://aimsalliance.org/wp-content/uploads/2019/04/AES67-SMPTE-ST-2110-Commonalities-and-Constraints-Updated-April-2019.pdf",
+      "https://www.ravenna-network.com/st-2110-audio-transport-methods/"
+     ]
+    },
+    {
+     "name": "AES67 PlugFest 报告(AES-R12 慕尼黑2014 / 华盛顿2015 / AES-R17 伦敦2017)与 AES-R16-2016",
+     "type": "paper",
+     "what": "AES 官方互通测试实录(出处:AES Standards Reports;作者为 AES SC-02-12 工作组):Munich/IRT 2014、Washington/NPR 2015、London/BBC 2017(24 家厂商 36 款产品互测)。AES-R16-2016 给出 AES67 与 SMPTE ST 2059-2 互通的 PTP 参数推荐。是制定自家互通测试清单(测试矩阵、常见踩坑:PTP profile 参数、packet time、SDP 方言)最权威的公开素材。",
+     "maps_to": [
+      "互通测试",
+      "时钟同步"
+     ],
+     "license": "AES 标准报告(aes.org 检索获取;是否免费未核)[待核]",
+     "license_source": "https://www.aes.org/publications/standards/search.cfm?docID=106",
+     "maturity": "文档定稿;测试实践 2014-2017,方法论仍有效但设备样本偏旧",
+     "relevance": "评估",
+     "risks": "报告年代较早,未覆盖 AES67-2023/1588-2019 组合;近年互通验证事实上转移到 JT-NM Tested/IPMX 体系,新资料需另行跟踪。",
+     "links": [
+      "https://www.aes.org/publications/standards/search.cfm?docID=106",
+      "https://www.aes.org/publications/standards/search.cfm?docID=98",
+      "https://global.ihs.com/doc_detail.cfm?document_name=AES-R16&item_s_key=00688127"
+     ]
+    },
+    {
+     "name": "RAVENNA(ALC NetworX / Lawo 开放技术)",
+     "type": "standard",
+     "what": "AES67 的母体技术之一:基于开放标准(RTP/PTP/mDNS/RTSP)的 L3 AoIP 框架,官方声明无专利与授权费限制,任何人可自行实现,合作伙伴计划免费;比裸 AES67 多定义了发现/连接管理(RTSP)与更多 profile。若不买 Dante,走'自研 AES67 + RAVENNA 兼容'是广播侧主流开放路线。",
+     "maps_to": [
+      "网络音频接口(AoIP)",
+      "生态互通(RAVENNA)"
+     ],
+     "license": "开放技术、免专利/授权费(官方声明;非软件license)",
+     "license_source": "https://www.ravenna-network.com/adopting-ravenna/",
+     "maturity": "成熟,Lawo/Merging/Genelec/Riedel 等广播阵营广泛采用;在会议室市场存在感弱于 Dante",
+     "relevance": "观望",
+     "risks": "生态重心在广播不在会议;深度集成(现成协议栈)仍指向 Merging/ALC 的商用 SDK 或 GPL 开源件;'开放'指规范与合作模式,不等于有可商用的宽松 license 代码。",
+     "links": [
+      "https://www.ravenna-network.com/adopting-ravenna/",
+      "https://en.wikipedia.org/wiki/Ravenna_(networking)"
+     ]
+    },
+    {
+     "name": "Statime(Pendulum Project,Rust PTP)",
+     "type": "oss",
+     "what": "Rust 实现的 PTP v2.1(IEEE 1588-2019),整库 no_std 可上嵌入式(官方有 STM32F767 + smoltcp + RTIC 示例),支持 OC/BC 与 master 端口;MIT/Apache-2.0 双许可,由 Tweede golf 资助开发。是唯一支持 1588-2019 的宽松许可嵌入式 PTP 实现。",
+     "maps_to": [
+      "时钟同步(嵌入式PTP)"
+     ],
+     "license": "MIT OR Apache-2.0(双许可)",
+     "license_source": "https://github.com/pendulum-project/statime/blob/main/LICENSE-MIT",
+     "maturity": "中等:活跃开发,较新,生产部署案例少",
+     "relevance": "观望",
+     "risks": "Rust 工具链与 C 固件/DSP 平台集成成本高(嵌入式示例耦合 STM32+smoltcp);若团队无 Rust 能力仅作 1588-2019 行为参考。",
+     "links": [
+      "https://github.com/pendulum-project/statime",
+      "https://tweedegolf.nl/en/blog/72/announcing-statime-a-rust-ptp-implementation"
+     ]
+    },
+    {
+     "name": "nmos-cpp(Sony,AMWA NMOS IS-04/IS-05 等)",
+     "type": "oss",
+     "what": "C++ 实现的 AMWA NMOS 控制面全家桶:IS-04 发现注册、IS-05 连接管理、IS-08 音频通道映射等,Apache-2.0,活跃维护,JT-NM Tested 参考实现。在 ST 2110/大型 AES67 系统里承担 AES67 缺失的发现与连接管理层;上位机或 Linux 控制面可直接复用。",
+     "maps_to": [
+      "网络音频接口(AoIP)",
+      "上位机",
+      "生态互通(广播ST2110)"
+     ],
+     "license": "Apache-2.0",
+     "license_source": "https://github.com/sony/nmos-cpp",
+     "maturity": "成熟,活跃,多厂商生产采用",
+     "relevance": "观望",
+     "risks": "NMOS 在会议/ProAV 市场渗透有限(该市场靠 Dante Controller/厂商私有发现);库偏重(cpprestsdk 依赖),不适合塞进小型固件,适合上位机/网关侧。",
+     "links": [
+      "https://github.com/sony/nmos-cpp"
+     ]
+    },
+    {
+     "name": "Wireshark(PTP/RTP/SDP/SAP 解析)",
+     "type": "tool",
+     "what": "互通调试标配:内置 PTPv2、RTP、SDP/SAP 解析器,可核 PTP Announce/Sync 报文参数(domain、priority、报文间隔)与 RTP 时间戳行为,是复现 plugfest 类互通排障的第一工具。仅内部研发使用,不随产品分发,GPL 无碍。",
+     "maps_to": [
+      "互通测试"
+     ],
+     "license": "GPL-2.0 [待核]",
+     "license_source": "",
+     "maturity": "非常成熟",
+     "relevance": "采用候选",
+     "risks": "无(不进固件,仅研发工具)。",
+     "links": [
+      "https://www.wireshark.org/"
+     ]
+    }
+   ],
+   "not_covered": [
+    "裸机/RTOS DSP 上的完整开源 AES67 栈(PTP+RTP+SAP/SDP 整合、含媒体时钟恢复):未发现成熟宽松许可实现——现实路径是 flexPTP/ptpd 之类 PTP 组件 + 自研 RTP/发现层,或买商用模块(Dante/Merging OEM),这是本维度最大的空白点",
+    "Audinate 授权价格、最小起订、认证费用等商务条款:非公开(NDA),仅能商务接触获取;audinate.com 产品页对爬虫 403,DEP 细节未从官网一手核实",
+    "AES67-2023 相对 2018 的逐条差异:标准正文付费,未核",
+    "中文/国产生态(国内 AES67 模块厂商、国产 AoIP 方案、信息价格渠道):已知盲区,本轮英文检索未覆盖,不装懂",
+    "Livewire+ AES67 / Q-LAN / WheatNet-IP 等私有 AoIP 生态的授权与互通细节:未展开",
+    "IPMX(基于 ST 2110/NMOS 的 ProAV 规范)与 AES67 的最新互通测试体系(JT-NM Tested 近年报告):仅识别到存在,未逐份核实",
+    "IEEE 1588 专利态势:仅按 ptpd README 顺带记录'协议可能含专利技术'的提示,未做专项检索"
+   ],
+   "search_log": [
+    "WebSearch: AES67 standard specification download AES67-2018 audio over IP interoperability",
+    "WebSearch: linuxptp license IEEE 1588 PTP implementation",
+    "WebSearch: ptpd github license BSD precision time protocol daemon",
+    "WebSearch: RAVENNA ALSA driver github Merging ravenna-alsa-lkm license AES67",
+    "WebSearch: bondagit aes67-linux-daemon github license",
+    "WebSearch: GStreamer AES67 plugin rtpL24 PTP clock LGPL audio over IP",
+    "WebSearch: embedded IEEE 1588 PTP stack microcontroller lwIP flexPTP license STM32",
+    "WebSearch: Audinate Dante Embedded Platform DEP OEM licensing Brooklyn Ultimo module integration",
+    "WebSearch: AES67 plugfest interoperability test report AES-R16 media networking alliance",
+    "WebSearch: SMPTE ST 2110-30 AES67 relationship constraints PCM audio conformance levels",
+    "WebSearch: Statime Rust PTP implementation license embedded no_std",
+    "WebSearch: AES67 2023 revision published current version AES standards free download",
+    "WebSearch: RAVENNA licensing royalty-free open technology ALC NetworX partnership",
+    "WebFetch(license核对): github.com/ptpd/ptpd; github.com/bondagit/aes67-linux-daemon; github.com/bondagit/ravenna-alsa-lkm; github.com/epagris/flexPTP; linuxptp.sourceforge.net; gstreamer.freedesktop.org licensing FAQ; github.com/sony/nmos-cpp; audinate.com DEP 产品页(403 失败)"
+   ]
+  },
+  {
+   "dimension": "usb-storage",
+   "candidates": [
+    {
+     "name": "TinyUSB",
+     "type": "oss",
+     "what": "跨平台嵌入式 USB Host/Device 栈,内置 UAC1/UAC2 音频设备类与 MSC(可作 host 读写U盘),支持 50+ MCU 家族(STM32/NXP/Nordic/ESP32/RP2040 等,DWC2 等常见 USB IP)。",
+     "maps_to": [
+      "USB声卡(UAC设备栈)",
+      "U盘录音(MSC host)"
+     ],
+     "license": "MIT",
+     "license_source": "https://github.com/hathach/tinyusb",
+     "maturity": "高:7.0k stars、1.1万+ commits、Adafruit 长期赞助、CI/静态分析齐全;UAC2 在 Linux/macOS/Win10+ 免驱验证案例多。",
+     "relevance": "采用候选",
+     "risks": "Host 侧(MSC)成熟度低于 Device 侧,社区有 host+FatFs 偶发挂载失败与吞吐受限报告(RP2040 上 ~64KB/s 属该平台 USB 硬件限制,非普适);UAC2 多通道(>2ch)配置需自行调描述符,Windows usbaudio2.sys 对描述符校验严格;若 DSP 平台不在移植列表需自写 DCD/HCD 移植层。",
+     "links": [
+      "https://github.com/hathach/tinyusb",
+      "https://docs.tinyusb.org/en/latest/index.html",
+      "https://community.st.com/t5/stm32-mcus-embedded-software/getting-tinyusb-uac2-0-multi-channel-audio-working-on-stm32h7s78/td-p/817900",
+      "https://forums.raspberrypi.com/viewtopic.php?p=2371125"
+     ]
+    },
+    {
+     "name": "FatFs (ChaN)",
+     "type": "oss",
+     "what": "面向小型嵌入式的通用 FAT/exFAT 文件系统模块,纯 C89、与介质层解耦,是U盘(PC可直读的FAT32/exFAT)录音的事实标准文件系统层。",
+     "maps_to": [
+      "U盘录音(文件系统)",
+      "录音文件PC互读"
+     ],
+     "license": "FatFs License(等价 1-clause BSD,明示允许闭源二进制再分发)",
+     "license_source": "https://elm-chan.org/fsw/ff/doc/appnote.html",
+     "maturity": "高:20年+持续维护,被 ST/TI/NXP 官方 SDK 广泛集成。",
+     "relevance": "采用候选",
+     "risks": "本身无掉电安全保证——官方 appnote 明示写打开期间断电可损坏 FAT 结构,须用 f_sync 周期回写+最小化写打开窗口;FAT32 单文件 4GB 上限(48k 立体声 float 约 3 小时内不触顶,多轨/长录需分段或 RF64);开启 exFAT 功能涉及 Microsoft 专利,商用需向 Microsoft/Tuxera 取得 exFAT 专利授权(官方 appnote 明示)。",
+     "links": [
+      "https://elm-chan.org/fsw/ff/",
+      "https://elm-chan.org/fsw/ff/doc/appnote.html"
+     ]
+    },
+    {
+     "name": "WAV 掉电恢复策略(周期回写 header + 事后重建)",
+     "type": "standard",
+     "what": "行业通行做法:录音时 data 持续追加、RIFF 尺寸字段仅停止时写终值,掉电后 header 尺寸为 0 但 PCM 数据完好;恢复=按实际文件长度重建 RIFF/fmt/data 尺寸字段(bytes 4–7 与 40–43)。预防=周期性(如每 1–4s)回写 header 尺寸并 f_sync,或先按'最大占位'写 header、停止时收尾;>4GB 用 RF64 的 ds64 占位技法。",
+     "maps_to": [
+      "U盘录音掉电恢复"
+     ],
+     "license": "N/A(公开策略资料,非代码)",
+     "license_source": "https://wav.repair/articles/recover-a-damaged-wav-recording",
+     "maturity": "策略本身在商用录音机(Sound Devices/Zoom 类)中久经验证;但未找到可直接引用的开源固件级参考实现,需自研。",
+     "relevance": "采用候选",
+     "risks": "周期回写 header 需在 FatFs 上频繁 f_sync,与U盘写延迟抖动叠加,须在音频通路外用足够深的写缓冲隔离(录音写线程不得阻塞 <12ms 音频通路);恢复逻辑还需处理 FAT 目录项/簇链未落盘的情形(比 header 更早失效),即 f_sync 同时刷新 FAT 才有效。",
+     "links": [
+      "https://wav.repair/articles/recover-a-damaged-wav-recording",
+      "https://www.datanumen.com/wav-repair/guides/repair-wav-file/",
+      "https://elm-chan.org/fsw/ff/doc/appnote.html"
+     ]
+    },
+    {
+     "name": "Windows USB Audio 2.0 内置类驱动(usbaudio2.sys)公开资料",
+     "type": "standard",
+     "what": "Microsoft 官方文档:Win10 1703+ 内置 UAC2 类驱动免驱;Win7/8 仅内置 UAC1。多 OS 免驱共识:UAC1(全速,48k/16bit,≤2ch实用)兼容面最大;UAC2(高速,多通道/浮点位深灵活)需 Win10+。社区已知坑:usbaudio2.sys 描述符校验严格(Win11 22621 起更严),且被报告忽略异步反馈端点的速率请求。",
+     "maps_to": [
+      "USB声卡多OS免驱兼容性"
+     ],
+     "license": "N/A(文档)",
+     "license_source": "https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/usb-2-0-audio-drivers",
+     "maturity": "官方文档+大量社区实测;结论稳定。",
+     "relevance": "采用候选",
+     "risks": "8进8出若要把多通道(如 8ch 回录)暴露给 PC,UAC1 全速带宽不够,必须 UAC2(放弃 Win7 免驱)或双配置;usbaudio2.sys 反馈端点行为差异要求同步方案(异步+反馈 vs 自适应)在三大 OS 上分别实测;macOS CoreAudio/Linux snd-usb-audio 对 UAC2 支持宽松,Windows 是兼容性瓶颈。",
+     "links": [
+      "https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/usb-2-0-audio-drivers",
+      "https://learn.microsoft.com/en-us/answers/questions/472332/explicit-feedback-for-asynchronous-audio-with-usba",
+      "https://www.thewelltemperedcomputer.com/KB/USB.html"
+     ]
+    },
+    {
+     "name": "CherryUSB",
+     "type": "oss",
+     "what": "轻量高性能嵌入式 USB device/host 栈,支持 UAC1.0/UAC2.0 设备类与 host MSC,覆盖 DWC2/MUSB/CHIPIDEA/EHCI/XHCI 等大量 USB IP;中文生态(RT-Thread/国产MCU)支持强,NXP/Espressif 等赞助。",
+     "maps_to": [
+      "USB声卡(UAC设备栈)",
+      "U盘录音(MSC host)"
+     ],
+     "license": "Apache-2.0",
+     "license_source": "https://github.com/cherry-embedded/CherryUSB",
+     "maturity": "中高:2k+ stars、持续发版(v1.6.x)、多厂商采用;历史短于 TinyUSB。",
+     "relevance": "评估",
+     "risks": "文档与 issue 讨论以中文社区为主(对本项目反而是优势);国际用户基数小于 TinyUSB,英文资料与 UAC2 多通道公开案例较少;按 USB IP 而非按芯片移植,DSP 平台若用非常见 IP 仍需自写 porting。",
+     "links": [
+      "https://github.com/cherry-embedded/CherryUSB",
+      "https://www.cnx-software.com/2022/05/23/cherryusb-lightweight-usb-device-host-stack-for-embedded-systems/"
+     ]
+    },
+    {
+     "name": "littlefs",
+     "type": "oss",
+     "what": "微控制器用失效安全文件系统:写时复制强保证、随机掉电回滚到最近一致状态、磨损均衡,RAM 占用有界;设计目标是板载 SPI NOR/NAND 小容量flash。",
+     "maps_to": [
+      "掉电安全(内部存储/配置/日志)"
+     ],
+     "license": "BSD-3-Clause",
+     "license_source": "https://github.com/littlefs-project/littlefs/blob/master/LICENSE.md",
+     "maturity": "高:littlefs-project 官方仓库活跃,被 Mbed/NXP/Zephyr/Adafruit 官方集成。",
+     "relevance": "评估",
+     "risks": "关键限制:littlefs 格式 PC 不识别——不适合直接格式化U盘做录音盘(用户拔下U盘要在电脑上读WAV,必须 FAT/exFAT)。定位应是设备内部 flash 的预设/日志/断点续录状态存储,或'内录到板载flash再导出'方案;大文件流式写入性能也非其强项。",
+     "links": [
+      "https://github.com/littlefs-project/littlefs"
+     ]
+    },
+    {
+     "name": "RF64 / BW64(EBU Tech 3306,ITU-R BS.2088)",
+     "type": "standard",
+     "what": "突破 WAV 4GB 上限的广播级扩展格式:RF64(EBU Tech 3306, 2009)以 ds64 chunk 记录 64 位尺寸;BW64(ITU-R BS.2088,2015/最新2025-11修订)取代之,EBU Tech 3306 v2(2018)已改为直接引用 BS.2088。录音机常用技法:先写 JUNK/ds64 占位,超 4GB 时原地升级为 RF64,天然对掉电恢复友好。",
+     "maps_to": [
+      "录音文件格式(>4GB/多轨)",
+      "U盘录音掉电恢复"
+     ],
+     "license": "N/A(公开标准,ITU/EBU 文档免费下载)",
+     "license_source": "https://tech.ebu.ch/docs/tech/tech3306.pdf",
+     "maturity": "广播行业标准,专业录音机与 DAW 普遍支持。",
+     "relevance": "评估",
+     "risks": "会议场景 48kHz 双声道一般不触 4GB,仅 8 通道原始多轨长时间录音才需要;部分消费级播放软件对 RF64/BW64 支持不佳,面向普通用户可优先'按大小分段的普通WAV'。",
+     "links": [
+      "https://tech.ebu.ch/docs/tech/tech3306.pdf",
+      "https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.2088-2-202511-I!!PDF-E.pdf",
+      "https://en.wikipedia.org/wiki/RF64"
+     ]
+    },
+    {
+     "name": "exFAT 商用授权(Microsoft 专利授权计划 / Tuxera Microsoft exFAT)",
+     "type": "commercial",
+     "what": "exFAT 受 Microsoft 专利保护(含 US 2009/0164440 A1),任何实现(含 FatFs 开启 exFAT、Linux 实现)用于商用设备均需专利授权;可直接向 Microsoft 的 tech licensing 计划购买,或经 Tuxera 的商用 exFAT 实现打包获得。大容量U盘(>32GB)出厂即 exFAT,免格式化体验依赖它。",
+     "maps_to": [
+      "U盘录音(大容量U盘兼容)"
+     ],
+     "license": "商业专利授权(付费)",
+     "license_source": "https://www.microsoft.com/en-us/legal/intellectualproperty/tech-licensing/programs",
+     "maturity": "成熟商业授权计划,Sharp/Atomos/BlackMagic 等设备商公开签约先例。",
+     "relevance": "评估",
+     "risks": "按量计费成本需 BOM 评估;规避路径=仅支持 FAT32 并引导用户格式化(牺牲>32GB U盘即插即用与>4GB单文件),或首次插入时设备自行重格为 FAT32;此为本维度最主要的合规决策点。",
+     "links": [
+      "https://www.microsoft.com/en-us/legal/intellectualproperty/tech-licensing/programs",
+      "https://www.tuxera.com/products/microsoft-exfat/",
+      "https://elm-chan.org/fsw/ff/doc/appnote.html"
+     ]
+    },
+    {
+     "name": "Zephyr usbd_uac2(device_next)",
+     "type": "oss",
+     "what": "Zephyr RTOS 新 USB device 栈中的 UAC2 实现,devicetree 声明式描述符,带显式/隐式反馈异步音频 sample;整体 Apache-2.0。",
+     "maps_to": [
+      "USB声卡(UAC设备栈)"
+     ],
+     "license": "Apache-2.0",
+     "license_source": "https://github.com/zephyrproject-rtos/zephyr",
+     "maturity": "API 官方标注 experimental;有 nRF5340/STM32 上的 sample,社区已报 composite(CDC+UAC2)枚举端点分配 bug(issue #103324)。",
+     "relevance": "观望",
+     "risks": "强耦合 Zephyr RTOS——除非整机固件选型 Zephyr,否则不可单独抽用;experimental 状态 API 可能变动;DSP 芯片平台大概率不在 Zephyr 支持列表。",
+     "links": [
+      "https://docs.zephyrproject.org/latest/services/connectivity/usb/device_next/api/uac2_device.html",
+      "https://github.com/zephyrproject-rtos/zephyr/issues/103324"
+     ]
+    },
+    {
+     "name": "Reliance Edge (Tuxera/Datalight)",
+     "type": "oss",
+     "what": "微控制器用事务型掉电安全文件系统(Dynamic Transaction Point),GPLv2 + 商业双许可;面向块设备(SD/eMMC)。",
+     "maps_to": [
+      "掉电安全(内部录音介质)"
+     ],
+     "license": "GPLv2 / 商业双许可",
+     "license_source": "https://github.com/tuxera/reliance-edge/blob/master/LICENSE.txt",
+     "maturity": "商用出货历史长(Datalight 血统),GitHub 开源版持续发布。",
+     "relevance": "观望",
+     "risks": "GPLv2 版触碰固件红线(规避),商业授权才可用且需付费;私有格式 PC 不可读,与littlefs同理不适用于用户直读U盘,仅适合'内录+导出'架构;该架构对本产品可能过重。",
+     "links": [
+      "https://github.com/tuxera/reliance-edge",
+      "https://www.tuxera.com/products/reliance-edge/"
+     ]
+    },
+    {
+     "name": "XMOS lib_xua / sw_usb_audio",
+     "type": "oss",
+     "what": "XMOS 官方 USB Audio 参考设计库,业界最成熟的 UAC1/UAC2 多通道异步音频实现之一(大量 USB声卡/会议设备实际采用 XMOS 桥接芯片方案)。",
+     "maps_to": [
+      "USB声卡(UAC设备栈)",
+      "多通道UAC2参考实现"
+     ],
+     "license": "XMOS Public Licence V1(仅限运行于 XMOS 器件;修改后商用分发须按同许可开源或声明源码可得)",
+     "license_source": "https://github.com/xmos/lib_xua/blob/develop/LICENSE.rst",
+     "maturity": "高:XMOS 官方长期维护,量产验证充分。",
+     "relevance": "观望",
+     "risks": "平台强耦合:仅当架构采用'DSP + XMOS USB 桥接芯片'时可用(这是会议音频行业常见拓扑,值得架构评审时对比);license 限 XMOS 硅片且对衍生品有源码可得性要求,闭源改造需与 XMOS 确认商务条款;不选 XMOS 则仅可作 UAC2 描述符/时钟同步的参考思路。",
+     "links": [
+      "https://github.com/xmos/lib_xua",
+      "https://github.com/xmos/sw_usb_audio"
+     ]
+    },
+    {
+     "name": "wavfix (agfline)",
+     "type": "tool",
+     "what": "开源 WAV 修复命令行工具:重建缺失/损坏的 RIFF header、fmt/data chunk,保留健康的元数据 chunk;可作为掉电恢复算法的公开参考实现(PC 端)。",
+     "maps_to": [
+      "U盘录音掉电恢复(算法参考)"
+     ],
+     "license": "AGPL-3.0",
+     "license_source": "https://github.com/agfline/wavfix",
+     "maturity": "低:v0.1、46 stars、43 commits;但算法思路清晰。",
+     "relevance": "规避",
+     "risks": "AGPL 触红线——代码禁止进入固件与上位机;仅作'恢复逻辑该处理哪些 chunk 场景'的思路参考(RIFF 修复逻辑本身简单,自研成本低)。",
+     "links": [
+      "https://github.com/agfline/wavfix"
+     ]
+    }
+   ],
+   "not_covered": [
+    "开源的固件级 WAV 掉电安全录音参考实现(周期回写 RIFF header + f_sync 的完整开源录音机固件范例)未找到,只找到事后修复工具与修复类文章,该策略需自研实现",
+    "U盘(MSC host)品牌兼容性 quirks 的系统性公开清单(不同U盘 SCSI 命令兼容、写延迟抖动实测数据)未找到权威来源,量产前需自建U盘兼容性测试矩阵",
+    "主流 DSP 芯片(ADI SHARC、TI C6000/C7x、ADSP-21xxx ROM栈等)自带 USB 栈的 license 与 UAC2 支持未逐一核查(平台未定,建议定平台后补查)",
+    "中文生态仅覆盖到 CherryUSB;国内会议设备厂商的多OS免驱兼容性实测经验(如与国产化OS/信创环境:UOS、麒麟的 UAC 兼容性)未覆盖,是已知盲区",
+    "USB 复合设备(UAC + MSC 同时暴露录音文件给PC)在三大OS上的免驱兼容性公开经验未系统覆盖,仅零散论坛线索",
+    "macOS CoreAudio 对 UAC2 多通道/采样率切换的官方兼容性文档未深入核查(Apple 开发者论坛线索存在但未展开)"
+   ],
+   "search_log": [
+    "TinyUSB UAC2 USB audio class 2 device stack supported platforms",
+    "open source USB Audio Class 2 device stack embedded license MIT",
+    "littlefs power-loss resilient filesystem license BSD embedded",
+    "FatFs license ChaN generic FAT filesystem module embedded",
+    "CherryUSB device stack UAC audio license Apache",
+    "XMOS lib_xua USB audio reference software license github",
+    "Windows 10 usbaudio2.sys UAC2 class driver driverless compatibility issues macOS Linux",
+    "embedded WAV recorder power loss recovery update RIFF header periodically f_sync strategy",
+    "exFAT Microsoft patent licensing embedded device commercial FatFs",
+    "Reliance Edge power-fail safe file system license GPL commercial Tuxera",
+    "Zephyr usbd_uac2 USB audio class 2 device implementation",
+    "conference speakerphone USB audio UAC1 vs UAC2 compatibility Windows 7 driverless 48kHz choice",
+    "RF64 BW64 EBU tech 3306 ITU-R BS.2088 WAV 4GB limit specification",
+    "TinyUSB host MSC mass storage FatFs USB flash drive stability issues",
+    "WebFetch核license: github.com/hathach/tinyusb; littlefs LICENSE.md; elm-chan.org appnote; cherry-embedded/CherryUSB; xmos/lib_xua LICENSE.rst; zephyrproject-rtos/zephyr; agfline/wavfix"
+   ]
+  },
+  {
+   "candidates": [
+    {
+     "name": "MCUboot",
+     "type": "oss",
+     "what": "MCU档二级安全bootloader事实标准(TrustedFirmware项目):image slot(primary/secondary)+ swap/overwrite/direct-XIP/RAM-load 四种升级策略;swap 带状态记录,断电中断可续,支持 test-swap + 自动 revert 回滚;签名支持 RSA-PSS/ECDSA/Ed25519;配套 imgtool(Python)做打包签名可放上位机/CI",
+     "maps_to": [
+      "MCU档 bootloader",
+      "A/B 分区+回滚",
+      "固件签名校验",
+      "断电安全升级"
+     ],
+     "license": "Apache-2.0(捆绑 tinycrypt 为 3-clause BSD)",
+     "license_source": "https://github.com/mcu-tools/mcuboot/blob/main/LICENSE",
+     "maturity": "非常成熟,Zephyr/Mynewt/NuttX/Mbed OS 默认bootloader,Nordic/NXP/ST 等SDK集成",
+     "relevance": "采用候选",
+     "risks": "平台耦合:官方 port 集中在 Cortex-M + 上述RTOS 的 flash HAL;若DSP最终选非Cortex-M核(TI C6000/C7x、ADI SHARC 等)需自写 boot port 与 flash_map,工作量中等(Memfault 有移植指南)。swap 模式对 scratch 区有磨损;direct-XIP 省磨损但两个slot需各自链接地址或PIC。",
+     "links": [
+      "https://github.com/mcu-tools/mcuboot",
+      "https://docs.mcuboot.com/design.html",
+      "https://interrupt.memfault.com/blog/mcuboot-overview"
+     ]
+    },
+    {
+     "name": "orlp/ed25519",
+     "type": "oss",
+     "what": "便携纯 ANSI C 的 Ed25519 实现(基于 SUPERCOP ref10),零依赖(除随机种子),单目录可嵌入 bootloader 做固件签名校验;带密钥交换/scalar加法辅助",
+     "maps_to": [
+      "固件签名(Ed25519)校验,MCU档 bootloader 内嵌"
+     ],
+     "license": "zlib",
+     "license_source": "https://github.com/orlp/ed25519",
+     "maturity": "代码稳定但多年低活跃、单人维护;被大量嵌入式项目复用",
+     "relevance": "采用候选",
+     "risks": "维护停滞,需自担安全跟踪;verify 侧只用公钥无秘密数据,侧信道风险低;签名侧建议只放在上位机/CI而非设备内。",
+     "links": [
+      "https://github.com/orlp/ed25519"
+     ]
+    },
+    {
+     "name": "Monocypher",
+     "type": "oss",
+     "what": "面向嵌入式的小体积单文件加密库,含 EdDSA/Ed25519(可选模块 monocypher-ed25519)、BLAKE2b 等;适合在 bootloader/固件内做签名校验与完整性哈希",
+     "maps_to": [
+      "固件签名(Ed25519)校验",
+      "升级包完整性哈希"
+     ],
+     "license": "BSD-2-Clause OR CC0-1.0(双许可任选)",
+     "license_source": "https://raw.githubusercontent.com/LoupVaillant/Monocypher/master/LICENCE.md",
+     "maturity": "成熟,持续维护,有第三方审计记录,嵌入式社区常用",
+     "relevance": "采用候选",
+     "risks": "默认签名是 EdDSA-BLAKE2b(非标准 Ed25519),要与标准工具链互通须启用可选 Ed25519 模块;生态比 libsodium 小。",
+     "links": [
+      "https://github.com/LoupVaillant/Monocypher",
+      "https://monocypher.org/"
+     ]
+    },
+    {
+     "name": "RAUC",
+     "type": "oss",
+     "what": "Linux档 A/B(冗余slot)整机升级框架:轻量守护进程+bundle格式,X.509/OpenSSL 签名校验,支持 PKCS#11/HSM 签名密钥,配合 U-Boot/Barebox/GRUB/EFI 的 bootcount 回滚;slot 父子关系可一包多分区原子升级",
+     "maps_to": [
+      "Linux档 A/B 分区升级",
+      "签名校验",
+      "断电安全+回滚"
+     ],
+     "license": "LGPL-2.1-or-later",
+     "license_source": "https://github.com/rauc/rauc",
+     "maturity": "成熟,Pengutronix 维护,Yocto/PTXdist 集成,工业界广泛部署",
+     "relevance": "采用候选",
+     "risks": "仅当产品架构含 Linux(如控制面SoC跑Linux+DSP协处理)才适用;LGPL 但作为独立进程运行、不与自研代码链接,合规风险低(按红线仍标'谨慎-独立进程形态');签名基于 X.509/CMS 而非裸 Ed25519。",
+     "links": [
+      "https://rauc.io/",
+      "https://github.com/rauc/rauc"
+     ]
+    },
+    {
+     "name": "libsodium",
+     "type": "oss",
+     "what": "事实标准的 NaCl 系加密库,Ed25519 签名/验签 API 完善;适合放在上位机(PC签名工具、升级包生产端)及 Linux 档设备端",
+     "maps_to": [
+      "上位机固件签名工具",
+      "Linux档验签"
+     ],
+     "license": "ISC",
+     "license_source": "https://raw.githubusercontent.com/jedisct1/libsodium/master/LICENSE",
+     "maturity": "非常成熟,持续维护,多语言绑定",
+     "relevance": "评估",
+     "risks": "对裸机 MCU/DSP 偏大(有平台假设,移植不如 Monocypher/orlp 顺),建议只用于签名端;设备端另选小库。",
+     "links": [
+      "https://github.com/jedisct1/libsodium",
+      "https://libsodium.gitbook.io/doc/public-key_cryptography/public-key_signatures"
+     ]
+    },
+    {
+     "name": "SWUpdate",
+     "type": "oss",
+     "what": "Linux档升级框架(单/双copy、支持 streaming、加密/签名镜像、Lua 钩子、hawkBit/后端对接),官方文档含'升级最佳实践'章节(断电安全、bootloader env 原子写等)",
+     "maps_to": [
+      "Linux档 A/B 升级",
+      "签名校验",
+      "断电安全设计参考"
+     ],
+     "license": "GPL-2.0-only(主体);控制库 LGPL-2.1-or-later;部分文件 BSD/MIT(SPDX 标注)",
+     "license_source": "https://sbabic.github.io/swupdate/licensing.html",
+     "maturity": "成熟,工业界广泛使用,Yocto meta-swupdate",
+     "relevance": "评估",
+     "risks": "GPL-2.0:作为 Linux 上独立进程不与自研固件链接,不传染,但须履行 SWUpdate 自身源码提供义务;若公司政策对设备内 GPL 一刀切则降为规避,此时首选 RAUC/Mender。其最佳实践文档无论采不采用都值得参考。",
+     "links": [
+      "https://swupdate.org/",
+      "https://github.com/sbabic/swupdate",
+      "https://sbabic.github.io/swupdate/swupdate-best-practise.html"
+     ]
+    },
+    {
+     "name": "IETF SUIT 架构(RFC 9019)",
+     "type": "standard",
+     "what": "IETF SUIT 工作组《A Firmware Update Architecture for IoT》(B. Moran, H. Tschofenig, D. Brown, M. Meriac, RFC 9019, 2021):固件升级安全架构与 manifest(元数据:版本、位置、签名、防回滚)标准化;配套 RFC 9124 信息模型",
+     "maps_to": [
+      "升级包 manifest/元数据格式设计",
+      "签名与防回滚流程设计依据"
+     ],
+     "license": "N/A(IETF RFC,公开标准文本)",
+     "license_source": "https://www.rfc-editor.org/info/rfc9019",
+     "maturity": "已发布 RFC;实现生态尚在生长(Zephyr/MCUboot 有部分 SUIT 支持)",
+     "relevance": "评估",
+     "risks": "作为自定义升级协议/包格式的设计参照而非直接采购项;全量遵循 SUIT manifest(CBOR/COSE)会引入额外解析复杂度,可裁剪借鉴。",
+     "links": [
+      "https://datatracker.ietf.org/doc/rfc9019/"
+     ]
+    },
+    {
+     "name": "Interrupt(Memfault)DFU 系列文章",
+     "type": "paper",
+     "what": "François Baldassari,《Device Firmware Update Cookbook》,Interrupt/Memfault 博客,2020:多级 bootloader+DFU 架构模式与可运行示例;同系列《MCUboot Walkthrough and Porting Guide》讲移植到自有平台。断电安全、金镜像(golden image)、slot 校验等最佳实践的高质量公开资料",
+     "maps_to": [
+      "断电安全升级最佳实践",
+      "自研 bootloader 设计参考",
+      "MCUboot 移植指引"
+     ],
+     "license": "N/A(博客文章,仅作设计参考)",
+     "license_source": "https://interrupt.memfault.com/blog/device-firmware-update-cookbook",
+     "maturity": "行业公认高质量参考,持续更新的博客系列",
+     "relevance": "评估",
+     "risks": "文章配套示例代码许可需单独核对后再复用;思路无风险。",
+     "links": [
+      "https://interrupt.memfault.com/blog/device-firmware-update-cookbook",
+      "https://interrupt.memfault.com/blog/mcuboot-overview"
+     ]
+    },
+    {
+     "name": "Mbed TLS",
+     "type": "oss",
+     "what": "TrustedFirmware 维护的嵌入式 TLS/加密库,含 ECDSA/RSA/(3.x起)EdDSA 相关原语;若升级通道走 TLS 或选 ECDSA 签名可复用同一库,MCUboot 可选其作为 crypto 后端",
+     "maps_to": [
+      "固件签名校验(ECDSA 路线)",
+      "升级传输通道加密"
+     ],
+     "license": "Apache-2.0 OR GPL-2.0-or-later(双许可,按文件标注)",
+     "license_source": "https://github.com/Mbed-TLS/mbedtls",
+     "maturity": "非常成熟,持续维护",
+     "relevance": "评估",
+     "risks": "体积比专用 Ed25519 小库大;选 Apache-2.0 分支即可满足闭源红线。",
+     "links": [
+      "https://github.com/Mbed-TLS/mbedtls"
+     ]
+    },
+    {
+     "name": "U-Boot(bootcount/altbootcmd 回滚机制)",
+     "type": "oss",
+     "what": "Linux档通用 bootloader;bootcount + altbootcmd + 冗余环境变量(redundant env)实现 A/B 启动计数回滚,是 RAUC/SWUpdate 的标准搭档;FIT image 支持签名校验(verified boot)",
+     "maps_to": [
+      "Linux档 bootloader",
+      "A/B 启动切换与回滚",
+      "启动镜像签名"
+     ],
+     "license": "GPL-2.0-or-later(部分文件 GPL-2.0-only,见 Licenses/README)",
+     "license_source": "https://github.com/u-boot/u-boot/blob/master/Licenses/README",
+     "maturity": "非常成熟,嵌入式 Linux 事实标准",
+     "relevance": "评估",
+     "risks": "GPL-2.0:bootloader 为独立镜像,不与自研应用链接,行业普遍在商用闭源产品中使用(义务=提供 U-Boot 修改源码);环境变量写入需用 redundant env 才断电安全。仅 Linux/大核路线适用。",
+     "links": [
+      "https://github.com/u-boot/u-boot",
+      "https://en.wikipedia.org/wiki/Das_U-Boot"
+     ]
+    },
+    {
+     "name": "Mender",
+     "type": "oss",
+     "what": "Linux档 OTA 客户端+管理服务器(客户端 Apache-2.0),双分区 rootfs A/B、delta 更新(商业版)、部署编排;也有社区 MCU 客户端(joelguittet/mender-mcu-client)",
+     "maps_to": [
+      "Linux档 A/B 升级",
+      "升级管理后端(若需远程批量运维)"
+     ],
+     "license": "Apache-2.0(客户端);服务器企业功能商业授权",
+     "license_source": "https://github.com/mendersoftware/mender",
+     "maturity": "成熟,商业公司(Northern.tech)支撑",
+     "relevance": "观望",
+     "risks": "会议室矩阵设备多在局域网内由上位机推送升级,云端 OTA 编排可能过重;delta/企业特性收费。",
+     "links": [
+      "https://github.com/mendersoftware/mender",
+      "https://mender.io/engineers/how-mender-works"
+     ]
+    },
+    {
+     "name": "Eclipse hawkBit",
+     "type": "oss",
+     "what": "设备软件更新的后端/rollout 管理服务器(Java),DDI API 可对接 SWUpdate 等设备端;分组灰度、批次回滚",
+     "maps_to": [
+      "升级分发后端(若产品线需要集中运维)"
+     ],
+     "license": "EPL-2.0(2023 年从 EPL-1.0 升级)",
+     "license_source": "https://eclipse.dev/hawkbit/blog/2023-09-21-epl2.0/",
+     "maturity": "成熟,Eclipse IoT 项目",
+     "relevance": "观望",
+     "risks": "纯服务端,不进固件,license 无红线问题;对单机+上位机直推场景属超配。",
+     "links": [
+      "https://github.com/eclipse-hawkbit/hawkbit",
+      "https://eclipse.dev/hawkbit/"
+     ]
+    },
+    {
+     "name": "Rugix(原 Rugpi)",
+     "type": "oss",
+     "what": "Rust 编写的 Linux档 OTA 套件(Rugix Ctrl 设备端引擎 + Bakery 镜像构建),A/B 全量+流式更新,bootloader 无关设计",
+     "maps_to": [
+      "Linux档 A/B 升级(新兴替代)"
+     ],
+     "license": "MIT OR Apache-2.0",
+     "license_source": "https://github.com/silitics/rugix",
+     "maturity": "较新(2023+),小团队,生产案例少于 RAUC/SWUpdate/Mender",
+     "relevance": "观望",
+     "risks": "成熟度与长期维护性待观察;许可最宽松,若 RAUC 的 LGPL 被公司政策否决可作备选。",
+     "links": [
+      "https://github.com/silitics/rugix",
+      "https://rugix.org/blog/2026-02-28-ota-update-engines-compared/"
+     ]
+    },
+    {
+     "name": "wolfBoot",
+     "type": "oss",
+     "what": "wolfSSL 的 OS 无关安全 bootloader:断电安全 swap(含无连续写 NVM 的变体)、Ed25519/ECDSA/RSA/PQC 签名、delta 更新、防回滚;架构覆盖 Cortex-M/A/R、RISC-V、PowerPC、x86-64,厂商 port 比 MCUboot 更杂(含 TI、Renesas 等)",
+     "maps_to": [
+      "MCU档 bootloader",
+      "断电安全 swap",
+      "固件签名(Ed25519)",
+      "防回滚"
+     ],
+     "license": "GPL-3.0(开源版);另有 wolfSSL 商业授权可购",
+     "license_source": "https://github.com/wolfSSL/wolfBoot",
+     "maturity": "成熟,商业公司持续维护,认证背书(与 wolfCrypt FIPS 组合)",
+     "relevance": "规避",
+     "risks": "开源版 GPL-3.0 触碰固件闭源红线→规避/仅参考其断电安全 swap 与非连续写 NVM 设计思路;若愿付费,商业授权路径存在(需商务评估,另计)。",
+     "links": [
+      "https://github.com/wolfSSL/wolfBoot",
+      "https://www.wolfssl.com/license/"
+     ]
+    },
+    {
+     "name": "RT-Thread OTA 组件(ota_downloader + FAL)",
+     "type": "oss",
+     "what": "中文生态代表:RT-Thread 的 OTA 下载器包(HTTP/Ymodem)+ FAL flash 抽象层,配合其 bootloader 方案做双分区升级;RT-Thread 内核与包生态 Apache-2.0",
+     "maps_to": [
+      "MCU档升级方案(中文生态参照)",
+      "flash 分区抽象"
+     ],
+     "license": "Apache-2.0(ota_downloader 包 README 声明);注意:历史上 rt_ota 核心固件库以闭源二进制分发,边界需再核",
+     "license_source": "https://github.com/RT-Thread-packages/ota_downloader/blob/master/README.md",
+     "maturity": "在国内 MCU 项目中使用广泛;组件质量参差",
+     "relevance": "观望",
+     "risks": "耦合 RT-Thread RTOS(本项目 RTOS 未定);rt_ota 核心库闭源二进制的许可与可再分发条款未核[待核];签名机制弱于 MCUboot(多为 CRC/AES,非公钥签名为主)。",
+     "links": [
+      "https://github.com/RT-Thread-packages/ota_downloader",
+      "https://packages.rt-thread.org/en/detail.html?package=ota_downloader"
+     ]
+    }
+   ],
+   "dimension": "ota",
+   "not_covered": [
+    "DSP 原厂启动/升级机制未逐家调查(TI C6000/C7x SBL、ADI SharcFX/SHARC boot kernel 二级加载器、XMOS 等)——平台未定,定平台后须专项核查其 flash 布局与二级 loader 可改造性;MCUboot/wolfBoot 官方 port 均不含传统 DSP 核",
+    "barebox bootloader(GPL-2.0-only,RAUC 的 bootchooser 搭档)license 仅见 Wikipedia 转述,未核主源,故未列入 candidates",
+    "防回滚(anti-rollback)计数器的安全存储实现(eFuse/OTP/RPMB)——强依赖最终芯片,未展开",
+    "TUF/Uptane 更新信任框架(偏车载/云端仓库签名)未展开;若日后要做公网分发服务器再评估",
+    "中文生态仅覆盖到 RT-Thread 一家;国内其它方案(如各 MCU 原厂 OTA SDK、庆科等)未查,属已知盲区",
+    "上位机直推升级(TCP/USB 局域网,无云)场景下的传输协议实现(如 Ymodem/自定义分包重传)未作专项调查",
+    "NN 相关:本维度无 NN 候选,无范围外记录"
+   ],
+   "search_log": [
+    "MCUboot secure bootloader license Apache supported platforms",
+    "SWUpdate embedded Linux software update license GPL",
+    "RAUC A/B update Linux license LGPL github",
+    "wolfBoot secure bootloader license GPLv2 commercial",
+    "Mender open source OTA client license Apache-2.0 github",
+    "Ed25519 firmware signature verification microcontroller library license zlib monocypher libsodium",
+    "power-loss safe firmware update A/B swap bootloader best practices embedded interrupt memfault",
+    "IETF SUIT RFC 9019 firmware update architecture IoT",
+    "interrupt.memfault.com device firmware update cookbook mcuboot bootloader series",
+    "Eclipse hawkBit rollout management license EPL-2.0",
+    "U-Boot license GPL-2.0+ Licenses/README barebox bootchooser license",
+    "RT-Thread OTA bootloader rt_ota license Apache",
+    "(WebFetch核license) mcuboot LICENSE / rauc README / mender README / orlp-ed25519 / Monocypher LICENCE.md / libsodium LICENSE / Mbed-TLS / wolfBoot / swupdate licensing.html / docs.mcuboot.com design.html / rugix"
+   ]
+  },
+  {
+   "dimension": "control",
+   "candidates": [
+    {
+     "name": "QSC Q-SYS QRC (Q-SYS Remote Control)",
+     "type": "commercial",
+     "what": "QSC 公开的第三方控制 API:JSON-RPC 2.0 over TCP:1710,NUL(\\0)结尾分帧;Named Control/Component 两级寻址;ChangeGroup.AddControl/Poll/AutoPoll 订阅模型;NoOp 保活(60s 超时断连);Logon(User/Password)鉴权。是'现代 JSON-RPC 风格音频 DSP 控制协议'最完整的公开范本。",
+     "maps_to": [
+      "私有协议帧格式(JSON-RPC+分隔符分帧)",
+      "参数寻址模型(命名控制点/组件两级)",
+      "订阅-变更组推送机制",
+      "保活与断连策略",
+      "鉴权设计(Logon)"
+     ],
+     "license": "专有协议,文档公开可自由查阅(仅作设计参照,不复用代码)",
+     "license_source": "https://help.qsys.com/Content/External_Control_APIs/QRC/QRC_Commands.htm",
+     "maturity": "成熟,商用大规模部署,文档持续随 Q-SYS 版本更新",
+     "relevance": "采用候选",
+     "risks": "只可借鉴设计惯例,不可照抄命令命名/文档文本;JSON-RPC 在低端 MCU 上解析成本高于二进制帧,需评估固件侧 JSON 解析开销",
+     "links": [
+      "https://help.qsys.com/q-sys_9.8/Content/External_Control_APIs/QRC/QRC_Overview.htm",
+      "https://help.qsys.com/Content/External_Control_APIs/QRC/QRC_Commands.htm"
+     ]
+    },
+    {
+     "name": "Biamp Tesira Text Protocol (TTP)",
+     "type": "commercial",
+     "what": "Biamp Tesira 公开的 ASCII 行协议(Telnet:23 / SSH / RS-232):`实例标签 命令 属性 [索引] [值]` 空格分隔、CR/LF 结尾、大小写敏感;subscribe/unsubscribe 会话级订阅(断线即失效需重订);SSH/Telnet 登录鉴权、分级账号(controller 及以上可写)。会议 DSP 品类里文本协议设计的标杆,官方有 v4.2 规范 PDF。",
+     "maps_to": [
+      "私有协议文本命令语法",
+      "实例标签寻址(对象.属性.索引)",
+      "会话级订阅模型",
+      "鉴权与权限分级",
+      "Telnet/SSH/串口多通道承载"
+     ],
+     "license": "专有协议,规范 PDF 公开下载(仅作设计参照)",
+     "license_source": "https://downloads.biamp.com/assets/docs/default-source/control/tesira_text_protocol_v4-2_jan22.pdf?sfvrsn=100c2497_46",
+     "maturity": "成熟,会议室 DSP 市场主流,文档维护良好",
+     "relevance": "采用候选",
+     "risks": "文本协议对固件解析器实现要求严格(引号/转义/错误码规范);会话级订阅在断线重连时的状态恢复是已知集成痛点,自研协议应考虑订阅持久化或快速重建",
+     "links": [
+      "https://support.biamp.com/Tesira/Control/Tesira_Text_Protocol",
+      "https://tesira-help.biamp.com/System_Control/Tesira_Text_Protocol/Syntax.htm",
+      "https://support.biamp.com/Tesira/Control/Telnet_session_negotiation_in_Tesira"
+     ]
+    },
+    {
+     "name": "Sennheiser Sound Control Protocol (SSC)",
+     "type": "commercial",
+     "what": "Sennheiser 会议/无线产品(TCC2 天花麦、SpeechLine 等)的公开控制协议:OSC 的地址树思想 + JSON 文本表示——地址路径映射为嵌套 JSON 对象(如 /device/identity/product),null 字面量表示查询,直接赋值表示设置;有 TI_1245 等公开开发者文档。'OSC 语义 + JSON 载体'的现成设计范本,与会议音频设备域高度对口。",
+     "maps_to": [
+      "参数地址树设计(OSC 风格路径→JSON 层级)",
+      "查询/设置语义统一",
+      "私有协议消息体格式",
+      "上位机-固件通信"
+     ],
+     "license": "专有协议,开发者文档(TI 1245/1094)公开下载(仅作设计参照)",
+     "license_source": "https://www.sennheiser.com/globalassets/digizuite/41940-en-ti_1245_v1.8.0_sennheiser_sound_control_protocol_tcc2_en.pdf",
+     "maturity": "成熟,量产会议产品在用,文档分产品线持续更新",
+     "relevance": "采用候选",
+     "risks": "SSC 各产品线文档版本分裂(v1/v2),借鉴时以 TCC2 版为准;JSON 层级寻址的通配/批量操作能力弱于 OSC pattern matching",
+     "links": [
+      "https://www.sennheiser.com/globalassets/digizuite/41940-en-ti_1245_v1.8.0_sennheiser_sound_control_protocol_tcc2_en.pdf",
+      "https://www.sennheiser.com/globalassets/digizuite/41930-en-ti_1094_v4.3_sennheiser_sound_control_protocol_sl_dw_en.pdf"
+     ]
+    },
+    {
+     "name": "Shure Command Strings (P300 / MXA910)",
+     "type": "commercial",
+     "what": "Shure 会议音频设备(P300 会议 DSP、MXA 系列阵列麦)的公开第三方控制命令集:TCP:2202,`< GET/SET/REPORT ... >` 尖括号定界 ASCII 帧;SET 后设备以 REPORT 回报新值(天然的状态回读/广播模型);面向 Crestron/AMX/Extron 集成。与 CONF-DSP-88 同品类(会议 DSP)的最直接参照之一。",
+     "maps_to": [
+      "私有协议帧定界(起止符)",
+      "GET/SET/REPORT 三段式命令语义",
+      "状态变更主动回报(所有连接广播)",
+      "中控(Crestron/AMX/Extron)对接命令集设计"
+     ],
+     "license": "专有协议,命令文档公开(仅作设计参照)",
+     "license_source": "https://www.shure.com/en-US/docs/commandstrings/P300",
+     "maturity": "成熟,量产会议产品,官方 commandstrings 站点维护",
+     "relevance": "采用候选",
+     "risks": "明文 TCP 无鉴权(反面教材:企业产品应至少提供可选鉴权);定长/填充字段设计较老派",
+     "links": [
+      "https://www.shure.com/en-US/docs/commandstrings/P300",
+      "https://www.shure.com/en-US/docs/commandstrings/MXA910",
+      "https://www.shure.com/en-US/docs/commandstrings"
+     ]
+    },
+    {
+     "name": "Open Sound Control (OSC) 1.0 规范",
+     "type": "standard",
+     "what": "Matt Wright(CNMAT/UC Berkeley)2002 年发布的实时控制消息编码规范:URL 式地址树、模式匹配、类型标签串、Bundle+时间戳原子性。规范文本 CC BY 许可,自由实现无授权问题。作为私有协议的寻址模型与二进制编码(4 字节对齐)设计参照。",
+     "maps_to": [
+      "参数地址空间设计(层级路径+通配匹配)",
+      "二进制消息编码(类型标签/对齐)",
+      "Bundle 原子操作与时间戳",
+      "上位机-固件通信"
+     ],
+     "license": "CC BY(规范文本);协议本身自由实现",
+     "license_source": "https://opensoundcontrol.stanford.edu/spec-1_0.html",
+     "maturity": "成熟稳定(2002 定稿),生态庞大但规范本身不再演进",
+     "relevance": "采用候选",
+     "risks": "OSC 无内建鉴权/会话/可靠传输语义(通常跑 UDP),订阅机制需自定义;直接采用 OSC 会暴露这些缺口,更适合只借鉴地址模型",
+     "links": [
+      "https://opensoundcontrol.stanford.edu/spec-1_0.html",
+      "https://opensoundcontrol.stanford.edu/"
+     ]
+    },
+    {
+     "name": "Ember+ (Lawo)",
+     "type": "oss",
+     "what": "Lawo 开放的广电设备控制协议及官方 C/C++/C#/Java 库(libember 等):BER/ASN.1 编码的树形参数模型(Glow DTD)、provider/consumer 结构、参数订阅与流式电平回传;整仓 Boost Software License 1.0(极宽松,闭源商用可静态链接)。可整体借鉴其'设备即参数树'模型,库本身也可直接用于固件。",
+     "maps_to": [
+      "设备参数树模型",
+      "订阅与电平流回传",
+      "私有协议二进制编码(TLV/BER)",
+      "固件侧协议栈可复用代码"
+     ],
+     "license": "Boost Software License 1.0",
+     "license_source": "https://github.com/Lawo/ember-plus/blob/master/LICENSE.TXT",
+     "maturity": "成熟,广电行业(Lawo/瑞典电台等)生产使用;仓库更新节奏放缓但稳定",
+     "relevance": "评估",
+     "risks": "BER/ASN.1 编解码复杂度高,调试可读性差;生态偏广电(中控厂商无现成 Ember+ 模块),作为会议产品对外协议不如文本/JSON 友好",
+     "links": [
+      "https://github.com/Lawo/ember-plus",
+      "https://github.com/Lawo/ember-plus/wiki/"
+     ]
+    },
+    {
+     "name": "AES70 / OCA (Open Control Architecture)",
+     "type": "standard",
+     "what": "AES 标准化的专业音频设备控制与监测架构(OCA Alliance 推动):完整对象模型(OcaBlock/OcaActuator 等)、OCP.1(TCP/UDP/WebSocket)传输、订阅/事件通知、设备发现。OCA Alliance 明示可自由实现、无授权费、无需会员。作为对象模型与订阅机制的系统性参照,或作为未来对外互操作接口。",
+     "maps_to": [
+      "设备对象模型/能力发现",
+      "订阅-事件通知机制",
+      "私有协议的分层设计(对象层/传输层分离)",
+      "未来标准化互操作出口"
+     ],
+     "license": "开放标准,自由实现、无授权费(标准文本经 AES/OCA Alliance 获取)",
+     "license_source": "https://ocaalliance.com/what-is-aes70/",
+     "maturity": "标准成熟(AES70-2018/2023),但市场采用度仍有限(会议室品类渗透低)",
+     "relevance": "评估",
+     "risks": "全量实现复杂度高,对 8x8 会议矩阵属过度设计;若只取思路则无风险。开源实现多数许可不友好(见 AES70.js/OCAMicro 条目)",
+     "links": [
+      "https://ocaalliance.com/what-is-aes70/",
+      "https://ocaalliance.github.io/",
+      "https://en.wikipedia.org/wiki/Open_Control_Architecture"
+     ]
+    },
+    {
+     "name": "Symetrix Composer Control Protocol",
+     "type": "commercial",
+     "what": "Symetrix DSP 的公开第三方控制协议(TCP/UDP/RS-232):ASCII 命令 + 'controller number'(1-10000 整型控制号)间接寻址;push 推送模型带独有的节流设计——PUE/PUD 使能、PUI 推送间隔、PUT 推送阈值(值变化超阈值才推)。电平表类高频数据的推送节流设计参照。",
+     "maps_to": [
+      "控制号间接寻址(设计工具分配→协议引用)",
+      "推送节流(阈值+最小间隔)——电平表回传关键",
+      "私有协议文本命令集"
+     ],
+     "license": "专有协议,规范 PDF 公开下载(仅作设计参照)",
+     "license_source": "https://www.symetrix.co/wp-content/uploads/2024/04/Composer-Control-Protocol-v7.0-080918.pdf",
+     "maturity": "成熟,商用部署广;协议风格较老但稳定",
+     "relevance": "评估",
+     "risks": "纯整型控制号寻址可读性差、依赖设计工具导出映射表(自研上位机需同样解决'控制点 ID 分配与导出'问题);鉴权能力弱",
+     "links": [
+      "https://www.symetrix.co/wp-content/uploads/2024/04/Composer-Control-Protocol-v7.0-080918.pdf",
+      "https://www.symetrix.co/knowledge/protocol-jupiter-4-jupiter-8-jupiter-12/"
+     ]
+    },
+    {
+     "name": "Extron SIS (Simple Instruction Set)",
+     "type": "commercial",
+     "what": "Extron 全线产品的公开控制指令集(RS-232/Telnet/SSH):极简短命令(无起始定界符)、每命令必有应答(状态/完成/错误码 E01-E28,CR/LF 结尾)、verbose 模式分级(0-3,控制主动回报详略)。'最小化指令集+分级回显'的设计参照,对中控/串口场景友好。",
+     "maps_to": [
+      "最小命令集与错误码体系",
+      "verbose/回显分级(轮询式中控 vs 事件式上位机兼容)",
+      "串口+网络双承载一致语义"
+     ],
+     "license": "专有协议,各产品手册中公开(仅作设计参照)",
+     "license_source": "https://www.extron.com/article/tech92",
+     "maturity": "非常成熟,AV 行业事实惯例之一,数十年稳定",
+     "relevance": "评估",
+     "risks": "命令高度紧凑导致可读性/可扩展性差,按设备型号碎片化(无统一规范文本,散在各产品手册);仅适合借鉴应答与 verbose 分级思想",
+     "links": [
+      "https://www.extron.com/article/tech92",
+      "https://aca.im/driver_docs/Extron/PDU_IPL_T_PCS4.pdf"
+     ]
+    },
+    {
+     "name": "tinyosc (mhroth/tinyosc)",
+     "type": "oss",
+     "what": "极简 vanilla C 的 OSC 编解码库(单文件级别,无动态分配倾向),ISC 许可,明确欢迎商用闭源使用。若私有协议采用 OSC 式编码,可直接进固件或作解析器实现参照。",
+     "maps_to": [
+      "固件侧协议编解码实现",
+      "OSC 式二进制消息解析参照"
+     ],
+     "license": "ISC",
+     "license_source": "https://github.com/mhroth/tinyosc/blob/master/LICENSE",
+     "maturity": "小而稳,star 数中等,更新稀疏(功能已完备)",
+     "relevance": "评估",
+     "risks": "仅编解码,无传输/订阅层;bundle/时间戳支持有限,需自补",
+     "links": [
+      "https://github.com/mhroth/tinyosc"
+     ]
+    },
+    {
+     "name": "oscpack (Ross Bencina)",
+     "type": "oss",
+     "what": "C++ 的 OSC 打包/解包库,MIT 许可(附非约束性的'修改回馈请求'条款),含跨平台 UDP 收发。适合上位机侧(PC)OSC/类 OSC 报文处理;代码久经使用。",
+     "maps_to": [
+      "上位机协议栈实现",
+      "OSC 编解码参照"
+     ],
+     "license": "MIT(含非约束性回馈请求条款)",
+     "license_source": "https://github.com/RossBencina/oscpack/blob/master/LICENSE",
+     "maturity": "成熟但基本停更(从 Google Code 迁移后维护极少)",
+     "relevance": "评估",
+     "risks": "长期无维护,C++ 风格偏老;网络层仅 UDP,TCP 分帧需自实现",
+     "links": [
+      "https://github.com/RossBencina/oscpack",
+      "http://www.rossbencina.com/code/oscpack"
+     ]
+    },
+    {
+     "name": "Crestron Certified Drivers SDK / 开发者微站",
+     "type": "tool",
+     "what": "Crestron 公开的驱动开发文档与 SDK(sdkcon78221.crestron.com):第三方设备驱动(IR/串口/以太网)开发流程、各设备类型样例工程、SIMPL/SIMPL#Pro 包装模块。CONF-DSP-88 要做 Crestron 对接模块时的主要公开开发资料入口。",
+     "maps_to": [
+      "Crestron 对接模块开发",
+      "中控生态集成交付物(驱动/模块)规划"
+     ],
+     "license": "专有 SDK,文档公开;SDK 使用受 Crestron 开发者条款约束(不影响自有固件)",
+     "license_source": "https://sdkcon78221.crestron.com/sdk/Crestron_Certified_Drivers_SDK/Content/Topics/Overview/Overview.htm",
+     "maturity": "官方维护,生态庞大",
+     "relevance": "评估",
+     "risks": "认证驱动需走 Crestron 流程;底层 CIP 协议不公开——对接只能走自家协议+我方模块,协议设计需对'中控端易实现'友好(文本命令、明确应答)",
+     "links": [
+      "https://sdkcon78221.crestron.com/sdk/Crestron_Certified_Drivers_SDK/Content/Topics/Home.htm",
+      "https://support.crestron.com/app/answers/detail/a_id/1580"
+     ]
+    },
+    {
+     "name": "Harman HiQnet 第三方编程文档 / Soundweb London Third Party Control",
+     "type": "commercial",
+     "what": "Harman 公开的 HiQnet 协议第三方编程指南(v2 PDF)与 BSS Soundweb London 第三方控制应用指南:二进制帧(带转义与校验)、node/virtual device/object 三级地址、设备免使能常听;官方还发布现成 NetLinx/SIMPL 模块。二进制控制协议+地址分层+官方中控模块交付的完整案例。",
+     "maps_to": [
+      "二进制帧设计(转义/校验和)",
+      "多级地址模型",
+      "官方发布中控模块的交付模式"
+     ],
+     "license": "专有协议,编程文档公开下载(仅作设计参照)",
+     "license_source": "https://adn.harmanpro.com/site_elements/resources/515_1414083576/HiQnet_Third_Party_Programmers_Guide_v2_original.pdf",
+     "maturity": "成熟但老化(2005 年起),Harman 生态内稳定",
+     "relevance": "观望",
+     "risks": "协议复杂度偏高(为全 Harman 产品线设计),地址体系对单一产品过重;无鉴权",
+     "links": [
+      "https://help.harmanpro.com/hiqnet-third-party-programmer-documentation",
+      "https://help.harmanpro.com/soundweb-london-third-party-control",
+      "https://bssaudio.com/en-US/site_elements/soundweb-london-third-party-control-application-guide"
+     ]
+    },
+    {
+     "name": "OCAMicro / OcaToolsAndDemos (OCA Alliance)",
+     "type": "oss",
+     "what": "OCA Alliance 官方的嵌入式 AES70 参考实现(STM32 可编译)与合规性测试工具源码。若评估 AES70 路线,是唯一面向 MCU 的官方参考代码。",
+     "maps_to": [
+      "AES70 嵌入式实现参照",
+      "对象模型/订阅机制的代码级理解"
+     ],
+     "license": "OCA Alliance EULA(自定义许可:Apache 风格授权+专利终止条款,但含较宽的被许可方赔偿(indemnification)义务与华盛顿州管辖)",
+     "license_source": "https://raw.githubusercontent.com/OCAAlliance/OcaToolsAndDemos/master/LICENSE",
+     "maturity": "参考/演示级,更新稀疏,非产品级质量",
+     "relevance": "观望",
+     "risks": "自定义 EULA 的赔偿条款需法务评审后才能入固件;代码为 demo 定位,直接产品化风险高",
+     "links": [
+      "https://github.com/OCAAlliance/OcaToolsAndDemos",
+      "https://ocaalliance.github.io/repositories.html"
+     ]
+    },
+    {
+     "name": "liblo",
+     "type": "oss",
+     "what": "POSIX 平台最常用的 OSC 协议 C 实现(服务器/客户端、UDP/TCP/Unix socket)。LGPL-2.1+:固件侧静态链接不可行(嵌入式通常无法满足动态链接义务),上位机动态链接可议。",
+     "maps_to": [
+      "上位机 OSC 协议栈(动态链接前提下)",
+      "OSC 服务器实现参照(仅读思路)"
+     ],
+     "license": "LGPL-2.1+",
+     "license_source": "https://github.com/radarsat1/liblo/blob/master/COPYING",
+     "maturity": "成熟,长期维护,Linux 音频生态标配",
+     "relevance": "观望",
+     "risks": "LGPL:固件静态链接=红线;上位机须动态链接评估。POSIX 依赖与裸机/RTOS 不兼容",
+     "links": [
+      "https://github.com/radarsat1/liblo",
+      "https://liblo.sourceforge.net/"
+     ]
+    },
+    {
+     "name": "Freed & Schmeder, \"Features and Future of Open Sound Control version 1.1 for NIME\" (NIME 2009)",
+     "type": "paper",
+     "what": "Adrian Freed、Andrew Schmeder(CNMAT, UC Berkeley),NIME 2009。OSC 1.1 的设计动机与改进(SLIP 分帧用于串流/串口、类型系统调整),OSC 1.1 无正式规范文本,此论文即主要出处。对'流式传输上如何给 OSC 分帧'(SLIP,RFC1055)有直接参考价值——串口/TCP 承载私有协议时的分帧方案。",
+     "maps_to": [
+      "流式承载分帧方案(SLIP)",
+      "协议版本演进的取舍参照"
+     ],
+     "license": "论文(NIME 会议出版物,公开可获取)",
+     "license_source": "https://opensoundcontrol.stanford.edu/publications/2008-micro-OSC-The-Open-Sound-Control-Reference-Implementation-for-Embedded-Devices.html",
+     "maturity": "论文,思想被 liblo 等广泛实现",
+     "relevance": "观望",
+     "risks": "OSC 1.1 从未成为正式标准,采纳其细节前需确认生态一致性",
+     "links": [
+      "https://opensoundcontrol.stanford.edu/",
+      "https://ccrma.stanford.edu/groups/osc/index.html"
+     ]
+    },
+    {
+     "name": "AES70.js (DeusO / DeutscheSoft)",
+     "type": "oss",
+     "what": "JavaScript 的 AES70 控制器库(浏览器 WebSocket / Node TCP-UDP),OCA Alliance 成员开发。GPLv2——按本项目红线,固件与闭源上位机均不可引入,仅可读作 AES70 控制器侧实现思路。",
+     "maps_to": [
+      "AES70 控制器侧实现思路(仅参考)"
+     ],
+     "license": "GPL-2.0",
+     "license_source": "https://github.com/DeutscheSoft/AES70.js",
+     "maturity": "维护中,功能覆盖控制器侧",
+     "relevance": "规避",
+     "risks": "GPLv2 传染性:闭源上位机不可链接;仅限阅读理解协议行为",
+     "links": [
+      "https://github.com/DeutscheSoft/AES70.js",
+      "https://ocaalliance.com/product/aes70-js/"
+     ]
+    },
+    {
+     "name": "AMX NetLinx WebConsole & Programming Guide",
+     "type": "commercial",
+     "what": "AMX(Harman)NetLinx 控制器的公开编程指南与 N 系列控制文档;Duet(Java ME)模块体系。做 AMX 对接模块时的公开资料入口,但模块开发 SDK 与规范散、部分需经销商渠道。",
+     "maps_to": [
+      "AMX 对接模块开发",
+      "中控生态集成交付物规划"
+     ],
+     "license": "专有文档,公开下载(仅作参照)",
+     "license_source": "https://adn.harmanpro.com/site_elements/resources/15023_1535127569/NetLinxControllers.WebConsole-ProgrammingGuide.FMv3_original.pdf",
+     "maturity": "成熟但生态萎缩中(市场份额被 Crestron/Q-SYS 挤压)",
+     "relevance": "观望",
+     "risks": "Duet 模块 SDK 公开获取渠道不完整(见 not_covered);底层 ICSP 协议不公开",
+     "links": [
+      "https://www.amx.com/en-US/site_elements/webconsole-programming-guide-netlinx-integrated-controllers-firmware-version-3-0-or-higher",
+      "https://www.amx.com/en-US/site_elements/netlinx-control-for-n-series-products-documentation-addendum"
+     ]
+    }
+   ],
+   "not_covered": [
+    "Crestron CIP 与 AMX ICSP 底层中控总线协议:保密协议,无公开主源规范文本——对接只能走公开 SDK/模块层,已在相应条目注明",
+    "AMX Duet 模块开发 SDK 的公开获取主源:未核到无需经销商/开发者账号的正式下载页,只有编程指南 PDF",
+    "中文/国产生态:国内会议 DSP 厂商(如音王、擎声、BKR 类)的公开第三方控制协议文档未覆盖——本轮英文检索为主,中文生态是已知盲区,不装已覆盖",
+    "设备控制鉴权的专项标准/最佳实践综述:未发现独立标准;仅从各厂商协议顺带记录了四种现状(Tesira SSH/Telnet 分级登录、QRC Logon 用户密码、Shure 2202 明文无鉴权、Extron 密码+分级),TLS 化控制通道在该行业公开文档中普遍缺位",
+    "OSC 1.1 正式规范文本:不存在(仅 NIME 2009 论文),已作论文条目收录",
+    "Ember+ 规范文档的独立 license 声明:仓库整体 BSL-1.0 已核,但未单独核对文档 PDF 是否同许可"
+   ],
+   "search_log": [
+    "WebSearch: Open Sound Control OSC 1.0 specification license embedded implementation",
+    "WebSearch: Ember+ Lawo github open source license ember-plus",
+    "WebSearch: liblo OSC library license LGPL github",
+    "WebSearch: oscpack license Ross Bencina github tinyosc license embedded C OSC",
+    "WebSearch: QSC Q-SYS QRC external control protocol JSON-RPC port 1710 documentation",
+    "WebSearch: Biamp Tesira Text Protocol TTP command syntax subscribe telnet SSH documentation",
+    "WebSearch: Symetrix control protocol document third party control ASCII commands \"push\" subscription",
+    "WebSearch: Extron SIS Simple Instruction Set protocol documentation command response verbose mode",
+    "WebSearch: AES70 OCA control architecture open source implementation license OCA Alliance github",
+    "WebSearch: Sennheiser Sound Control Protocol SSC JSON osc-like documentation developer",
+    "WebSearch: Shure command strings TCP third party control MXA910 P300 documentation \"command strings\"",
+    "WebSearch: Crestron certified drivers SDK development documentation third party device module SIMPL",
+    "WebSearch: AMX NetLinx module development third party control documentation NetLinx studio programming guide",
+    "WebSearch: HiQnet \"third party\" programmer documentation protocol Harman BSS Soundweb London",
+    "WebFetch(license核验): Lawo/ember-plus LICENSE.TXT → BSL-1.0",
+    "WebFetch(license核验): RossBencina/oscpack LICENSE → MIT;mhroth/tinyosc LICENSE → ISC",
+    "WebFetch(license核验): radarsat1/liblo COPYING → LGPL-2.1",
+    "WebFetch(license核验): OCAAlliance/OcaToolsAndDemos LICENSE → OCA Alliance 自定义 EULA",
+    "WebFetch(license核验): DeutscheSoft/AES70.js README → GPLv2",
+    "WebFetch(license核验): opensoundcontrol.stanford.edu/spec-1_0.html → CC BY",
+    "WebFetch(设计细节): help.qsys.com QRC Overview 与 QRC Commands(分帧/ChangeGroup/NoOp/Logon)",
+    "WebFetch(license核验): ocaalliance.com/what-is-aes70 → 自由实现、无会员/授权费声明"
+   ]
+  },
+  {
+   "dimension": "room-eq",
+   "candidates": [
+    {
+     "name": "Farina 指数扫频法 (ESS) 原始文献",
+     "type": "paper",
+     "what": "Farina, A. (2000), \"Simultaneous Measurement of Impulse Response and Distortion with a Swept-Sine Technique\", AES 108th Convention, preprint 5093。指数扫频激励+逆滤波反卷积同时得到房间脉冲响应并把谐波失真分离到负时间轴,动态范围优于MLS约20dB。后续:Farina (2007) \"Advancements in Impulse Response Measurements by Sine Sweeps\", AES 122nd Convention。是本产品声学测量环节的基准方法。",
+     "maps_to": [
+      "声学测量:扫频激励生成与IR反卷积",
+      "上位机测量向导"
+     ],
+     "license": "N/A(论文,方法本身无license限制)",
+     "license_source": "https://www.aes.org/e-lib/browse.cfm?elib=10211",
+     "maturity": "领域事实标准,被REW/pyfar/几乎所有房间校正产品采用",
+     "relevance": "采用候选",
+     "risks": "方法本身无风险;工程实现需注意扫频起止淡入淡出、时钟漂移(采集与回放不同钟时IR拖尾)、环境突发噪声检测重测逻辑",
+     "links": [
+      "https://www.aes.org/e-lib/browse.cfm?elib=10211",
+      "https://www.melaudia.net/zdoc/sweepSine.PDF"
+     ]
+    },
+    {
+     "name": "Müller & Massarani 扫频测量工程细节",
+     "type": "paper",
+     "what": "Müller, S. & Massarani, P. (2001), \"Transfer-Function Measurement with Sweeps\", JAES 49(6):443-471。扫频测量的工程百科:预加重扫频(低频信噪比)、抗时变性、与MLS对比、SNR>90dB可达性。为测量链参数选择(扫频长度、频段加权、平均次数)提供依据。",
+     "maps_to": [
+      "声学测量:扫频参数设计与SNR工程"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "https://aes.org/publications/elibrary-page/?id=10189",
+     "maturity": "经典综述,489+引用",
+     "relevance": "采用候选",
+     "risks": "无;全文PDF有多处公开镜像可读",
+     "links": [
+      "https://aes.org/publications/elibrary-page/?id=10189",
+      "https://audioroundtable.com/misc/Mueller.pdf"
+     ]
+    },
+    {
+     "name": "pyfar + pyrato",
+     "type": "oss",
+     "what": "Python声学研究包族(pyfar生态):指数扫频信号生成、正则化谱反演/反卷积、分数倍频程平滑、滤波器工具;pyrato提供混响时间/能量衰减曲线等房间声学参数。适合做上位机测量与自动EQ算法的原型层(算法定稿后移植C)。",
+     "maps_to": [
+      "上位机测量工具链",
+      "自动EQ算法原型/离线验证"
+     ],
+     "license": "MIT(pyfar与pyrato均已核仓库LICENSE文件)",
+     "license_source": "https://raw.githubusercontent.com/pyfar/pyfar/main/LICENSE",
+     "maturity": "活跃维护,学术社区(多所德语区大学)支撑,文档完善",
+     "relevance": "采用候选",
+     "risks": "纯Python/numpy,只适合上位机与原型,不能进固件;实时声卡采集需自行配sounddevice等",
+     "links": [
+      "https://github.com/pyfar/pyfar",
+      "https://github.com/pyfar/pyrato",
+      "https://pyfar-gallery.readthedocs.io/en/latest/"
+     ]
+    },
+    {
+     "name": "RBJ Audio EQ Cookbook(W3C Note)",
+     "type": "standard",
+     "what": "Robert Bristow-Johnson 的 biquad 系数公式集(peaking/shelf/HP/LP等),2021年成为W3C Working Group Note。自动房间EQ最终落地为固件内参数化peaking biquad级联,该文档即系数计算的事实标准;IIR最小相位、群延迟小,契合<12ms全链路延迟目标(避免FIR线性相位群延迟)。",
+     "maps_to": [
+      "固件EQ执行模块(biquad级联)",
+      "上位机滤波器系数计算"
+     ],
+     "license": "公开技术笔记(W3C Note),公式实现不受限;文本本身适用W3C文档许可",
+     "license_source": "https://www.w3.org/TR/audio-eq-cookbook/",
+     "maturity": "行业事实标准,数十年验证",
+     "relevance": "采用候选",
+     "risks": "无实质风险;定点DSP上低频高Q滤波器需注意系数量化与噪声(可能需双精度累加或DF1结构)",
+     "links": [
+      "https://www.w3.org/TR/audio-eq-cookbook/",
+      "https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html"
+     ]
+    },
+    {
+     "name": "Ramos & López IIR参数EQ自动设计法",
+     "type": "paper",
+     "what": "Ramos, G. & López, J.J. (2006), \"Filter Design Method for Loudspeaker Equalization Based on IIR Parametric Filters\", JAES 54(12):1162-1178。直接以SOS(peaking/shelf)链为目标的启发式+直接搜索自动拟合,含心理声学的峰谷取舍模型,先算的section校正贡献最大→可按硬件资源截断。输出结构与嵌入式DSP的biquad级联一一对应,是自动EQ拟合引擎的首选算法路线。",
+     "maps_to": [
+      "自动EQ拟合引擎(测量响应→N段参数EQ)"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "https://www.aes.org/e-lib/download.cfm?ID=13893",
+     "maturity": "被后续loudspeaker/room EQ文献广泛引用,方法成熟",
+     "relevance": "采用候选",
+     "risks": "需自行实现(无官方开源代码);优化耗时在上位机完成即可,固件只收系数",
+     "links": [
+      "https://www.aes.org/e-lib/download.cfm?ID=13893",
+      "https://www.researchgate.net/publication/241714759_Filter_Design_Method_for_Loudspeaker_Equalization_Based_on_IIR_Parametric_Filters"
+     ]
+    },
+    {
+     "name": "Karjalainen等 模态衰减参数估计 / FZ-ARMA",
+     "type": "paper",
+     "what": "Karjalainen, Antsalo, Mäkivirta, Peltonen, Välimäki (2002), \"Estimation of Modal Decay Parameters from Noisy Response Measurements\", JAES(AES 110th Conv. 2001首发):从含噪IR估计模态频率/衰减时间/幅度(非线性拟合)。同组 \"Frequency-Zooming ARMA Modeling of Resonant and Reverberant Systems\" (JAES 2002):频率缩放ARMA在低频窄带内精确提取密集模态极点。二者构成驻波/模态识别模块的算法基础(区分真正的低频驻波峰与普通响应起伏,决定EQ的Q和深度)。",
+     "maps_to": [
+      "驻波/模态识别模块",
+      "自动EQ低频段策略"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "https://www.researchgate.net/publication/246099256_Estimation_of_Modal_Decay_Parameters_from_Noisy_Response_Measurements",
+     "maturity": "该方向公认参考文献",
+     "relevance": "采用候选",
+     "risks": "JAES卷期页码未逐一核对主源;实现复杂度中等,建议上位机Python原型先行",
+     "links": [
+      "https://www.researchgate.net/publication/246099256_Estimation_of_Modal_Decay_Parameters_from_Noisy_Response_Measurements",
+      "https://www.researchgate.net/publication/230576938_Frequency-Zooming_ARMA_Modeling_of_Resonant_and_Reverberant_Systems"
+     ]
+    },
+    {
+     "name": "Cecchi/Carini/Spors 房间响应均衡综述",
+     "type": "paper",
+     "what": "Cecchi, S., Carini, A., Spors, S. (2018), \"Room Response Equalization—A Review\", Applied Sciences 8(1):16, MDPI(开放获取)。系统梳理单点/多点均衡、最小相位与过量相位分解、平滑与正则化、鲁棒性设计——为整个房间EQ模块的技术选型提供地图与引文入口。",
+     "maps_to": [
+      "房间EQ模块整体技术选型"
+     ],
+     "license": "CC BY 4.0(MDPI开放获取)",
+     "license_source": "https://www.mdpi.com/2076-3417/8/1/16",
+     "maturity": "2018,较全面的近代综述",
+     "relevance": "采用候选",
+     "risks": "无",
+     "links": [
+      "https://www.mdpi.com/2076-3417/8/1/16"
+     ]
+    },
+    {
+     "name": "只削峰/保守校正原则出处(Toole & Harman研究)",
+     "type": "paper",
+     "what": "工程惯例\"低频只削峰不填谷、过渡频率以上少动\"的可引用出处:Toole, F.E., 《Sound Reproduction: The Acoustics and Psychoacoustics of Loudspeakers and Rooms》(3rd ed., Routledge, 2017)——峰比谷可闻性高、填谷耗尽headroom且谷随位置变化;Olive, S., Jackson, J., Devantier, A., Hunt, D., Hess, S. (2009), \"The Subjective and Objective Evaluation of Room Correction Products\", AES 127th Conv., preprint 7960——实测部分商业校正产品反而劣化音质,支持保守校正策略。会议室多话筒场景还叠加反馈稳定性收益(削峰直接提升啸叫裕度)。",
+     "maps_to": [
+      "自动EQ策略/默认参数设计依据",
+      "产品文档技术背书"
+     ],
+     "license": "N/A(论文/专著)",
+     "license_source": "https://aes.org/publications/elibrary-page/?id=15154",
+     "maturity": "Harman系研究,行业广泛接受",
+     "relevance": "采用候选",
+     "risks": "Toole书为付费专著,无法给开放链接;引用时注意版次页码",
+     "links": [
+      "https://aes.org/publications/elibrary-page/?id=15154",
+      "https://seanolive.blogspot.com/2009/11/subjective-and-objective-evaluation-of.html"
+     ]
+    },
+    {
+     "name": "REW (Room EQ Wizard)",
+     "type": "tool",
+     "what": "John Mulcahy 的免费(闭源)房间声学测量软件,事实上的行业标杆:扫频测量、瀑布图、模态分析、自动PEQ建议。V5.40 起提供本地 HTTP API(127.0.0.1:4735)可自动化测量与EQ生成流程——可用作研发期基准工具与我方自动EQ算法的对标参照,亦可在实施工程师工作流中调用。",
+     "maps_to": [
+      "研发/调试测量工具",
+      "自动EQ结果对标基准"
+     ],
+     "license": "专有免费软件;EULA允许个人/教育/商业用途免费使用,但严禁未经书面许可再分发、禁止逆向与衍生作品(已核EULA原文)",
+     "license_source": "https://www.roomeqwizard.com/eula.html",
+     "maturity": "20年历史,持续更新(V5.40+),社区庞大",
+     "relevance": "评估",
+     "risks": "不可随产品捆绑分发、不可嵌入;API仅本机HTTP,若写产线/调试自动化脚本属\"使用\"而非分发,风险低但建议留存EULA判断记录",
+     "links": [
+      "https://www.roomeqwizard.com/",
+      "https://www.roomeqwizard.com/eula.html",
+      "https://www.roomeqwizard.com/help/help_en-GB/html/api.html"
+     ]
+    },
+    {
+     "name": "Novak 同步扫频法 (Synchronized Swept-Sine)",
+     "type": "paper",
+     "what": "Novák, A., Lotton, P., Simon, L. (2015), \"Synchronized Swept-Sine: Theory, Application, and Implementation\", JAES 63(10)。对Farina法的相位同步修正,使高次谐波IR相位正确,附MATLAB实现。若产品要在自检中顺带测扬声器/功放谐波失真(产线EOL或现场诊断),此法比原始ESS更严谨。",
+     "maps_to": [
+      "声学测量:失真分析/产线自检增强"
+     ],
+     "license": "N/A(论文;作者网站附示例代码,代码许可未核)",
+     "license_source": "https://aes.org/publications/elibrary-page/?id=18042",
+     "maturity": "2015 JAES,失真测量方向常被引用",
+     "relevance": "评估",
+     "risks": "作者网站MATLAB代码许可未核,重实现为宜",
+     "links": [
+      "https://ant-novak.com/pages/sss/",
+      "https://aes.org/publications/elibrary-page/?id=18042"
+     ]
+    },
+    {
+     "name": "Mäkivirta/Karjalainen 低频模态均衡",
+     "type": "paper",
+     "what": "Mäkivirta, A., Antsalo, P., Karjalainen, M., Välimäki, V. (2003), \"Modal Equalization of Loudspeaker–Room Responses at Low Frequencies\", JAES 51(5):324-343。不止削幅度,还用IIR校正模态衰减时间(加快驻波衰减),是比纯幅度削峰更进一步的驻波治理路线。",
+     "maps_to": [
+      "驻波/模态识别与模态均衡(进阶路线)"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "https://aes.org/publications/elibrary-page/?id=12226",
+     "maturity": "经典;Genelec系产品化验证",
+     "relevance": "评估",
+     "risks": "顺带记录:存在Genelec相关专利US7742607(低频模态均衡器设计方法,2000年代中期申请,可能已近/已过期,未深挖);模态参数估计误差会导致过校正,V1建议只做幅度削峰,模态均衡留作V2",
+     "links": [
+      "https://aes.org/publications/elibrary-page/?id=12226",
+      "https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/7742607"
+     ]
+    },
+    {
+     "name": "Bank 固定极点并联二阶滤波器(parfilt)",
+     "type": "paper",
+     "what": "Bank, B.:\"Perceptually Motivated Audio Equalization Using Fixed-Pole Parallel Second-Order Filters\" (IEEE SPL, 2008)及2022 JAES教程综述(warped/Kautz/并联滤波器)。按对数频率分辨率预置极点、前馈系数线性最小二乘一步解出——设计端无迭代优化、执行端仍是二阶节(并联而非级联),对嵌入式极友好,是自动EQ的另一条强路线(与Ramos&López级联法二选一或互补)。官方MATLAB代码在作者主页。",
+     "maps_to": [
+      "自动EQ拟合引擎(并联SOS替代路线)",
+      "固件EQ执行(并联二阶节)"
+     ],
+     "license": "论文方法可自由重实现;作者主页MATLAB代码明确\"仅限非商业使用,商用需联系作者\"(已核原页版权声明)",
+     "license_source": "https://home.mit.bme.hu/~bank/parfilt/",
+     "maturity": "学术上成熟(2008-2022持续发表),有多个第三方移植",
+     "relevance": "评估",
+     "risks": "红线注意:不得直接搬运其MATLAB代码或其移植(如PORC)进商业产品,须按论文公式自写实现(最小二乘解法本身是公开数学)",
+     "links": [
+      "https://home.mit.bme.hu/~bank/parfilt/",
+      "http://research.spa.aalto.fi/publications/papers/spl08-parfilt/",
+      "https://home.mit.bme.hu/~bank/publist/"
+     ]
+    },
+    {
+     "name": "AutoEq (jaakkopasanen)",
+     "type": "oss",
+     "what": "耳机自动均衡项目,但其 autoeq/peq 模块是通用的\"目标响应→参数EQ(peaking+shelf)优化器\",带Fc/Q/gain约束系统,PyPI可装。可移植其优化器思想/代码到房间响应拟合(上位机侧),约束机制与我们固件biquad参数范围限制的需求吻合。",
+     "maps_to": [
+      "自动EQ拟合引擎(上位机优化器参考/复用)"
+     ],
+     "license": "MIT(已核仓库LICENSE原文)",
+     "license_source": "https://raw.githubusercontent.com/jaakkopasanen/AutoEq/master/LICENSE",
+     "maturity": "15k+ stars,持续维护,2022重写优化器",
+     "relevance": "评估",
+     "risks": "面向耳机响应,房间响应的平滑/多点平均/只削峰策略需自行加在其前端;Python仅上位机可用",
+     "links": [
+      "https://github.com/jaakkopasanen/AutoEq"
+     ]
+    },
+    {
+     "name": "python-acoustics / acoustic-toolbox",
+     "type": "oss",
+     "what": "面向声学工程师的Python库:倍频程/分数倍频程、房间声学参数(RT等)、信号处理与标准(ISO)相关计算。可补pyfar生态之外的标准化指标计算。原repo维护趋缓,Université Gustave Eiffel 维护有后继fork(acoustic-toolbox)。",
+     "maps_to": [
+      "上位机测量工具链(声学指标计算)"
+     ],
+     "license": "BSD-3-Clause(已核仓库LICENSE原文)",
+     "license_source": "https://raw.githubusercontent.com/python-acoustics/python-acoustics/master/LICENSE",
+     "maturity": "成熟但原repo维护放缓;fork延续中",
+     "relevance": "评估",
+     "risks": "维护性一般,选用时评估fork(acoustic-toolbox)的活跃度",
+     "links": [
+      "https://github.com/python-acoustics/python-acoustics",
+      "https://github.com/Universite-Gustave-Eiffel/acoustic-toolbox"
+     ]
+    },
+    {
+     "name": "MATLAB Audio Toolbox 房间均衡自动滤波器设计示例",
+     "type": "commercial",
+     "what": "MathWorks 官方示例 \"Automated Design of Audio Filters for Room Equalization\":从测量响应自动生成均衡滤波器的完整工程参考(平滑、目标曲线、滤波器拟合)。团队已有本地MATLAB环境,可作算法原型与交叉验证的第二参考实现。",
+     "maps_to": [
+      "自动EQ算法原型/交叉验证"
+     ],
+     "license": "MathWorks商业许可(随MATLAB/Audio Toolbox授权);示例代码按MathWorks条款,产品中不可直接复制分发 [待核]",
+     "license_source": "",
+     "maturity": "官方维护文档级示例",
+     "relevance": "评估",
+     "risks": "算法思想可参考,示例代码许可条款未逐条核对,移植进产品前需核MathWorks示例代码条款",
+     "links": [
+      "https://www.mathworks.com/help/audio/ug/automated-design-of-audio-filters-for-room-equalization.html"
+     ]
+    },
+    {
+     "name": "Elliott & Nelson 多点均衡",
+     "type": "paper",
+     "what": "Elliott, S.J. & Nelson, P.A. (1989), \"Multiple-Point Equalization in a Room Using Adaptive Digital Filters\", JAES 37(11):899-907。多测点误差平方和最小化的均衡滤波器设计——会议室多与会者座位场景应做多点测量/空间平均而非单点校正,此文是该工程惯例的原始出处。",
+     "maps_to": [
+      "多点测量与空间平均策略"
+     ],
+     "license": "N/A(论文)",
+     "license_source": "https://aes.org/publications/elibrary-page/?id=6063",
+     "maturity": "经典原始文献",
+     "relevance": "评估",
+     "risks": "自适应FIR方案本身不建议照搬(延迟与鲁棒性),采其多点平均思想+IIR执行即可",
+     "links": [
+      "https://aes.org/publications/elibrary-page/?id=6063"
+     ]
+    },
+    {
+     "name": "Dirac Live(OEM嵌入)",
+     "type": "commercial",
+     "what": "商业房间校正方案,提供OEM嵌入(ADK)与DSP平台集成(如Peerless Flow DSP合作),支持低频限定版(≤500Hz)与全频段授权分级。买 vs 自研 的\"买\"侧代表;若自研排期风险大可作备选。",
+     "maps_to": [
+      "整体房间校正模块(外购替代方案)"
+     ],
+     "license": "商业授权(按系统/平台/软件分级收费)",
+     "license_source": "https://www.dirac.com/b2b/homeaudio",
+     "maturity": "量产验证(AVR/soundbar/汽车广泛出货)",
+     "relevance": "观望",
+     "risks": "单机授权成本侵蚀BOM;与特定DSP平台的移植耦合(其DSP端组件需按平台适配,我方DSP芯片未定,集成可行性未知);混合相位FIR成分或与<12ms延迟预算冲突,需与其确认低延迟模式",
+     "links": [
+      "https://www.dirac.com/b2b/homeaudio",
+      "https://www.audioholics.com/editorials/dirac-peerless"
+     ]
+    },
+    {
+     "name": "EQilibrium",
+     "type": "oss",
+     "what": "2025/26新出现的Python房间校正向导(测量→问题分析→PEQ导出),含扫频生成、反卷积、多位置平均、PEQ拟合、biquad系数计算等模块,MIT许可——模块划分与我们上位机需求几乎同构,可作代码级参考。",
+     "maps_to": [
+      "上位机自动校正向导(架构/代码参考)"
+     ],
+     "license": "MIT(GitHub仓库页标注)",
+     "license_source": "https://github.com/robfosterdotnet/EQilibrium",
+     "maturity": "极早期(个位数commit/星),但有214个通过测试",
+     "relevance": "观望",
+     "risks": "太新、单人项目,只做参考不做依赖",
+     "links": [
+      "https://github.com/robfosterdotnet/EQilibrium"
+     ]
+    },
+    {
+     "name": "autoeq (pierreaubert)",
+     "type": "oss",
+     "what": "spinorama.org作者的Rust自动均衡器,含RoomEQ引擎(多通道/多低音炮、幅度+相位+时序联合优化、多种元启发式优化器)。技术上激进、活跃开发中。",
+     "maps_to": [
+      "自动EQ拟合引擎(算法思路观察)"
+     ],
+     "license": "仓库未检测到LICENSE(GitHub API /license 返回404,默认保留所有权利)[待核]",
+     "license_source": "",
+     "maturity": "活跃开发但早期(星数很少)",
+     "relevance": "观望",
+     "risks": "无license=代码不可复用,只能读思路;成熟度未经第三方验证",
+     "links": [
+      "https://github.com/pierreaubert/autoeq"
+     ]
+    },
+    {
+     "name": "PORC (Python Open Room Correction)",
+     "type": "oss",
+     "what": "Mason A. Green 将 Bank 固定极点并联滤波器法移植为Python的房间校正工具(parfiltid/freqpoles)。作为Bank方法的可读参考实现有价值。",
+     "maps_to": [
+      "自动EQ拟合引擎(仅思路参考)"
+     ],
+     "license": "仓库无LICENSE文件(已核仓库文件列表;默认保留所有权利),且系Bank非商用MATLAB代码的移植",
+     "license_source": "https://github.com/greenm01/porc",
+     "maturity": "停滞多年(59 commits)",
+     "relevance": "规避",
+     "risks": "双重许可污染风险(无license+上游非商用),严禁复制代码进产品;读懂后按Bank论文自写",
+     "links": [
+      "https://github.com/greenm01/porc"
+     ]
+    },
+    {
+     "name": "DRC-FIR (Denis Sbragion)",
+     "type": "oss",
+     "what": "老牌开源数字房间校正,生成混合相位FIR校正滤波器(配合convolver使用),文档极详尽(心理声学窗、预回声控制)。",
+     "maps_to": [
+      "房间校正(仅思路参考)"
+     ],
+     "license": "GPL-3.0-or-later [待核](FSF目录与SourceForge文档页记载,LICENSE原文未直接打开)",
+     "license_source": "",
+     "maturity": "成熟但基本停止开发(2002-2017)",
+     "relevance": "规避",
+     "risks": "GPL不可进闭源固件;且长FIR混合相位路线与<12ms延迟目标冲突,技术路线本身也不适配;其预回声/心理声学窗文档可作思路参考",
+     "links": [
+      "https://drc-fir.sourceforge.net/",
+      "https://github.com/nettings/drc-fir"
+     ]
+    }
+   ],
+   "not_covered": [
+    "中文生态整体未覆盖(本轮全部为英文检索;国内会议音频厂商的自动反馈抑制/房间校正实现、中文论文与国产开源均未调查)——已知盲区,如需补齐建议检索知网/Gitee",
+    "产线EOL测量商业工具链(Klippel、Listen SoundCheck、Audio Precision的房间/整机测量方案)未调研",
+    "可直接跑在嵌入式DSP固件内的完整开源自动房间校正C实现:未找到成熟候选(现有开源均为PC侧Python/Rust;结论是'上位机算EQ系数、固件只执行biquad'为现实路线,而非缺搜索)",
+    "Audyssey/Trinnov/ARC(Anthem)等其他商业校正方案的OEM授权细节未查",
+    "会议室场景目标曲线(target curve)的公开依据(Harman曲线在语音扩声场景的适配)未深入",
+    "Karjalainen 2002 两篇JAES的卷期页码未在AES主源逐条核对",
+    "REW API 的完整端点清单未逐条核读(仅确认存在与入口文档)"
+   ],
+   "search_log": [
+    "WebSearch: Farina 2000 AES \"Simultaneous measurement of impulse response and distortion\" exponential sine sweep",
+    "WebSearch: Room EQ Wizard REW automation API license commercial use",
+    "WebSearch: pyfar python acoustics package license MIT github impulse response",
+    "WebSearch: python-acoustics github license BSD",
+    "WebFetch: https://www.roomeqwizard.com/eula.html (核REW EULA原文)",
+    "WebFetch: https://raw.githubusercontent.com/pyfar/pyfar/main/LICENSE (核MIT)",
+    "WebFetch: https://raw.githubusercontent.com/python-acoustics/python-acoustics/master/LICENSE (核BSD-3)",
+    "WebSearch: automatic room correction algorithm parametric EQ \"cut only\" peaks below Schroeder frequency loudspeaker room equalization paper",
+    "WebSearch: room mode identification algorithm modal decomposition low frequency impulse response Karjalainen parametric modeling",
+    "WebSearch: Müller Massarani \"Transfer-Function Measurement with Sweeps\" 2001 JAES",
+    "WebSearch: Novak synchronized swept-sine method nonlinear system identification 2015",
+    "WebSearch: DRC-FIR Denis Sbragion room correction license GPL github",
+    "WebSearch: porc \"python open room correction\" github license",
+    "WebFetch: https://github.com/greenm01/porc (核实无LICENSE文件)",
+    "WebFetch: https://home.mit.bme.hu/~bank/parfilt/ (核Bank代码非商用条款)",
+    "WebSearch: Balázs Bank fixed-pole parallel filter loudspeaker room equalization warped IIR design",
+    "WebSearch: roomeqwizard REW API HTTP REST documentation automate measurements",
+    "WebSearch: Karjalainen Mäkivirta \"modal equalization\" loudspeaker-room responses low frequencies JAES 2003",
+    "WebSearch: Ramos Lopez \"Filter Design Method for Loudspeaker Equalization Based on IIR Parametric Filters\" JAES 2006",
+    "WebSearch: AutoEq jaakkopasanen github license parametric equalizer optimization",
+    "WebFetch: https://raw.githubusercontent.com/jaakkopasanen/AutoEq/master/LICENSE (核MIT)",
+    "WebSearch: Dirac Live embedded SDK DSP integration licensing OEM room correction",
+    "WebSearch: Elliott Nelson \"multiple-point equalization in a room using adaptive digital filters\" 1989",
+    "WebSearch: Olive 2009 AES \"room correction products\" subjective evaluation Audyssey",
+    "WebFetch: https://raw.githubusercontent.com/pyfar/pyrato/main/LICENSE (核MIT)",
+    "WebSearch: RBJ \"Audio EQ Cookbook\" Robert Bristow-Johnson biquad peaking filter formulas W3C",
+    "WebSearch: open source automatic room EQ embedded DSP sweep measurement biquad auto correction firmware project",
+    "WebFetch: https://github.com/pierreaubert/autoeq + api.github.com/repos/pierreaubert/autoeq/license (404=无license)",
+    "WebFetch: https://github.com/robfosterdotnet/EQilibrium (核MIT标注)"
+   ]
+  },
+  {
+   "dimension": "host-ui",
+   "candidates": [
+    {
+     "name": "Qt 6 (Widgets/QML)",
+     "type": "oss",
+     "what": "跨平台 C++ 桌面 UI 框架,商业/社区(GPLv3+LGPLv3)双轨;Essentials 模块多为 LGPLv3,是音频行业上位机(调音软件)最常见技术栈",
+     "maps_to": [
+      "上位机主框架",
+      "EQ曲线/频谱/矩阵网格自绘基础",
+      "多设备发现(配QMdnsEngine)"
+     ],
+     "license": "LGPLv3/GPLv3 + 商业双轨(Essentials 走 LGPLv3 可闭源动态链接)",
+     "license_source": "https://www.qt.io/licensing/",
+     "maturity": "工业级成熟,长期维护,音频/AV行业大量前例",
+     "relevance": "采用候选",
+     "risks": "LGPLv3 义务:动态链接、向用户提供所用Qt库源码(或书面offer)、允许用户替换Qt库重链接并运行(桌面app可满足,禁静态链接);官方明确禁止商业版与社区版混用;部分附加模块(Qt Charts/Data Visualization)疑为 GPL/商业-only,频谱图若用需另核或自绘(见 not_covered);官方义务说明页 https://www.qt.io/development/open-source-lgpl-obligations",
+     "links": [
+      "https://www.qt.io/licensing/",
+      "https://www.qt.io/development/open-source-lgpl-obligations",
+      "https://www.qt.io/faq/qt-open-source-licensing"
+     ]
+    },
+    {
+     "name": "Dear ImGui",
+     "type": "oss",
+     "what": "MIT 即时模式 C++ GUI 库,GPU 渲染,专为工具类/可视化 UI 设计,工程工具界大量采用(Tracy、ImHex 等)",
+     "maps_to": [
+      "上位机主框架(工具型UI路线)",
+      "实时刷新表计/矩阵网格(即时模式天然适合动态数据)"
+     ],
+     "license": "MIT",
+     "license_source": "https://github.com/ocornut/imgui/blob/master/LICENSE.txt",
+     "maturity": "非常成熟活跃,商业支持合同可选",
+     "relevance": "采用候选",
+     "risks": "即时模式风格与传统企业软件观感不同,专业级皮肤化需投入;本地化/输入法/无障碍支持弱;需自带窗口与渲染后端(GLFW/SDL + OpenGL/DX);复杂停靠布局靠 docking 分支",
+     "links": [
+      "https://github.com/ocornut/imgui"
+     ]
+    },
+    {
+     "name": "ImPlot",
+     "type": "oss",
+     "what": "Dear ImGui 配套的 MIT 即时模式绘图库:实时曲线、热图、柱状,自述面向 realtime 速度、可处理数万至数十万点",
+     "maps_to": [
+      "频谱分析仪显示",
+      "EQ频响曲线绘制",
+      "电平历史曲线"
+     ],
+     "license": "MIT",
+     "license_source": "https://github.com/epezent/implot",
+     "maturity": "成熟,ImGui 生态事实标准绘图库",
+     "relevance": "采用候选",
+     "risks": "绑定 ImGui 路线;EQ 曲线拖拽编辑(band 手柄交互)需在其之上自写;对数频率轴需自定义刻度",
+     "links": [
+      "https://github.com/epezent/implot"
+     ]
+    },
+    {
+     "name": "mdns (mjansson/mdns)",
+     "type": "oss",
+     "what": "Public domain 的 header-only 跨平台(Win/macOS/Linux) C 语言 mDNS/DNS-SD 库,支持发现与服务发布,零动态内存分配",
+     "maps_to": [
+      "多设备发现(mDNS)",
+      "零许可负担,设备固件侧响应器也可复用同库"
+     ],
+     "license": "Public domain",
+     "license_source": "https://github.com/mjansson/mdns",
+     "maturity": "维护中,被 Conan 等包管理收录,API 偏底层",
+     "relevance": "采用候选",
+     "risks": "偏底层(caller 自管 socket/buffer),需自己封装发现协议流程;无事件循环集成,需自绑到上位机主循环",
+     "links": [
+      "https://github.com/mjansson/mdns",
+      "https://conan.io/center/mdns"
+     ]
+    },
+    {
+     "name": "QMdnsEngine",
+     "type": "oss",
+     "what": "MIT 的 Qt 原生 mDNS/DNS-SD 库(RFC 6762):服务发布、浏览、IPv4/IPv6 解析,与 Qt 事件循环直接集成",
+     "maps_to": [
+      "多设备发现(mDNS,Qt路线)"
+     ],
+     "license": "MIT",
+     "license_source": "https://raw.githubusercontent.com/nitroshare/qmdnsengine/master/LICENSE.txt",
+     "maturity": "稳定但更新缓慢(v0.2.x),被 MSYS2/Debian 打包",
+     "relevance": "采用候选",
+     "risks": "维护活跃度一般;仅Qt路线有意义;大规模设备列表下性能未验证",
+     "links": [
+      "https://github.com/nitroshare/qmdnsengine"
+     ]
+    },
+    {
+     "name": "JUCE 8/9",
+     "type": "oss",
+     "what": "音频行业标准 C++ 框架,自带音频类 UI 控件(旋钮/推子/曲线),AGPLv3+商业双轨;商业档:Starter 免费(营收≤$20k)、Indie $40/月或$800永久(≤$300k)、Pro $175/月或$3500永久(按开发者席位)",
+     "maps_to": [
+      "上位机主框架(音频特化路线)",
+      "EQ曲线/频谱控件生态最丰富"
+     ],
+     "license": "AGPLv3 / 商业双轨(闭源必须购商业席位,AGPL轨对本项目不可用)",
+     "license_source": "https://raw.githubusercontent.com/juce-framework/JUCE/master/LICENSE.md",
+     "maturity": "工业级,音频软件事实标准之一",
+     "relevance": "评估",
+     "risks": "闭源商用必须走付费席位(每开发者),Pro档12个月起订;协议禁止产出物再造框架类产品;营收口径含间接收入;生态偏插件开发,上位机(设备控制/网络发现)部分无加成;JUCE 9 EULA 已发布但价格档未核(见 not_covered)",
+     "links": [
+      "https://github.com/juce-framework/JUCE",
+      "https://juce.com/legal/juce-8-licence/"
+     ]
+    },
+    {
+     "name": "Frequalizer (ffAudio)",
+     "type": "oss",
+     "what": "BSD-3 的 JUCE 参数EQ开源实现,含可拖拽频响曲线编辑器 + 输入/输出频谱分析仪叠加显示,是 EQ 曲线 UI 交互的干净参考实现",
+     "maps_to": [
+      "EQ曲线编辑控件参考实现(band手柄拖拽、曲线合成、频谱叠加)"
+     ],
+     "license": "BSD-3-Clause",
+     "license_source": "https://raw.githubusercontent.com/ffAudio/Frequalizer/master/LICENSE.md",
+     "maturity": "演示/教学级项目,代码质量好但非产品级",
+     "relevance": "评估",
+     "risks": "自身 BSD 但构建依赖 JUCE(AGPL/商业)——只借鉴交互与绘制逻辑、移植到自选框架时无 license 问题,直接整包复用则背上 JUCE 依赖",
+     "links": [
+      "https://github.com/ffAudio/Frequalizer"
+     ]
+    },
+    {
+     "name": "Avalonia UI",
+     "type": "oss",
+     "what": "MIT 的 .NET 跨平台 XAML 桌面框架(Win/macOS/Linux),WPF 风格开发体验;XPF(WPF兼容层)为另售商业品",
+     "maps_to": [
+      "上位机主框架(.NET团队路线)"
+     ],
+     "license": "MIT(核心框架;XPF 商业另计)",
+     "license_source": "https://github.com/AvaloniaUI/Avalonia",
+     "maturity": "成熟活跃,商业采用增长中",
+     "relevance": "评估",
+     "risks": "音频类控件(EQ曲线/频谱/矩阵网格/表计)生态几乎为零,需全自绘;高帧率实时表计渲染需验证(Skia 后端);团队需 .NET 技能",
+     "links": [
+      "https://github.com/AvaloniaUI/Avalonia"
+     ]
+    },
+    {
+     "name": "Tauri",
+     "type": "oss",
+     "what": "MIT/Apache-2.0 双许可的桌面壳框架:Rust 后端 + 系统 WebView 前端,体积远小于 Electron",
+     "maps_to": [
+      "上位机主框架(Web前端路线)",
+      "配 webaudio-controls 等 Web 控件"
+     ],
+     "license": "MIT / Apache-2.0 双许可",
+     "license_source": "https://github.com/tauri-apps/tauri",
+     "maturity": "2.x 稳定,生态较新",
+     "relevance": "评估",
+     "risks": "三平台 WebView 引擎不同(WebView2/WKWebView/WebKitGTK),渲染一致性与实时图形性能需逐平台验证;mDNS/串口等靠 Rust 侧插件;团队需 Rust 技能",
+     "links": [
+      "https://github.com/tauri-apps/tauri"
+     ]
+    },
+    {
+     "name": "Electron",
+     "type": "oss",
+     "what": "MIT 的 Chromium+Node 桌面壳,Web 技术栈开发上位机,渲染一致性最好",
+     "maps_to": [
+      "上位机主框架(Web前端路线)",
+      "Canvas/WebGL 绘频谱与矩阵网格"
+     ],
+     "license": "MIT",
+     "license_source": "https://raw.githubusercontent.com/electron/electron/main/LICENSE",
+     "maturity": "非常成熟(VS Code 等)",
+     "relevance": "评估",
+     "risks": "安装包/内存开销大,专业音频软件观感上偏重;mDNS 需 npm 原生模块(如 bonjour-service,license 未核);长期 Chromium 升级维护成本",
+     "links": [
+      "https://github.com/electron/electron"
+     ]
+    },
+    {
+     "name": "imgui-knobs",
+     "type": "oss",
+     "what": "MIT 的 Dear ImGui 旋钮控件扩展,7 种音频风格 knob 变体",
+     "maps_to": [
+      "增益/参数旋钮控件(ImGui路线)"
+     ],
+     "license": "MIT",
+     "license_source": "https://raw.githubusercontent.com/altschuler/imgui-knobs/main/LICENSE",
+     "maturity": "小而稳,单头文件",
+     "relevance": "评估",
+     "risks": "仅旋钮;项目小体量,视觉需自定制",
+     "links": [
+      "https://github.com/altschuler/imgui-knobs",
+      "https://github.com/ocornut/imgui/wiki/Useful-Extensions"
+     ]
+    },
+    {
+     "name": "webaudio-controls",
+     "type": "oss",
+     "what": "Web Components 形式的音频 GUI 控件库(旋钮/推子/开关/参数显示/键盘),适配 Electron/Tauri 前端",
+     "maps_to": [
+      "旋钮/推子/表计控件(Web路线)"
+     ],
+     "license": "Apache-2.0 [待核]",
+     "license_source": "https://github.com/g200kg/webaudio-controls/blob/master/LICENSE",
+     "maturity": "老牌 Web Audio 社区项目,维护平缓",
+     "relevance": "评估",
+     "risks": "视觉风格偏演示,产品级需重制皮肤;无 EQ 曲线/矩阵网格组件",
+     "links": [
+      "https://github.com/g200kg/webaudio-controls",
+      "http://g200kg.github.io/webaudio-controls/docs/"
+     ]
+    },
+    {
+     "name": "竞品调音软件文档集(Q-SYS Designer / Biamp Tesira / Symetrix Composer / Yamaha ProVisionaire / BSS Audio Architect / Xilica Designer / Shure Designer)",
+     "type": "commercial",
+     "what": "会议/装机 DSP 主流厂商上位机的官方帮助与手册,含界面截图、菜单层级、矩阵网格与信号流 schematic 交互范式,作 CONF-DSP-88 上位机信息架构对标素材",
+     "maps_to": [
+      "菜单层级对标素材",
+      "矩阵网格/信号流UI交互范式参考"
+     ],
+     "license": "N/A(专有商业软件,仅记文档链接)",
+     "license_source": "N/A",
+     "maturity": "均为量产商用软件",
+     "relevance": "评估",
+     "risks": "仅作交互/信息架构对标,不可抄袭视觉资产;Q-SYS/Tesira 为 schematic 自由布线范式,与固定架构(8x8定型)产品的向导式 UI 定位不同,对标时注意取舍",
+     "links": [
+      "https://help.qsys.com/Content/Q-Sys_Designer/001_Q-Sys_Designer_Overview.htm",
+      "https://support.biamp.com/Tesira/Tesira_Field_Reference_Guide",
+      "https://www.symetrix.co/composer",
+      "https://pt.yamaha.com/pt/business/audio/products/provisionaire/provisionaire/provisionaire-design/",
+      "https://bssaudio.com/en/architect-software",
+      "https://support.xilica.com/en/articles/3947394",
+      "https://www.shure.com/en-US/support/downloads/software-firmware-archive/designer"
+     ]
+    },
+    {
+     "name": "VSTGUI (Steinberg)",
+     "type": "oss",
+     "what": "Steinberg 开源的音频插件 UI 工具包(1998 年起),BSD 风格许可,含音频控件绘制实现",
+     "maps_to": [
+      "音频控件绘制参考/部分复用(旋钮、推子)"
+     ],
+     "license": "BSD-style",
+     "license_source": "https://steinbergmedia.github.io/vst3_dev_portal/pages/VST+3+Licensing/Which+files+fall+under+which+license.html",
+     "maturity": "长期维护但定位插件窗口",
+     "relevance": "观望",
+     "risks": "面向插件单窗口,不是完整桌面 app 框架(缺网络/多窗口/系统集成),整机上位机用它需大量补齐",
+     "links": [
+      "https://github.com/steinbergmedia/vstgui"
+     ]
+    },
+    {
+     "name": "iPlug2 / IGraphics",
+     "type": "oss",
+     "what": "zlib 风格许可的 C++ 音频插件/应用框架,IGraphics 控件层(NanoVG/Skia 后端)含成套音频控件,可闭源免费商用",
+     "maps_to": [
+      "音频控件层参考/拆借(旋钮/推子/表计)",
+      "上位机框架(轻量路线,谨慎)"
+     ],
+     "license": "zlib-like(捆绑依赖为 zlib/MIT/BSD)",
+     "license_source": "https://raw.githubusercontent.com/iPlug2/iPlug2/master/LICENSE.txt",
+     "maturity": "活跃但社区远小于 JUCE,定位插件为主",
+     "relevance": "观望",
+     "risks": "桌面独立 app 支持存在但非重心;设备控制/网络类基础设施缺失需自建;文档偏薄",
+     "links": [
+      "https://github.com/iPlug2/iPlug2",
+      "https://iplug2.github.io/"
+     ]
+    },
+    {
+     "name": "Flutter (desktop)",
+     "type": "oss",
+     "what": "BSD-3 的 Google 跨平台 UI 框架,桌面端 Win/macOS/Linux,Skia/Impeller 自绘渲染",
+     "maps_to": [
+      "上位机主框架(备选)"
+     ],
+     "license": "BSD-3-Clause",
+     "license_source": "https://raw.githubusercontent.com/flutter/flutter/master/LICENSE",
+     "maturity": "移动端成熟,桌面端可用但生态弱",
+     "relevance": "观望",
+     "risks": "桌面音频专业控件生态几乎为零,EQ曲线/频谱/矩阵全靠 CustomPainter 自绘;桌面多窗口/系统集成仍在演进;Dart 技能栈与 C 固件团队重合度低",
+     "links": [
+      "https://github.com/flutter/flutter"
+     ]
+    },
+    {
+     "name": "WPF (.NET)",
+     "type": "oss",
+     "what": "微软 Windows 桌面框架,框架本体 MIT 开源;会议行业客户以 Windows 为主时可行",
+     "maps_to": [
+      "上位机主框架(仅Windows路线)"
+     ],
+     "license": "MIT",
+     "license_source": "https://raw.githubusercontent.com/dotnet/wpf/main/LICENSE.TXT",
+     "maturity": "非常成熟但功能演进基本停滞",
+     "relevance": "观望",
+     "risks": "锁死 Windows,后续要 macOS 需换 Avalonia 重写;音频控件同样需自绘;微软投入重心已移向 WinUI/MAUI",
+     "links": [
+      "https://github.com/dotnet/wpf"
+     ]
+    },
+    {
+     "name": "Apple mDNSResponder / Bonjour",
+     "type": "oss",
+     "what": "Apple 官方 mDNS/DNS-SD 实现,源码 Apache-2.0;Windows 端以 Bonjour 服务形式存在",
+     "maps_to": [
+      "多设备发现(mDNS,备选)"
+     ],
+     "license": "Apache-2.0(源码)[待核];Bonjour SDK for Windows 再分发为 Apple 专有条款",
+     "license_source": "https://github.com/apple-oss-distributions/mDNSResponder",
+     "maturity": "工业级(即 Bonjour 本体)",
+     "relevance": "观望",
+     "risks": "Windows 上随安装包再分发 Bonjour 需接受 Apple SDK 协议(条款未核),打包链复杂;自编译 Apache-2.0 源码可绕开但工程量大——不如直接用 mjansson/mdns 或 QMdnsEngine",
+     "links": [
+      "https://github.com/apple-oss-distributions/mDNSResponder",
+      "https://en.wikipedia.org/wiki/Bonjour_(software)"
+     ]
+    },
+    {
+     "name": "Avahi",
+     "type": "oss",
+     "what": "Linux 生态标准 mDNS/DNS-SD 守护进程与库(LGPL)",
+     "maps_to": [
+      "多设备发现(仅Linux上位机)"
+     ],
+     "license": "LGPL-2.1+ [待核]",
+     "license_source": "https://github.com/avahi/avahi/blob/master/README",
+     "maturity": "工业级,Linux 发行版标配",
+     "relevance": "观望",
+     "risks": "无 Windows 移植,而本产品上位机主战场是 Windows——仅当出 Linux 版且以系统守护进程方式使用(不打包进固件)时相关;LGPL 按动态链接/进程外调用可控",
+     "links": [
+      "https://github.com/avahi/avahi",
+      "https://avahi.org/"
+     ]
+    },
+    {
+     "name": "x42 meters.lv2",
+     "type": "oss",
+     "what": "专业级音频表计插件合集(EBU R128、VU/PPM ballistics、相位/相关表),表计弹道算法与刻度标准的高质量参考",
+     "maps_to": [
+      "电平表/响度表实现思路参考(不可拷代码)"
+     ],
+     "license": "GPL [待核]",
+     "license_source": "https://github.com/x42/meters.lv2",
+     "maturity": "成熟,广泛使用",
+     "relevance": "规避",
+     "risks": "GPL,闭源上位机/固件均不可引入代码;仅可阅读理解表计标准(IEC 60268-10/-17、EBU R128)后独立实现",
+     "links": [
+      "https://github.com/x42/meters.lv2"
+     ]
+    }
+   ],
+   "not_covered": [
+    "矩阵路由网格(crosspoint grid)现成开源 UI 控件:各技术栈下均未找到成熟独立组件,基本确定需自绘;交互范式只能对标厂商软件(Q-SYS/Tesira/Composer 帮助文档截图)",
+    "中文生态(国产上位机框架/控件库、国内会议 DSP 厂商调音软件公开手册)未覆盖——已知盲区,本轮英文检索为主",
+    "Qt Charts / Qt Data Visualization / QCustomPlot 的许可轨(疑 GPL/商业-only)未核主源——若选 Qt 路线,频谱图组件选型前必须补核",
+    "JUCE 9 EULA 的具体价格分级页未核(本轮核到 JUCE 8 商业协议页 + 仓库 LICENSE.md,JUCE 9 已在 LICENSE.md 中被引用)",
+    "Bonjour SDK for Windows 再分发协议具体条款未核",
+    ".NET/Avalonia 生态下的 EQ 曲线/频谱现成控件:未找到成熟项目(LiveCharts2/ScottPlot 等通用图表库未逐一核许可与实时性能)",
+    "Electron 路线的 mDNS npm 库(bonjour-service 等)license 未核",
+    "上位机与设备的通控协议层(如 gRPC/自定义 TCP)不在本维度,未扫"
+   ],
+   "search_log": [
+    "WebFetch: qt.io/licensing/(Qt 双轨与混用禁令)",
+    "WebFetch: juce.com/legal/juce-8-licence/(JUCE 8 商业分级:Starter/Indie/Pro 价格与营收档)",
+    "WebSearch: open source EQ curve editor spectrum analyzer GUI widget github audio parametric EQ UI component",
+    "WebSearch: cross-platform mDNS DNS-SD library C++ MIT license device discovery",
+    "WebSearch: iPlug2 framework license audio plugin GUI open source",
+    "WebSearch: Q-SYS Designer software user guide PDF Biamp Tesira software manual conference DSP configuration software",
+    "WebSearch: qmdnsengine Qt mDNS library MIT license github",
+    "WebSearch: Symetrix Composer software manual Xilica Designer BSS Audio Architect Yamaha ProVisionaire matrix mixer DSP software",
+    "WebSearch: VSTGUI Steinberg license BSD github",
+    "WebSearch: ffAudio Frequalizer JUCE EQ github license frequency response curve editor",
+    "WebSearch: Qt LGPLv3 obligations closed source commercial application dynamic linking relink requirement",
+    "WebSearch: imgui-knobs Dear ImGui audio knob slider widgets github license",
+    "WebSearch: BSS Audio Architect software help Xilica Designer software download Shure Designer software manual",
+    "WebSearch: Avahi LGPL license Apple mDNSResponder Apache license Bonjour SDK Windows redistribution",
+    "WebSearch: Tauri framework license MIT Apache dual desktop app",
+    "WebSearch: webaudio-controls github license audio knob meter web components",
+    "WebSearch: Qt open source VU meter level meter audio widget github MIT BSD",
+    "WebFetch 主源license核照: JUCE LICENSE.md(AGPLv3/商业)、electron LICENSE(MIT)、flutter LICENSE(BSD-3)、dotnet/wpf LICENSE.TXT(MIT)、ffAudio/Frequalizer LICENSE.md(BSD-3)、altschuler/imgui-knobs LICENSE(MIT)、nitroshare/qmdnsengine LICENSE.txt(MIT)、iPlug2 LICENSE.txt(zlib-like)、tauri-apps/tauri 仓库页(LICENSE-MIT + LICENSE-APACHE-2.0)、mjansson/mdns 仓库页(public domain)、ocornut/imgui 仓库页(MIT)、epezent/implot 仓库页(MIT)、AvaloniaUI/Avalonia 仓库页(MIT)"
+   ]
+  },
+  {
+   "dimension": "reference",
+   "candidates": [
+    {
+     "name": "DSP Concepts Audio Weaver / AWE Core",
+     "type": "commercial",
+     "what": "商用嵌入式音频框架\"整套买\"的头部选项:AWE Core 嵌入式运行时(bare-metal/RTOS/Linux,多核)+ AWE Designer 图形化设计/调参工具,内置大量模块库(矩阵、EQ、动态、AEC等可选IP),按处理器核授权运行时、按席位授权 Designer,每次启动联网校验授权。可跨芯片部署,与平台弱耦合(官方列多家半导体伙伴,含 ST 等)。",
+     "maps_to": [
+      "整机架构",
+      "通道处理",
+      "矩阵路由",
+      "上位机-固件协议参照"
+     ],
+     "license": "Proprietary 商业授权(运行时按 core 授权,Designer 按席位;具体价格/royalty 非公开)",
+     "license_source": "https://dspconcepts.com/en/audio-weaver",
+     "maturity": "成熟商用产品,汽车/消费电子量产案例多,文档齐全",
+     "relevance": "评估",
+     "risks": "价格与 royalty 需商务接触才知;绑定其工具链与授权服务器;买它等于放弃自研算法路线的一部分差异化;AEC 等高级模块可能是额外付费第三方 IP。",
+     "links": [
+      "https://dspconcepts.com/en/audio-weaver",
+      "https://documentation.dspconcepts.com/awe-designer/latest-version/overview",
+      "https://dspconcepts.com/community-forum/awe-core/4082-audio-weaver-core-licensing"
+     ]
+    },
+    {
+     "name": "Analog Devices SigmaStudio / SigmaStudio for SHARC + SAM baremetal SDK",
+     "type": "commercial",
+     "what": "芯片厂\"整套送\"路线的代表:SigmaStudio 图形化 DSP 开发环境(免费),含矩阵/EQ/动态等预制算法块;SigmaStudio for SHARC 需 CrossCore Embedded Studio 授权(90天评估后收费);另有 SHARC Audio Module 开源示例 SDK(GitHub analogdevicesinc/sam-baremetal-sdk)。强耦合 ADI 平台(SigmaDSP ADAU145x / SHARC ADSP-215xx/SC5xx)。",
+     "maps_to": [
+      "整机架构",
+      "通道处理",
+      "DSP平台选型"
+     ],
+     "license": "SigmaStudio 工具免费专有;SS for SHARC 需 CCES 付费授权;sam-baremetal-sdk 仓库许可未逐文件核 [待核]",
+     "license_source": "https://www.analog.com/en/resources/evaluation-hardware-and-software/software/sh_sigst_00.html",
+     "maturity": "成熟量产工具链,大量商用音频产品在用",
+     "relevance": "评估",
+     "risks": "平台锁定:仅当 DSP 选型落 ADI 时有意义;SigmaStudio 预制块黑盒、算法差异化受限;AEC 级算法仍需自研或买 IP。",
+     "links": [
+      "https://www.analog.com/en/resources/evaluation-hardware-and-software/software/sh_sigst_00.html",
+      "https://github.com/analogdevicesinc/sam-baremetal-sdk",
+      "https://wiki.analog.com/resources/tools-software/sigmastudio/faq"
+     ]
+    },
+    {
+     "name": "AES17-2020(数字音频设备测量方法)",
+     "type": "standard",
+     "what": "数字音频设备(ADC/DAC/DSP整机)电性能测量的事实验收标准:THD+N、动态范围、频响、幅度线性、抖动等的测试条件与方法。Audio Precision 等测试仪直接内置 AES17 测量模式,可作本机验收规范骨架。",
+     "maps_to": [
+      "验收测试",
+      "指标定义"
+     ],
+     "license": "付费标准文档(AES 会员可免费获取;非会员经 AES/ANSI 渠道购买)",
+     "license_source": "https://www.aes.org/publications/standards/search.cfm?docID=21",
+     "maturity": "现行有效(2020版),行业事实标准",
+     "relevance": "采用候选",
+     "risks": "针对中高性能设备;会议语音链路(AEC后)指标需另配 ITU-T P 系标准补齐。",
+     "links": [
+      "https://www.aes.org/publications/standards/search.cfm?docID=21"
+     ]
+    },
+    {
+     "name": "IEC 60268 系列(音响系统设备),重点 -3(放大器)与 -16(STI 语音可懂度)",
+     "type": "standard",
+     "what": "音响设备特性与测量方法的国际标准族:60268-3 规定模拟口(本机模拟8进8出前后级)的特性与测量;60268-16 定义 STI 语音传输指数(会议扩声可懂度评价);另有 -1 通则等。IEC webstore 付费购买,国标 GB/T 12060 系列为对应采标(中文获取途径)。",
+     "maps_to": [
+      "验收测试",
+      "指标定义",
+      "扩声效果评价"
+     ],
+     "license": "付费标准文档(IEC webstore / ANSI webstore;中文可走 GB/T 12060 采标)",
+     "license_source": "https://standards.globalspec.com/std/1593929/iec-60268-3",
+     "maturity": "现行有效,持续维护(60268-3:2018, 60268-16:2020)",
+     "relevance": "采用候选",
+     "risks": "整套购齐费用不低;-3 主要覆盖模拟部分,数字域需 AES17 互补。",
+     "links": [
+      "https://standards.globalspec.com/std/1593929/iec-60268-3",
+      "https://standards.globalspec.com/std/14331018/iec-60268-16"
+     ]
+    },
+    {
+     "name": "ITU-T P.340 / P.341(免提终端传输特性与语音质量参数)",
+     "type": "standard",
+     "what": "免提/会议终端的发送响度、接收响度、回声损耗(TCLw)、双讲性能、切换特性等参数定义与测法;P.341 为宽带扩展。是会议 DSP(AEC+NR+AGC 链路)整机语音验收最贴切的参照系。ITU-T 建议书官网免费下载。",
+     "maps_to": [
+      "验收测试",
+      "AEC",
+      "指标定义"
+     ],
+     "license": "标准文档免费公开(ITU-T 官网 PDF)",
+     "license_source": "https://www.itu.int/rec/T-REC-P.340",
+     "maturity": "现行 ITU-T 建议书",
+     "relevance": "采用候选",
+     "risks": "面向电话终端场景,应用到会议矩阵处理器需自行裁剪测试拓扑(远端/近端定义)。",
+     "links": [
+      "https://www.itu.int/rec/T-REC-P.340",
+      "https://www.itu.int/rec/T-REC-P.341"
+     ]
+    },
+    {
+     "name": "ITU-T G.167(声学回声控制器)+ G.168(线路回声消除器)",
+     "type": "standard",
+     "what": "G.167 规定 AEC 的性能特性(收敛时间、回声衰减、双讲退化等)与测试方法,是 AEC 指标框架的经典出处(要求覆盖至 400ms 回声路径);G.168 是线路回声对照件,含标准回声路径模型可借用于测试。均可 ITU 官网免费获取。",
+     "maps_to": [
+      "AEC",
+      "验收测试"
+     ],
+     "license": "标准文档免费公开(ITU-T 官网 PDF)",
+     "license_source": "https://www.itu.int/rec/T-REC-G.167",
+     "maturity": "G.167 为 1993 版、已边缘化(defunct)但无直接替代;G.168 现行",
+     "relevance": "评估",
+     "risks": "G.167 陈旧、无详细回声路径模型;现代会议 AEC 验收实践更多用 P.340 + ETSI/3GPP 终端测试族,需组合使用。",
+     "links": [
+      "https://www.itu.int/rec/T-REC-G.167",
+      "https://www.itu.int/rec/T-REC-G.168"
+     ]
+    },
+    {
+     "name": "Biamp Tesira 公开架构/设计资料(Cornerstone 知识库)",
+     "type": "commercial",
+     "what": "会议 DSP 标杆产品的公开工程资料:AEC in Tesira(AEC Input/Processing/Reference 块划分与信号链)、Conference Room Design Library(mix-minus、分区合并、AEC 参考选取等整套拓扑)、TesiraFORTE 数据手册(8x8 会议 DSP 直接对标机型)。对 CONF-DSP-88 的信号链设计、功能清单、验收口径是最好的免费参照系。",
+     "maps_to": [
+      "整机架构",
+      "AEC",
+      "矩阵路由",
+      "自动混音",
+      "功能定义"
+     ],
+     "license": "专有产品文档,公开可阅(版权归 Biamp)",
+     "license_source": "https://support.biamp.com/Tesira/Programming/AEC_in_Tesira",
+     "maturity": "成熟量产产品线,知识库持续维护",
+     "relevance": "评估",
+     "risks": "只讲拓扑与使用,不讲算法内部;照抄功能命名/UI 需注意商标;其自动混音涉及增益共享思想(Dugan 类,原始专利 1970s 已过期,顺带记录)。",
+     "links": [
+      "https://support.biamp.com/Tesira/Programming/AEC_in_Tesira",
+      "https://support.biamp.com/Design_Library/Conference_Rooms/Mix-minus_conference_room_system",
+      "https://downloads.biamp.com/assets/docs/default-source/data-sheets/biamp_data_sheet_tesiraforte_avb_ci.pdf"
+     ]
+    },
+    {
+     "name": "Shure IntelliMix P300 公开资料(用户指南/产品页)",
+     "type": "commercial",
+     "what": "与 CONF-DSP-88 形态最接近的竞品之一:8 通道话筒处理(AEC+NR+AGC)+ IntelliMix 自动混音 + 矩阵混音 + 延迟/压缩/PEQ 的固定架构会议处理器。用户指南完整给出信号流图与参数范围,可直接用作功能规格与默认参数的参照。",
+     "maps_to": [
+      "整机架构",
+      "功能定义",
+      "自动混音",
+      "通道处理"
+     ],
+     "license": "专有产品文档,公开可阅(版权归 Shure)",
+     "license_source": "https://www.shure.com/en-US/products/mixers/p300",
+     "maturity": "成熟量产产品",
+     "relevance": "评估",
+     "risks": "算法黑盒;自动混音属 Dugan 增益共享一族(原始专利已过期,新变体专利需注意,不深挖);Shure 在自动调参方向持有在授专利(如 US11985488)。",
+     "links": [
+      "https://www.shure.com/en-US/products/mixers/p300",
+      "https://www.canford.co.uk/ProductResources/resources/S/Shure/Shure%20P300_guide_en-US.pdf"
+     ]
+    },
+    {
+     "name": "CamillaDSP",
+     "type": "oss",
+     "what": "Rust 写的跨平台 IIR/FIR 处理引擎:YAML 定义 pipeline(矩阵 mixer + biquad + FFT 卷积 FIR + 延迟/限幅/动态),WebSocket 控制接口。不是嵌入式 DSP 固件,但其 pipeline/配置模型、mixer 抽象、上位机控制协议是 8x8 矩阵处理器软件架构的优质开源参照;也可做 PC 端算法原型床。",
+     "maps_to": [
+      "矩阵路由",
+      "通道处理",
+      "上位机-固件协议参照",
+      "算法原型验证"
+     ],
+     "license": "GPL-3.0 与 MPL-2.0 双许可(启用 Windows ASIO 后端时仅 GPL-3.0)",
+     "license_source": "https://github.com/HEnquist/camilladsp",
+     "maturity": "活跃成熟:1000+ stars、v4.x、1700+ commits、多架构预编译",
+     "relevance": "评估",
+     "risks": "Rust/桌面平台,不能直接落嵌入式 DSP 芯片;若走 MPL-2.0 取用代码须保持文件级开源并逐文件确认许可头;无 AEC/自动混音。",
+     "links": [
+      "https://github.com/HEnquist/camilladsp",
+      "https://henquist.github.io/"
+     ]
+    },
+    {
+     "name": "freeDSP aurora(auverdion Aurora)",
+     "type": "oss",
+     "what": "开源 8进8出 DSP 板整机项目:ADAU1452 + AKM 转换器 + XMOS USB Audio + ESP32(WiFi 控制),含 S/PDIF、ADAT。通道规模与本机一致(8x8),其硬件划分(DSP+控制MCU+USB音频)与 Web 控制界面是硬件/系统分层的直接参照;曾 Kickstarter 众筹并商业销售。",
+     "maps_to": [
+      "整机架构",
+      "硬件分层参照",
+      "上位机"
+     ],
+     "license": "CC-BY-SA-4.0(硬件/文档);固件部分许可未在 README 明示 [待核]",
+     "license_source": "https://github.com/freeDSP/freeDSP-aurora/blob/master/README.md",
+     "maturity": "已过原型期(众筹交付+商售),社区维护中等(220 stars,21 open issues)",
+     "relevance": "观望",
+     "risks": "CC-BY-SA 对衍生硬件文档有传染性(仅参考思路、不复制版图则无碍);Hi-Fi 定位,无 AEC/自动混音/网络音频;强耦合 ADAU1452。",
+     "links": [
+      "https://github.com/freeDSP/freeDSP-aurora",
+      "https://freedsp.github.io/"
+     ]
+    },
+    {
+     "name": "QSC Q-SYS 平台架构公开资料(System Description)",
+     "type": "commercial",
+     "what": "\"通用 CPU 软件 DSP\"路线的代表性反例/对照:Q-SYS 用 Intel x86 + 实时 Linux 做全软件音视频控制平台,官方 help 的 System Description 与博客解释其架构取舍。对本项目价值在于路线对比论证(专用 DSP 芯片 vs 通用 CPU)与平台级功能清单。",
+     "maps_to": [
+      "整机架构",
+      "路线对比论证"
+     ],
+     "license": "专有产品文档,公开可阅(版权归 QSC)",
+     "license_source": "https://help.qsys.com/q-sys_7.0/Content/Overview/001_System_Description.htm",
+     "maturity": "成熟量产平台",
+     "relevance": "观望",
+     "risks": "未找到拆解级深度白皮书,公开资料停留在 help/营销层;架构路线与本项目(嵌入式 DSP 芯片)相反,仅作对照。",
+     "links": [
+      "https://help.qsys.com/q-sys_7.0/Content/Overview/001_System_Description.htm",
+      "https://www.qsys.com/products-solutions/q-sys/processing/"
+     ]
+    },
+    {
+     "name": "DSPPA DP8005(8通道会议音频处理器)",
+     "type": "commercial",
+     "what": "国产直接竞品:8 通道会议音频处理器,带 AEC/ANC、自动混音、矩阵。产品页公开功能规格,可作为国内市场功能基线与定价参照(中文生态覆盖的一个锚点)。",
+     "maps_to": [
+      "功能定义",
+      "竞品基线"
+     ],
+     "license": "专有产品资料,公开可阅(版权归 DSPPA)",
+     "license_source": "https://www.dsppatech.com/product/dp8005-8-channels-conference-audio-processor--with-anc--aec.html",
+     "maturity": "在售商用产品",
+     "relevance": "观望",
+     "risks": "仅产品页级信息,无架构细节;国产竞品全景未系统扫描(见 not_covered)。",
+     "links": [
+      "https://www.dsppatech.com/product/dp8005-8-channels-conference-audio-processor--with-anc--aec.html"
+     ]
+    },
+    {
+     "name": "ITU-T P.862 (PESQ) / P.863 (POLQA) 客观语音质量评估",
+     "type": "standard",
+     "what": "端到端语音质量客观评分标准,可用于 AEC/NR 链路的研发回归指标(非必须的出厂验收项)。P.862 建议书文本免费,附参考代码;P.863 为现行替代。",
+     "maps_to": [
+      "验收测试",
+      "算法回归指标"
+     ],
+     "license": "建议书文本免费公开;P.862 参考代码商用历史上需向权利方(OPTICOM 等)取得授权、P.863 实现需商业授权 [待核]",
+     "license_source": "https://www.itu.int/rec/T-REC-P.862",
+     "maturity": "P.862 已被 P.863 取代但仍广泛使用",
+     "relevance": "评估",
+     "risks": "参考实现的商用授权/专利状态需专项核实(PESQ 相关专利多已到期,但不可凭印象);替代方案是开源 ViSQOL 等(属算法维度)。",
+     "links": [
+      "https://www.itu.int/rec/T-REC-P.862",
+      "https://www.itu.int/rec/T-REC-P.863"
+     ]
+    },
+    {
+     "name": "aes67-linux-daemon (bondagit)",
+     "type": "oss",
+     "what": "最完整的开源 AES67 网络音频实现:Linux daemon + Merging RAVENNA ALSA 内核驱动,PTP 同步、SAP/mDNS 发现、REST API + WebUI,支持 ST 2022-7 冗余。是\"矩阵+网络音频\"拼图里网络侧唯一成规模的开源参照。",
+     "maps_to": [
+      "网络音频"
+     ],
+     "license": "GPL-3.0(daemon 与 WebUI;RAVENNA ALSA 驱动亦为 GPL)",
+     "license_source": "https://github.com/bondagit/aes67-linux-daemon",
+     "maturity": "活跃:544 stars、490 commits、CI、多次 release",
+     "relevance": "规避",
+     "risks": "GPL 触及固件红线,按项目纪律标规避、仅参考协议栈思路;若整机含独立 Linux 网络子系统,GPL 进程级隔离方案可另行法务评估,但不在默认路线内。",
+     "links": [
+      "https://github.com/bondagit/aes67-linux-daemon",
+      "https://github.com/bondagit/ravenna-alsa-lkm"
+     ]
+    },
+    {
+     "name": "ravennakit (soundondigital)",
+     "type": "oss",
+     "what": "C++ 的 RAVENNA/AES67/ST 2110-30 实现(桌面/服务器向),比 aes67-linux-daemon 更库化。",
+     "maps_to": [
+      "网络音频"
+     ],
+     "license": "AGPL-3.0 [待核]",
+     "license_source": "",
+     "maturity": "较新项目,成熟度低于 aes67-linux-daemon",
+     "relevance": "规避",
+     "risks": "AGPL 对闭源产品完全不可用,仅可读源学习协议实现思路。",
+     "links": [
+      "https://github.com/soundondigital/ravennakit"
+     ]
+    },
+    {
+     "name": "Elk Audio OS / Sushi",
+     "type": "oss",
+     "what": "面向嵌入式 Linux 的低延迟音频 OS + 插件宿主(Sushi,轨道式 DSP 引擎、gRPC 控制),号称 1ms 级往返延迟。作为\"嵌入式实时音频引擎 + 上位机控制协议\"的整体架构参照有价值。",
+     "maps_to": [
+      "整机架构",
+      "上位机-固件协议参照"
+     ],
+     "license": "AGPL-3.0(Sushi;含与 GPL/LGPL 组合的例外条款;可购商业许可)",
+     "license_source": "https://github.com/elk-audio/sushi/blob/master/LICENSE.md",
+     "maturity": "曾商业运营后开源,社区 best-effort 维护",
+     "relevance": "规避",
+     "risks": "AGPL 触红线;商业许可可购但公司状态/报价不明;绑 Linux 路线,与嵌入式 DSP 芯片路线不合。",
+     "links": [
+      "https://github.com/elk-audio/sushi",
+      "https://elk-audio.github.io/elk-docs/html/intro/license.html"
+     ]
+    },
+    {
+     "name": "Open Live Mixing System (OLMS)",
+     "type": "oss",
+     "what": "把 Mini-PC 变成机架式数字调音台的开源项目:RT Linux + Ardour headless + PipeWire/JACK + OSC/Web 控制,目标 <5ms 往返延迟。品类上最接近\"整机开源调音台\",但走 PC 路线。",
+     "maps_to": [
+      "整机架构",
+      "路线对比论证"
+     ],
+     "license": "GPL-3.0",
+     "license_source": "https://github.com/Open-Live-Mixing-System-OLMS/Open-Live-Mixing-System",
+     "maturity": "早期 PoC(Phase 1,35 stars,仅引擎无界面)",
+     "relevance": "观望",
+     "risks": "GPL + PC 平台 + 极早期,只能观察其延迟工程实践;无会议算法。",
+     "links": [
+      "https://github.com/Open-Live-Mixing-System-OLMS/Open-Live-Mixing-System"
+     ]
+    }
+   ],
+   "not_covered": [
+    "\"会议 AEC + 自动混音 + 矩阵\"品类没有找到任何可用的整机级开源对等项目——开源整机项目全部偏 Hi-Fi(CamillaDSP/freeDSP)或现场扩声(OLMS),会议链路(AEC/NR/AGC/automix 组合)只存在于商用闭源产品;算法级开源件(Speex/WebRTC AEC 等)属其他维度,本维度未展开",
+    "中文生态盲区未消:仅带出 DSPPA DP8005 一个竞品产品页;国产会议 DSP 厂商全景(如其他厂商的公开架构资料、国内开源社区项目)未系统扫描",
+    "Audio Weaver 的具体报价、royalty 结构、AEC 模块是否额外收费——非公开信息,需商务接触获取",
+    "Dante(Audinate)嵌入式模块的授权模式与费用未查(建议归网络音频维度专项)",
+    "ETSI TS 103 224 / 3GPP TS 26.132 等终端声学测试标准族未逐一核实,留待测试标准专项细化",
+    "主流会议 DSP(Tesira/P300 等)的第三方硬件拆解文章未找到,公开资料止于官方文档层",
+    "sam-baremetal-sdk 仓库的逐文件许可、freeDSP aurora 固件(ESP32 部分)许可、ravennakit 的 AGPL 均未核到主源 LICENSE 文件,已在相应条目标 [待核]"
+   ],
+   "search_log": [
+    "DSP Concepts Audio Weaver AWE Core licensing model embedded audio framework",
+    "open source digital mixing console DSP project github license",
+    "CamillaDSP github license matrix mixer filters",
+    "FreeDSP aurora open source DSP board license",
+    "Biamp Tesira architecture white paper conferencing DSP AEC signal chain",
+    "Shure IntelliMix P300 conferencing DSP white paper signal processing architecture",
+    "AES17-2020 measurement digital audio equipment standard scope",
+    "ITU-T P.340 hands-free terminals acoustic echo control G.167 test standard conferencing",
+    "IEC 60268 series sound system equipment parts overview 60268-3 60268-16",
+    "AES67 open source implementation daemon github license Ravenna",
+    "QSC Q-SYS platform architecture white paper software DSP Intel",
+    "Elk Audio OS Sushi github license open source",
+    "Analog Devices SigmaStudio SHARC Audio Module SDK license open source",
+    "open source conference room audio processor AEC automixer project firmware",
+    "WebFetch 核源: github.com/HEnquist/camilladsp; github.com/Open-Live-Mixing-System-OLMS/Open-Live-Mixing-System; dspconcepts.com/en/audio-weaver; github.com/bondagit/aes67-linux-daemon; github.com/freeDSP/freeDSP-aurora README; github.com/elk-audio/sushi LICENSE.md"
+   ]
+  }
+ ]
+}

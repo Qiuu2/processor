@@ -1,0 +1,1359 @@
+{
+ "run": "wf_b9bc339b-8ca",
+ "date": "2026-07-30",
+ "dims": [
+  {
+   "dimension": "automix",
+   "verdicts": [
+    {
+     "name": "Dugan, D. (1975) \"Automatic Microphone Mixing\", JAES Vol.23 No.6, pp.442-449 (AES Convention 51, Paper 1034)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(版权文献,AES E-Library 付费下载;仅原理参考)",
+     "evidence_url": "https://www.aes.org/e-lib/browse.cfm?elib=2683",
+     "capability_verdict": "supported",
+     "notes": "AES E-Library 主源确认:Dan Dugan, JAES Vol.23 pp.442-449, 1975。摘要明确含 active/passive speech zones 分析、VOX 开关缺陷讨论与 adaptive threshold gating 提案,与 what 字段宣称完全一致。"
+    },
+    {
+     "name": "US3992584A \"Automatic microphone mixer\"(Dan Dugan, 申请1975-05-09, 授权1976-11-16)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(专利文本;Google Patents 法律状态 Expired - Lifetime,届满日 1993-11-16,技术已入公有领域,实施无专利障碍)",
+     "evidence_url": "https://patents.google.com/patent/US3992584A/en",
+     "capability_verdict": "supported",
+     "notes": "Google Patents 主源确认:发明人 Daniel W. Dugan,申请 1975-05-09,授权 1976-11-16,已过期(anticipated expiration 1993-11-16)。核心权利要求原文与扫描描述逐字吻合:'Each input shall be attenuated by the same number of dB that the level in that input is below the level of the sum of all inputs',总系统增益恒定。扫描的过期日期与算法规格描述均准确。"
+    },
+    {
+     "name": "Biamp Cornerstone 技术文档(Automixer basics / Gain Sharing vs. Gating Automixer / Microphone Isolation Factor)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(厂商公开网页文档,版权保留,仅作设计参考)",
+     "evidence_url": "https://support.biamp.com/General/Audio/Automixer_basics",
+     "capability_verdict": "supported",
+     "notes": "两个主源页均核验:Automixer basics 页确认 10log(NOM)、每倍增开麦衰减 3dB、上限 8 麦/9dB('will not increase further')、off-attenuation 默认 -40dB、hold time 默认 1000ms、Designated Mic ON/Last Mic Hold(默认 None);Tesira Gain_Sharing_Automixer.htm 确认 Microphone Isolation Factor 范围 0-2.00、默认 1.00。所有工程参数宣称与主源一致。注意 Isolation Factor 不在 basics 页而在 Tesira 帮助页,扫描给出的三条链接组合覆盖正确。"
+    },
+    {
+     "name": "Shure SCM820 Digital IntelliMix 用户指南 + Shure insights 技术文章",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(公开产品手册,©2017 Shure Incorporated,版权保留,仅作设计参考)",
+     "evidence_url": "https://www.avc-group.com/assets/products/Shure/pdfs/shure-um-scm820.pdf",
+     "capability_verdict": "supported",
+     "notes": "PDF 全文核验(SCM820 User Guide 27A20290 Rev.4):NAT(Noise Adaptive Threshold)、MaxBus(每声源仅开一麦)、NOMA、Max NOM(可设 1='filibuster mode' 至无限)、Last Mic Lock On、Chairperson-Controlled Muting(经 Override In 逻辑口强制开启并压掉其他通道,Mute 优先于 Override)均在手册中逐项确认。两点精度提示:(1) NOMA 实为每倍增 1-6dB 可调(Custom 模式),-3dB 只是惯例值而非固定;(2) gain-before-feedback 的定量表述在手册中位于 DFR 章节(6-9dB 改善)而非 NOMA 章节,NOMA 处为定性表述。手册另载 Patent Notice: US 5,999,631,佐证扫描'勿逐条复刻其专利'的风险提示。"
+    },
+    {
+     "name": "leafac/reaper — Automixer JSFX(含 track priority 的增益共享实现)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(仓库 LICENSE 原文核验:MIT License, Copyright (c) 2023 Leandro Facchinetti)",
+     "evidence_url": "https://raw.githubusercontent.com/leafac/reaper/main/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "仓库存在,含增益共享 Automixer JSFX 且带 track priorities(README 明示为其相对原版的新增功能);'最多64通道'宣称与主源相符(README:受 REAPER 每轨 64 通道限制,原版反而支持大规模多轨)。LICENSE 原文为标准 MIT。隐患:该 Automixer 自述'based on the original REAPER JSFX extension',即为第三方脚本的衍生作品,上游原脚本(疑即 not_covered 提到的 REAPER Stash 'Dugan AutoMixer')license 未核——若逐行参考/移植其代码,MIT 授权链可能不干净;按扫描既定用法(读算法后用 C 自研重写)风险低,但不可直接复制代码。仓库同时再分发 SWS/ReEQ 等第三方插件,其 license 与本仓 MIT 无关,勿混淆。"
+    },
+    {
+     "name": "QSC Q-SYS / BSS Soundweb London 门控 automixer 组件帮助文档",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(厂商公开帮助文档,版权保留,仅作设计参考)",
+     "evidence_url": "http://help.qsys.com/Content/Schematic_Library/auto_mixer_gated.htm",
+     "capability_verdict": "supported",
+     "notes": "三条链接核验其二(Q-SYS 两页)+ BSS Harman 页:绝对阈值(gated 页)与相对阈值/噪声地板跟踪(gating_adaptive 页 Noise Floor Tracking + Threshold Level Above Noise)两种门限判决确认;hold time、Depth(off attenuation)、Max NOM、优先级(Q-SYS: Auto/Priority/Filibuster 三模式;BSS: 1-32 级 priority)均确认。精度提示:(1) Q-SYS 两页均未见独立 decay/release 参数(仅 hold),BSS 页有 Off Gain 但'decay'亦未明示,扫描'hold/decay'表述略超出主源;(2) 无显式'chairman'命名,仅 priority 类机制,与扫描'chairman 类优先级'的谨慎措辞相符;(3) 原链接 q-syshelp.qsc.com 已 301 重定向至 help.qsys.com,建议更新链接。"
+    }
+   ],
+   "flags": [
+    "跳过 5 个候选未核验:观望 4(Waves Dugan Automixer 手册、Perez-Gonzalez & Reiss 2009、De Man et al. 2017、Sound Devices Automatic Mixing 101),规避 1(shadowfaxster/AutomixerVST,无 LICENSE)",
+    "leafac/reaper Automixer 为第三方'original REAPER JSFX extension'的衍生作品,上游脚本 license 未核(扫描 not_covered 自认 REAPER Stash 'Dugan AutoMixer' 未核)——本仓 MIT 授权对衍生部分的授权链存疑;仅可作算法阅读参考,严禁直接复制代码入闭源固件。此为影响该候选'评估'档位使用方式的唯一实质问题",
+    "Shure NOMA 精度修正:SCM820 手册载明 NOMA 为每倍增开麦 1-6dB 可调(Custom 模式),扫描所述'-3dB'仅为默认/惯例值,自研参数表应按可调范围设计",
+    "SCM820 手册 Patent Notice 载 US 5,999,631 且'Other patents pending',与扫描已记录的 US7440577 一并佐证:实现时只按经典 NOM/门控/增益共享惯例(过期专利 US3992584A 公有领域部分),勿复刻 Shure 在效专利权利要求",
+    "QSC 帮助页原链接 q-syshelp.qsc.com 已 301 迁移至 help.qsys.com,雷达定稿应更新;另 Q-SYS/BSS 主源均无独立 decay 参数(仅 hold/Off Gain),扫描'hold/decay'措辞轻微超出主源,不影响档位",
+    "license 合规总体结论:6 个核验对象中唯一 oss 候选(leafac/reaper)LICENSE 原文核验为纯 MIT,无双授权、无 GPL/LGPL、无专利附加条款;其余均为版权文献/过期专利/厂商文档,按'行为参考+自研实现'路线无传染风险。扫描的核心判断(无可直接嵌入的宽松 license 开源库、算法需自研)经反驳性核验后成立"
+   ]
+  },
+  {
+   "dimension": "usb-storage",
+   "verdicts": [
+    {
+     "name": "TinyUSB",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(仓库 LICENSE 原文核验,无专利条款、无附加限制)",
+     "evidence_url": "https://raw.githubusercontent.com/hathach/tinyusb/master/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "README/docs 原文列明 Audio Class 1.0/2.0 (UAC1/UAC2) 设备类、Host 侧 MSC、50+ MCU 家族,与描述逐条相符。扫描结论无误。"
+    },
+    {
+     "name": "FatFs (ChaN)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "FatFs License:1-clause BSD 等价,官方 appnote 明示允许闭源商用二进制再分发,与 GPL 兼容",
+     "evidence_url": "https://elm-chan.org/fsw/ff/doc/appnote.html",
+     "capability_verdict": "supported",
+     "notes": "appnote 原文核验三项关键宣称均成立:写打开期间断电可损坏 FAT 结构(建议 f_sync 缩小临界窗口)、FAT 卷单文件 2^32-1 字节上限、开启 exFAT 商用需 Microsoft 专利授权(基于 US 2009/0164440 A1)。"
+    },
+    {
+     "name": "WAV 掉电恢复策略(周期回写 header + 事后重建)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(公开策略资料,非代码)",
+     "evidence_url": "https://wav.repair/articles/recover-a-damaged-wav-recording",
+     "capability_verdict": "supported",
+     "notes": "主链接文章确认核心机理:掉电后 PCM 数据落盘但 RIFF/data 尺寸字段未更新,恢复=按实际字节数重建 header。但注意:所引来源不含'bytes 4-7 / 40-43'具体偏移(该偏移对标准 44 字节 canonical WAV header 正确,属通用 RIFF 常识,非来源支撑);且该条 type 标为 standard 实为'行业做法+修复类文章',非正式标准,扫描自己也承认无开源固件级参考实现、需自研——采用档位应理解为'采用该策略自研',不是采用某个现成物。"
+    },
+    {
+     "name": "Windows USB Audio 2.0 内置类驱动(usbaudio2.sys)公开资料",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(Microsoft 官方文档)",
+     "evidence_url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/usb-2-0-audio-drivers",
+     "capability_verdict": "supported",
+     "notes": "官方页原文确认:Win10 1703 起内置 usbaudio2.sys UAC2 类驱动。反核出比扫描更硬的官方约束:(1) 异步 OUT 仅支持显式反馈端点,'不支持隐式反馈'为官方明文(扫描引的'忽略反馈速率请求'只是社区报告);(2) 官方明文'共享模式下不支持大于 8 通道'——对本 8进8出 产品 8ch 回录恰好在界内,但任何 >8ch 复合暴露方案会撞墙;(3) 'Win11 22621 起校验更严'为社区说法,官方页无此表述,属未核实细节。主结论(UAC1 兼容面最大、多通道须 UAC2、Windows 是瓶颈)成立。"
+    },
+    {
+     "name": "CherryUSB",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "Apache-2.0(仓库 LICENSE 原文为标准 Apache 2.0,含标准专利授权与专利诉讼终止条款,无额外限制)",
+     "evidence_url": "https://raw.githubusercontent.com/cherry-embedded/CherryUSB/master/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "仓库确认 UAC1.0/UAC2.0 设备类、host MSC、支持 DWC2/MUSB/CHIPIDEA/EHCI/XHCI 等 IP(CDNS3/DWC3 标注未支持),约 2k stars 属实。小出入:扫描称'持续发版 v1.6.x',仓库文档可见里程碑为 V1.4.3,v1.6.x 未能从主源确认——不影响档位,建议采用前核对当前 release。"
+    },
+    {
+     "name": "littlefs",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "BSD-3-Clause(LICENSE.md 原文,版权方 Arm Limited + The littlefs authors,无专利条款)",
+     "evidence_url": "https://raw.githubusercontent.com/littlefs-project/littlefs/master/LICENSE.md",
+     "capability_verdict": "supported",
+     "notes": "README 原文逐条支撑:强 copy-on-write 保证、随机掉电回退到最近一致状态、动态磨损均衡+坏块处理、RAM 严格有界、面向微控制器小容量 flash。扫描对其定位(PC 不识别、不适合U盘、仅内部存储)判断正确。"
+    },
+    {
+     "name": "RF64 / BW64(EBU Tech 3306,ITU-R BS.2088)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(公开标准文本,ITU/EBU 可免费获取,实现不受限)",
+     "evidence_url": "https://www.itu.int/rec/R-REC-BS.2088/en",
+     "capability_verdict": "supported",
+     "notes": "ITU 官方页确认:BS.2088-2 于 2025-11 批准、现行有效,取代 BS.2088-1 (2019-10) 与 BS.2088-0 (2015-10)——扫描'最新 2025-11 修订'这一最易出错的时效性宣称属实。ds64 记录 64 位尺寸、突破 4GB 为标准正文内容。"
+    },
+    {
+     "name": "exFAT 商用授权(Microsoft 专利授权计划 / Tuxera Microsoft exFAT)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "商业专利授权(付费):可向 Microsoft 直接申请 patent-only license(逐案报价),或经合作方(Tuxera/Segger/Paragon/Embedded Access)的商用实现打包获得直接授权",
+     "evidence_url": "https://www.microsoft.com/en-us/legal/intellectualproperty/tech-licensing/programs",
+     "capability_verdict": "overstated",
+     "notes": "授权计划真实存在、Tuxera 为官方列名合作方,均核实。但扫描的'任何实现(含 Linux 实现)用于商用设备均需专利授权'被 Microsoft 自家页面反驳:该页明文指出 exFAT 已于 2019 进入 Linux kernel 5.7,使用该内核代码的设备在 GPLv2 下覆盖(Microsoft 经 OIN 开放了对 Linux 系统的 exFAT 专利)。对本项目(裸机 DSP + FatFs)结论不变——FatFs 开 exFAT 确需授权(FatFs appnote 明示);但若架构改走嵌入式 Linux,存在免付费路径,该决策点的成本假设需修正。"
+    }
+   ],
+   "flags": [
+    "跳过 4 条非核验对象:Zephyr usbd_uac2(观望)、Reliance Edge(观望)、XMOS lib_xua(观望)、wavfix(规避)",
+    "[影响采用决策] exFAT 授权条目宣称过宽:Microsoft 官方页明示 Linux kernel 5.7+ 内核 exFAT 代码经 OIN 覆盖、无需单独专利授权——'仅支持 FAT32 规避 vs 付费授权'的二选一决策框架漏掉了'嵌入式 Linux 走内核实现'第三路径;若平台选型含 Linux,应重算该合规成本",
+    "[影响 UAC2 设计] usbaudio2.sys 官方文档明文:异步 OUT 仅支持显式反馈端点(不支持隐式反馈),且共享模式下不支持 >8 通道——8进8出产品的 UAC2 描述符必须实现显式反馈端点,回录通道数不得超 8;扫描只以社区报告转述,官方约束比其表述更明确更硬",
+    "扫描的'Win11 22621 起描述符校验更严'为社区说法,官方文档无此表述,未核实,不应作为设计依据引用",
+    "CherryUSB 版本宣称 v1.6.x 未能从主源确认(仓库文档可见里程碑为 V1.4.3),采用前核对当前 release",
+    "license 陷阱专项复查结果:核验对象中未发现 GPL 传染漏标、双授权漏报或 BSD+专利附加条款——TinyUSB=纯 MIT、FatFs=1-clause BSD 等价且明示允许闭源、littlefs=纯 BSD-3 无专利条款、CherryUSB=标准 Apache-2.0(其专利终止条款为 Apache 标准内容,对闭源商用无碍);WAV 恢复条目 type 标为 standard 但实为行业做法+第三方文章,非正式标准,引用时注意定性"
+   ]
+  },
+  {
+   "dimension": "ota",
+   "verdicts": [
+    {
+     "name": "MCUboot",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "Apache-2.0;LICENSE 明示捆绑 tinycrypt 为 3-clause BSD(ext/tinycrypt)",
+     "evidence_url": "https://raw.githubusercontent.com/mcu-tools/mcuboot/main/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "docs.mcuboot.com/design.html 逐项证实:swap/overwrite/direct-XIP/RAM-load 四策略、swap status 断电续传、test-swap 未确认自动 revert、RSA/ECDSA/Ed25519 签名、imgtool 打包签名。扫描结论无误。"
+    },
+    {
+     "name": "orlp/ed25519",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "zlib(README 明文 'All code is released under the zlib license',GitHub license 标注一致)",
+     "evidence_url": "https://github.com/orlp/ed25519",
+     "capability_verdict": "supported",
+     "notes": "README 证实:便携 ANSI C、基于 SUPERCOP ref10、除随机种子外零依赖、含密钥交换与 scalar 加法。'多年低活跃'风险提示与仓库状态相符。"
+    },
+    {
+     "name": "Monocypher",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "CC0-1.0 OR BSD-2-Clause 双许可任选(LICENCE.md 原文:CC0 为首选公有领域献出,BSD-2 为后备)",
+     "evidence_url": "https://raw.githubusercontent.com/LoupVaillant/Monocypher/master/LICENCE.md",
+     "capability_verdict": "supported",
+     "notes": "官网证实:默认签名为 EdDSA-BLAKE2b(非标准),标准 Ed25519(SHA-512)以可选模块提供;monocypher.c/h 两文件嵌入式友好。扫描对非标准默认签名的风险提示准确。"
+    },
+    {
+     "name": "RAUC",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "LGPL-2.1-or-later(README 明文 'either version 2.1 of the License, or (at your option) any later version';COPYING 为 LGPL-2.1 全文)",
+     "evidence_url": "https://raw.githubusercontent.com/rauc/rauc/master/README.rst",
+     "capability_verdict": "supported",
+     "notes": "README 证实:OpenSSL/X.509 签名校验、PKCS#11/HSM 密钥、U-Boot/Barebox/GRUB/EFI bootloader 集成、slot 分组原子升级、断电中断安全。'独立进程不链接自研代码'的 LGPL 合规判断合理。"
+    },
+    {
+     "name": "libsodium",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "ISC(LICENSE 文件原文)",
+     "evidence_url": "https://raw.githubusercontent.com/jedisct1/libsodium/master/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "官方文档证实 crypto_sign/crypto_sign_verify_detached 为 Ed25519(另有 Ed25519ph 多段接口)。定位为上位机签名端/Linux 档,无异议。"
+    },
+    {
+     "name": "SWUpdate",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "主体 GPL-2.0-only;库 LGPL-2.1-or-later;另含 BSD-1/2/3-Clause、MIT、ISC、CC0-1.0 及文档 CC-BY-SA-4.0(SPDX 逐文件标注)",
+     "evidence_url": "https://sbabic.github.io/swupdate/licensing.html",
+     "capability_verdict": "supported",
+     "notes": "官方文档证实:单/双 copy(双 copy 经 software collections)、streaming、加密+签名镜像、Lua 钩子/自定义 parser、hawkBit(suricatta)对接。扫描的 GPL 独立进程合规分析与'公司政策一刀切则降规避'的条件判断均成立;官方 licensing 页比扫描记录多列 ISC/CC0/CC-BY-SA-4.0,不改变结论。"
+    },
+    {
+     "name": "IETF SUIT 架构(RFC 9019)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(IETF RFC 公开文本)",
+     "evidence_url": "https://www.rfc-editor.org/info/rfc9019",
+     "capability_verdict": "supported",
+     "notes": "RFC 9019 存在,标题/作者(Moran, Tschofenig, Brown, Meriac)/2021 年均相符,内容确为 IoT 固件升级架构与 manifest 标准化论证。一处定性偏差:其状态为 Informational RFC,非 Standards Track,条目 type 标 'standard' 略有拔高,作设计参照用途不受影响。"
+    },
+    {
+     "name": "Interrupt(Memfault)DFU 系列文章",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(博客文章,仅作设计参考;配套示例代码许可须复用前单独核对——扫描已自行标注此点)",
+     "evidence_url": "https://interrupt.memfault.com/blog/device-firmware-update-cookbook",
+     "capability_verdict": "supported",
+     "notes": "文章存在:《Device Firmware Update Cookbook》,François Baldassari,2020-06-23,含多级 bootloader(Bootloader/Loader/App/Updater)架构与 STM32F429 可运行示例,与描述相符。"
+    },
+    {
+     "name": "Mbed TLS",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "Apache-2.0 OR GPL-2.0-or-later 双许可任选(LICENSE 明文 'users may choose which of these licenses they take the code under');闭源固件取 Apache-2.0 侧即可",
+     "evidence_url": "https://raw.githubusercontent.com/Mbed-TLS/mbedtls/development/LICENSE",
+     "capability_verdict": "overstated",
+     "notes": "能力宣称有实质错误:what 字段称 '(3.x起)EdDSA 相关原语',但 Mbed TLS 任何已发布版本均不含 EdDSA/Ed25519 签名——EdDSA PR #5800 于 2022-05 关闭未合并,issue #6166(2022-08)维护者答复仅为'计划中',development 分支 ChangeLog(6543 行)零处提及 EdDSA/Ed25519(ECDSA 出现 72 次)。Mbed TLS 仅有 X25519(ECDH)而无 Ed25519 签名。ECDSA/RSA 宣称属实,maps_to 的 'ECDSA 路线' 定位仍成立,但若签名选型定为 Ed25519 则本条目不可用,需改配 orlp/ed25519 或 Monocypher。"
+    },
+    {
+     "name": "U-Boot(bootcount/altbootcmd 回滚机制)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "GPL-2.0-or-later 为主(Licenses/README:'version 2 ... Most of it can also be distributed under any later version'),逐文件 SPDX 标注,部分文件 GPL-2.0-only/BSD/MIT 等;standalone 应用明确不视为衍生作品",
+     "evidence_url": "https://raw.githubusercontent.com/u-boot/u-boot/master/Licenses/README",
+     "capability_verdict": "supported",
+     "notes": "官方文档证实:CONFIG_BOOTCOUNT_LIMIT + bootlimit 超限执行 altbootcmd 的回滚机制存在;FIT image 签名校验(CONFIG_FIT_SIGNATURE,rsa2048/ecdsa256 等)存在。扫描的 GPL 独立镜像合规判断与 redundant env 断电安全提示均准确。"
+    }
+   ],
+   "flags": [
+    "跳过 5 个候选(非采用候选/评估档):观望×4 = Mender、Eclipse hawkBit、Rugix、RT-Thread OTA 组件;规避×1 = wolfBoot(GPL-3.0 已被扫描正确规避)",
+    "[影响档位] Mbed TLS 的 '(3.x起)EdDSA 相关原语' 宣称为假:无任何已发布版本支持 EdDSA/Ed25519 签名(PR #5800 未合并、ChangeLog 零记录、仅有 X25519 ECDH)。若本维度签名算法选型定为 Ed25519(MCUboot+imgtool 的 Ed25519 路线),Mbed TLS 不能充当验签后端,评估档应限定为 'ECDSA/RSA 路线或 TLS 通道',否则会误导选型",
+    "RFC 9019 为 Informational RFC 而非 Standards Track,条目 type='standard' 有轻微拔高;作设计参照不受影响,但不应在评审材料中称其为'标准'",
+    "SWUpdate 官方 licensing 页实际许可清单比扫描记录更长(另含 ISC、CC0-1.0、文档 CC-BY-SA-4.0),主体 GPL-2.0-only 与 LGPL 库的记录准确;无 GPL 漏标",
+    "双授权核验:Monocypher(CC0-1.0 OR BSD-2-Clause)与 Mbed TLS(Apache-2.0 OR GPL-2.0-or-later)扫描均已完整报出两侧,未发现'只报宽松一侧'问题;WebRTC 式 BSD+专利条款问题在本维度未出现",
+    "RT-Thread OTA 条目自带的 [待核](rt_ota 闭源核心库条款)因该条目为'观望'档按任务规则跳过,未核——若日后升档须先补核",
+    "本维度 10 个核验对象全部存在、9/10 能力宣称获主源支撑、10/10 license 与主源一致:扫描质量总体高于反驳预期,唯一实质错误为 Mbed TLS EdDSA 宣称"
+   ]
+  },
+  {
+   "dimension": "afc",
+   "verdicts": [
+    {
+     "name": "van Waterschoot & Moonen, \"Comparative Evaluation of Howling Detection Criteria in Notch-Filter-Based Howling Suppression\", JAES vol.58 no.11, 2010",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文,AES 版权,付费下载)",
+     "evidence_url": "https://www.aes.org/e-lib/browse.cfm?elib=15738",
+     "capability_verdict": "supported",
+     "notes": "AES E-Library 确认:题名/作者/JAES 58(11), 2010-12, pp.923-940 全部相符;摘要证实多判据组合把误检率从 33% 降至 3%。PTPR/PAPR/PHPR/PNPR/IPMP/IMSD 判据体系另经独立主源交叉证实:Alkaher & Cohen (Acoustics 2022, 已抓全文 PDF) 第968页明确列出这六个判据并注明 'as reviewed in' van Waterschoot & Moonen。扫描描述无误。"
+    },
+    {
+     "name": "van Waterschoot & Moonen, \"Fifty Years of Acoustic Feedback Control: State of the Art and Future Challenges\", Proc. IEEE 99(2):288-327, 2011",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文,IEEE 版权,付费)",
+     "evidence_url": "https://www.semanticscholar.org/paper/Fifty-Years-of-Acoustic-Feedback-Control:-State-of-Waterschoot-Moonen/d0819743fc22dd9825857b94a0d45489259eb3a2",
+     "capability_verdict": "supported",
+     "notes": "ieeexplore 原链接反爬返回空页,经 Semantic Scholar 与 IEEE Prolog PDF (ieeexplore.ieee.org/iel5/5/5692163/05692176.pdf) 核实:Proc. IEEE vol.99 no.2 pp.288-327, 2011-02, DOI 10.1109/JPROC.2010.2090998,内容为声反馈控制综述+方法对比评测,与描述相符。"
+    },
+    {
+     "name": "chapro (Boys Town National Research Hospital)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "CC0-1.0(公有领域贡献;LICENSE 原文已核。注意:CC0 条款明文不放弃商标与专利权,即无 Apache-2.0 式专利授权)",
+     "evidence_url": "https://raw.githubusercontent.com/BoysTownOrg/chapro/master/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "仓库确认为助听器信号处理纯 C 库,afc_process.c 存在;NLMS 类 AFC 由下游 Tympan 移植代码头注释交叉证实('Algorithm from Boys Town National Research Hospital BTNRH at github.com/BoysTownorg/chapro',文件名即 AudioFeedbackCancelNLMS)。GitHub API: 25 stars,pushed_at 2024-07-11,与扫描'2024年仍有提交'相符。唯一保留:CC0 无专利授权条款,BTNRH 的 AFC 专利态势未查,商用固件采用前建议做一次专利排查。"
+    },
+    {
+     "name": "Mounir, Bernardi & van Waterschoot, \"Robust and early howling detection based on a sparsity measure\", EURASIP J. Audio Speech Music Process., 2025 (NINOS²-T)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文,开放获取);配套代码仓 maganino/Howling-Detection-NINOS2T 经 GitHub 页面核为 MIT",
+     "evidence_url": "https://link.springer.com/article/10.1186/s13636-025-00399-1",
+     "capability_verdict": "supported",
+     "notes": "Springer 全文确认:作者/期刊/2025-03-27 发表/开放获取相符;l2/l4 逆稀疏度特征、早期啸叫与 ringing 检测、新标注数据集、precision-recall 评测方法全部在文中有支撑,且在语音与音乐数据集上优于 6 个基线特征。代码仓 MIT、9 stars、仅 3 commits——'论文复现级'的定性准确甚至偏保守。"
+    },
+    {
+     "name": "Gil-Cacho, van Waterschoot, Moonen & Jensen, \"Regularized adaptive notch filters for acoustic howling suppression\", EUSIPCO 2009",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文)",
+     "evidence_url": "https://vbn.aau.dk/en/publications/regularized-adaptive-notch-filters-for-acoustic-howling-suppressi/",
+     "capability_verdict": "supported",
+     "notes": "AAU VBN 页面确认:四作者(扫描条目名漏列第四作者 Jensen 但 what 未错述)、EUSIPCO'09;摘要证实三个并行 RANF 分别做频率跟踪/检测/抑制、梯度下降更新、'minimal processing delay and minimal complexity'、正则化避免误伤源信号纯音成分——'零帧延迟/复杂度极低/纯音防护'宣称有主源支撑。"
+    },
+    {
+     "name": "Alkaher & Cohen, \"Temporal Howling Detector for Speech Reinforcement Systems\", Acoustics (MDPI) 4(4):60, 2022",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文,CC BY 4.0 开放获取——已在 PDF 版权页原文核实)",
+     "evidence_url": "https://israelcohen.com/wp-content/uploads/2022/11/acoustics-04-00060.pdf",
+     "capability_verdict": "supported",
+     "notes": "mdpi.com 反爬 403,改抓作者主页全文 PDF 成功:Acoustics 2022, 4, 967-995, DOI 10.3390/acoustics4040060,2022-11-15 发表,版权页明示 CC BY 4.0;内容为面向 speech reinforcement 的两级时域啸叫检测(Soft Howling Detection + False-Alarm Detection,基于 magnitude-slope-deviation),与描述相符。"
+    },
+    {
+     "name": "Berdahl & Harris, \"Frequency Shifting for Acoustic Howling Suppression\", DAFx 2010(上溯 Schroeder, JASA 1964)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文,CCRMA 公开 PDF)",
+     "evidence_url": "https://ccrma.stanford.edu/~eberdahl/Papers/DAFx2010BerdahlHarris.pdf",
+     "capability_verdict": "supported",
+     "notes": "抓取 PDF 全文确认:DAFx-10 (Graz, 2010-09), Berdahl (CCRMA) & Harris (Sennheiser),主题即频移平滑反馈环路幅度响应以提升稳定性,含稳定性判据推导与实测。需注意论文摘要自带保留:'合理小量频移对助听器不能提供显著收益',但对混响环境(即 PA/会议扩声)有用——与本项目场景一致,'数dB MSG'为 Schroeder 路线的通行结论,扫描的 risks 已提示仅适合语音模式,定性无夸大。"
+    },
+    {
+     "name": "Tympan_Library(含 AudioEffectFeedbackCancel_F32,BTNRH AFC 移植)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(仓库 LICENSE 原文已核,标准 MIT 无附加条款;GitHub API spdx_id=MIT)",
+     "evidence_url": "https://raw.githubusercontent.com/Tympan/Tympan_Library/main/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "能力实质成立但扫描引用的具体文件已失效:src/AudioEffectFeedbackCancel_F32.h 返回 404,现行主干为 src/AudioFeedbackCancelNLMS_F32.{h,cpp} 与 src/AudioFeedbackCancelNFXLMS_F32.{h,cpp}(另附 Neely 2022 NFXLMS 白皮书与 examples/09-FeedbackCancellation 示例)。NLMS 头文件注释证实算法源自 BTNRH chapro、F32 浮点、依赖 arm_math/Teensy——'与 chapro 互为印证的可商用 AFC 参考码'与'平台耦合'风险均属实。GitHub API: 149 stars,pushed_at 2026-07-28,'活跃维护(2026-07仍有提交)'准确。"
+    }
+   ],
+   "flags": [
+    "按指示跳过 6 个候选(观望3:dbx AFS2、Li et al. Sensors 2021、yewentai/ANF;规避3:openMHA(AGPL)、chenwj1989/python_howling_suppression(无license)、marc1701/FACT(无license))",
+    "chapro 专利提示:license 确为 CC0-1.0,但 CC0 第4节明文不放弃专利与商标权,不含任何专利授权;chapro 是唯一被列为可直改进固件的 AFC 参考实现,若其代码/算法进入商用产品,建议对 Boys Town/BTNRH 的 AFC 相关专利做一次 FTO 排查——此点扫描未提,可能影响其采用档位评估",
+    "Tympan_Library 链接失效:扫描给出的 src/AudioEffectFeedbackCancel_F32.h 已不存在(404),AFC 实现已重构为 AudioFeedbackCancelNLMS_F32 / AudioFeedbackCancelNFXLMS_F32 两个变体;条目结论不变,但雷达文档应更新文件路径,且新增的 NFXLMS(带白皮书)变体比旧条目描述的实现更新、值得补充评估",
+    "afc 维度无 [待核] 标记条目,两个 oss license(chapro CC0-1.0、Tympan MIT)均以 LICENSE 原文核实,未发现 GPL 传染漏标、双授权漏报或 BSD+专利条款问题;8 个核验对象存在性全部确认,未发现 misdescribed",
+    "反驳立场结论:本维度扫描质量高,唯一实质性缺陷为 Tympan 死链与 chapro 的 CC0 无专利授权未披露;JAES 2010 判据体系与 RANF/NINOS²-T/频移法的能力宣称均在主源找到直接支撑"
+   ]
+  },
+  {
+   "dimension": "aec",
+   "verdicts": [
+    {
+     "name": "SpeexDSP AEC (libspeexdsp, mdf.c)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "BSD-3-Clause(Xiph.org 原文核验,无专利条款、无附加条件)",
+     "evidence_url": "https://raw.githubusercontent.com/xiph/speexdsp/master/COPYING",
+     "capability_verdict": "supported",
+     "notes": "mdf.c 头注实证:AUMDF 变体、引用 Soo-Pang 1990 与 Valin 学习率论文、#ifdef FIXED_POINT 定点实现、speex_echo_state_init(frame_size, filter_length) 尾长可配——'尾长可配置/定点浮点/Valin 2007 控制'全部有主源支撑。反驳点仅一处:官方 API 文档建议 filter_length 对应 100-500ms,512ms 目标略超文档建议区间(可配置但属超范围使用,收敛/算力实测风险真实存在,扫描 risks 已如实提示)。"
+    },
+    {
+     "name": "WebRTC AEC3 (modules/audio_processing/aec3)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "BSD-3-Clause + PATENTS 专利授权(已核 PATENTS 原文:Google 式永久免费专利授权,含专利诉讼终止条款——若对该实现提起专利侵权诉讼,专利授权即终止;非纯 BSD,但属防御性条款,闭源商用正常场景不受影响)",
+     "evidence_url": "https://webrtc.googlesource.com/src/+/refs/heads/main/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "aec3/ 目录实存,文件名直接印证宣称:echo_canceller3.cc、echo_path_delay_estimator.cc(内置延迟估计)、comfort_noise_generator.cc(舒适噪声)、subband_*(分带处理)、echo_remover.cc(非线性残余抑制)。附加发现:当前主干含 neural_residual_echo_estimator/ 子目录,若以主干为基准需注意项目'固件无 NN'红线的构建裁剪。"
+    },
+    {
+     "name": "webrtc-audio-processing (freedesktop/PulseAudio 提取版)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "BSD-3-Clause(仓库自带 COPYING 为 Google 2011 BSD-3 原文;[待核] 已解决——freedesktop GitLab 被 Anubis 反爬拦截,经 Debian sources 对该源码包 COPYING 原文核验)",
+     "evidence_url": "https://sources.debian.org/src/webrtc-audio-processing/latest/COPYING/",
+     "capability_verdict": "supported",
+     "notes": "Debian 打包的 1.3 版源码树确认:顶层 meson.build + meson_options.txt + webrtc/ 目录,证实'meson 构建、可独立构建'宣称;1.x 系列基于含 AEC3 的现代 WebRTC。扫描的 [待核] 标记处理得当,本次核验闭环,与上游 WebRTC LICENSE 一致。注意上游 PATENTS 条款同样随代码传递。"
+    },
+    {
+     "name": "Soo & Pang: Multidelay Block Frequency Domain Adaptive Filter (MDF)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文)",
+     "evidence_url": "https://github.com/xiph/speexdsp/blob/master/libspeexdsp/mdf.c",
+     "capability_verdict": "supported",
+     "notes": "书目信息三方一致:IEEE Trans. ASSP vol.38 no.2 pp.373-376, Feb 1990,J.-S. Soo & K.K. Pang;SpeexDSP mdf.c 头注原文引用该文(最强工程佐证);MDF 特性(FFT 块长与滤波器总长解耦、小块延迟)与描述相符。Semantic Scholar 页面抓取为空、IEEE 反爬,故 evidence 给 mdf.c 引用 + 检索交叉验证。"
+    },
+    {
+     "name": "Valin: 频域回声消除的双讲学习率调节",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文;arXiv:1602.08044 开放获取版属实)",
+     "evidence_url": "https://arxiv.org/abs/1602.08044",
+     "capability_verdict": "supported",
+     "notes": "arXiv 页核验:题名、作者 Jean-Marc Valin、IEEE TASLP vol.15 no.3 pp.1030-1034, 2007 全部相符;摘要证实'噪声存在下 NLMS 最优学习率推导'。mdf.c 实现注释亦证实'连续学习率变化替代显式双讲检测'即 SpeexDSP 实际控制策略,与扫描描述一致。"
+    },
+    {
+     "name": "Hänsler & Schmidt: Acoustic Echo and Noise Control: A Practical Approach",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(版权书籍,Wiley-IEEE Press)",
+     "evidence_url": "https://www.wiley.com/en-us/Acoustic+Echo+and+Noise+Control:+A+Practical+Approach-p-9780471453468",
+     "capability_verdict": "supported",
+     "notes": "Wiley/ACM/Amazon 多源一致:Eberhard Hänsler & Gerhard Schmidt, Wiley-IEEE Press, 2004-05, ISBN 9780471453468, 472页——作者/年份/ISBN 与扫描完全相符。Wiley DOI 页直接抓取 403,经检索多源交叉确认。扫描给的第二条 Wiley 链接(p-x000247998)格式可疑,正确页为 p-9780471453468。"
+    },
+    {
+     "name": "Benesty/Gänsler 系列:互相关类双讲检测器(NCC/FNCC)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文系列)",
+     "evidence_url": "https://www.sciencedirect.com/science/article/abs/pii/S0165168405003166",
+     "capability_verdict": "supported",
+     "notes": "核实两篇:Benesty/Morgan/Cho 2000 IEEE TSAP 8(2):168-172;Gänsler & Benesty 2006 'The fast normalized cross-correlation double-talk detector' Signal Processing 86(6):1124-1139,FNCC 复用 FRLS 中间量的宣称与检索摘要一致(扫描 risks 中'依赖 FRLS'判断准确)。中间一篇 2001 Signal Processing 81 频域 NCC 文未单独核到主源,但不影响该条目成立。ScienceDirect 直接抓取 403,经检索确认。"
+    },
+    {
+     "name": "Enzner & Vary: 频域自适应 Kalman 滤波回声控制",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文)",
+     "evidence_url": "https://dblp.org/rec/journals/sigpro/EnznerV06.html",
+     "capability_verdict": "supported",
+     "notes": "dblp/ACM DL 核验:Signal Processing 86(6):1140-1156, 2006,doi:10.1016/j.sigpro.2005.09.013;摘要证实'频域状态空间模型 + Kalman 最优联合自适应'宣称。'分块版 PBFDKF 适配长尾'由 PFDKF 仓库(见该条)间接佐证,属合理延伸而非原文内容。"
+    },
+    {
+     "name": "Breining et al.: Acoustic Echo Control — An Application of Very-High-Order Adaptive Filters",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文)",
+     "evidence_url": "https://ieeexplore.ieee.org/document/774933/",
+     "capability_verdict": "supported",
+     "notes": "IEEE 直接抓取被反爬,经检索多个独立引文源核验:九作者名单(Breining/Dreiseitel/Hänsler/.../Tilp)、IEEE Signal Processing Magazine vol.16 no.4 pp.42-69, July 1999 完全相符。'1999 年综述不含 Kalman 频域路线'的 risks 判断在时间线上成立(Enzner-Vary 为 2006)。"
+    },
+    {
+     "name": "ITU-T G.168: Digital Network Echo Cancellers",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(ITU-T 建议书;标准文本 ITU 版权,ITU-T 建议书自 2007 年起免费公开下载,实现不受限)",
+     "evidence_url": "https://www.itu.int/rec/T-REC-G.168/en",
+     "capability_verdict": "supported",
+     "notes": "ITU 官方页核验:G.168 (04/15) 现行有效 + Corrigendum (12/22) 'Reference error corrections' 现行——'2015 版+2022 勘误'宣称精确。主题'数字网络回声消除器'相符,印证扫描 risks:这是线路 EC 标准而非声学 EC,ERLE 定义/CSS 测试信号为其内容属领域共识但本次未逐条核文本。"
+    },
+    {
+     "name": "ITU-T G.167(1993,已被 P.340 取代)+ ITU-T P.340",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(ITU-T 建议书;G.167 状态 Withdrawn 属实)",
+     "evidence_url": "https://www.itu.int/rec/T-REC-G.167-199303-W/en",
+     "capability_verdict": "supported",
+     "notes": "ITU 官方页核验 G.167 'Acoustic echo controllers' (1993-03) 状态 Withdrawn。但扫描表述不完整:ITU 官方明确其内容由 P.340 (2000)(G.167 第1-5章)与 G.161 (2002)(G.167 第6章)两份建议书共同承接,并非仅 P.340——制定验收规格时 G.161 也应入列。P.340 现行版条款扫描自认未逐条核阅,本次同样未核,该保留声明诚实。"
+    },
+    {
+     "name": "Microsoft AEC Challenge 数据集(ICASSP 2021/2022/2023, INTERSPEECH 2021)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "代码 MIT(仓库 sidebar 核验);数据 AS-IS 按原始来源条款混合:LibriVox 公有领域、Edinburgh 56-speaker、AudioSet CC-BY-4.0、Freesound CC0、DEMAND CC-BY-SA-3.0——README 原文逐项与扫描记载一致",
+     "evidence_url": "https://github.com/microsoft/AEC-Challenge",
+     "capability_verdict": "supported",
+     "notes": "README 证实:>10,000 台真实设备与真人在真实环境录制 + 合成集,含单讲/双讲场景,并含全带宽 AECMOS——'数万条真实设备录音'与'附 AECMOS 评测'均有支撑。扫描对 CC-BY-SA 传染性与 CC-BY 署名义务的风险披露准确;'真实录音多为消费级近场设备、会议室长混响覆盖不足'的保留合理。无发现漏标的 NC 条款。"
+    },
+    {
+     "name": "pyaec (ewan-xu)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "Apache-2.0(GitHub API spdx_id 复核一致)",
+     "evidence_url": "https://api.github.com/repos/ewan-xu/pyaec",
+     "capability_verdict": "supported",
+     "notes": "API 核验:Apache-2.0、425 stars、最后 push 2021-11-29——扫描'425 stars、2021 年后未更新'逐字准确。仓库描述'simple and efficient python implementation of a series of adaptive filters'(时域/非线性/频域)支撑'算法参考合集'定位。Apache-2.0 含专利授权条款,作黄金参考(不进固件)无风险。"
+    },
+    {
+     "name": "PFDKF (echocatzh)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(GitHub API spdx_id 复核一致)",
+     "evidence_url": "https://api.github.com/repos/echocatzh/PFDKF",
+     "capability_verdict": "supported",
+     "notes": "API 核验:MIT、58 stars、最后 push 2023-01-14——与扫描'58 stars、2023 年初后未更新'相符;仓库描述'partitioned block based frequency domain Kalman filter'直接支撑核心定位。'对应 Kuech/Mabande/Enzner ICASSP 2014 一文'的具体论文映射未在本次从仓库 README 独立核到,方向一致但采用前建议自行比对公式(扫描 risks 已要求核对实现正确性,足够)。"
+    }
+   ],
+   "flags": [
+    "跳过 2 项未核验:AECMOS(观望)、PJSIP pjmedia(规避)。",
+    "WebRTC LICENSE 为 BSD-3 属实,但 PATENTS 文件已核原文:Google 式专利授权含诉讼终止(报复)条款——对该实现提起专利侵权诉讼即丧失专利授权。扫描已标注 PATENTS 存在,未展开条款;属防御性条款,不改变 AEC3/webrtc-audio-processing 档位,但法务备案时应记为 'BSD-3-Clause + 专利授权(含终止条款)' 而非纯 BSD,且该条款随 PulseAudio 提取版一并传递。",
+    "webrtc-audio-processing 的 license[待核] 已闭环:COPYING 为 Google 2011 BSD-3 原文(freedesktop GitLab 反爬,经 Debian sources 的同一源码包核验),扫描初判正确,档位不变。",
+    "SpeexDSP 官方 API 文档明示 filter_length '一般应对应 100-500ms':项目 512ms 尾长目标超出官方建议区间——参数可配但属超范围使用,'512ms 尾长自适应滤波核心' 这一 maps_to 的可行性完全依赖实测,建议将其视为待验证假设而非已核能力(扫描 risks 已提示实测,此处升级明示)。",
+    "G.167 承接关系有遗漏:ITU 官方状态为内容由 P.340 (2000)(第1-5章)与 G.161 (2002)(第6章)共同承接,扫描只写了 P.340;制定 AEC 验收规格时应同时核 G.161。",
+    "AEC-Challenge 数据许可核验与 README 完全一致(代码 MIT;数据含 DEMAND CC-BY-SA-3.0 传染性子集、AudioSet CC-BY-4.0 署名义务),扫描风险披露准确;内部回归测试可用,衍生音频对外发布须逐子集合规。",
+    "付费墙限制:IEEE Xplore、ScienceDirect、Wiley DOI 页均拒绝直接抓取,Soo-Pang/Benesty-Gänsler/Enzner-Vary/Breining/Hänsler-Schmidt 五条经 dblp/arXiv/出版社目录页/SpeexDSP 源码引用等多源交叉核验,书目信息全部相符,无一 misdescribed。",
+    "总体结论:14 项核验对象全部存在且描述相符,license 无一推翻,未发现影响采用档位的隐藏 GPL/NC/专利陷阱;扫描质量高于反驳预期,唯一实质补充为 PATENTS 终止条款细节、G.161 遗漏与 SpeexDSP 512ms 超文档建议区间三点。"
+   ]
+  },
+  {
+   "dimension": "room-eq",
+   "verdicts": [
+    {
+     "name": "Farina 指数扫频法 (ESS) 原始文献",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文,方法可自由实现)",
+     "evidence_url": "https://www.aes.org/e-lib/browse.cfm?elib=10211",
+     "capability_verdict": "supported",
+     "notes": "AES 主源确认:Farina, AES 108th Convention, 2000,题名与描述一致;摘要证实指数扫频同时测 IR 与失真、对比 MLS,能力宣称成立。"
+    },
+    {
+     "name": "Müller & Massarani 扫频测量工程细节",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文)",
+     "evidence_url": "https://aes.org/publications/elibrary-page/?id=10189",
+     "capability_verdict": "supported",
+     "notes": "AES 主源确认:JAES 49(6):443-471, 2001,作者/卷期页码与扫频抗失真抗时变宣称均相符。"
+    },
+    {
+     "name": "pyfar + pyrato",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(pyfar 与 pyrato 两仓 LICENSE 原文均已核,版权人 the pyfar developers / Marco Berzborn)",
+     "evidence_url": "https://raw.githubusercontent.com/pyfar/pyfar/main/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "官方 API 文档逐项核实:pyfar.signals.exponential_sweep_time/freq、pyfar.dsp.regularized_spectrum_inversion、deconvolve、smooth_fractional_octave 全部存在;pyrato 为 pyfar 生态房间声学工具,与描述相符。"
+    },
+    {
+     "name": "RBJ Audio EQ Cookbook(W3C Note)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(W3C Working Group Note 2021-06-08;公式实现不受限,文本适用 W3C 文档许可)",
+     "evidence_url": "https://www.w3.org/TR/audio-eq-cookbook/",
+     "capability_verdict": "supported",
+     "notes": "W3C 主源确认:2021-06-08 发布的 Working Group Note(编辑 Raymond Toy),含 peaking/shelf/LP/HP/notch/allpass 全套 biquad 系数公式,与描述一致。"
+    },
+    {
+     "name": "Ramos & López IIR参数EQ自动设计法",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文,需自行实现)",
+     "evidence_url": "https://aes.org/publications/elibrary-page/?id=13893",
+     "capability_verdict": "supported",
+     "notes": "AES 主源确认:JAES 54(12):1162-1178, 2006-12,SOS 链参数滤波器+心理声学优化的宣称与摘要相符。"
+    },
+    {
+     "name": "Karjalainen等 模态衰减参数估计 / FZ-ARMA",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文)",
+     "evidence_url": "https://research.aalto.fi/en/publications/frequency-zooming-arma-modeling-of-resonant-and-reverberant-syste",
+     "capability_verdict": "supported",
+     "notes": "扫描自认未核的卷期页码本次已补核:模态衰减 JAES 50(11):867-878, 2002(AES 样刊 PDF 与 Aalto 门户一致);FZ-ARMA JAES 50(12):1012-1029, 2002(Karjalainen/Esquef/Antsalo/Mäkivirta/Välimäki)。两篇均真实存在且与描述相符。"
+    },
+    {
+     "name": "Cecchi/Carini/Spors 房间响应均衡综述",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文;MDPI 开放获取,CC BY 与其开放获取政策一致)",
+     "evidence_url": "https://www.mdpi.com/2076-3417/8/1/16",
+     "capability_verdict": "supported",
+     "notes": "MDPI 主页对自动抓取返回 403,经 DOI 10.3390/app8010016 与检索多源交叉确认:Applied Sciences 8(1):16, 2018,开放获取,内容为房间响应均衡综述,与描述一致。"
+    },
+    {
+     "name": "只削峰/保守校正原则出处(Toole & Harman研究)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文/付费专著)",
+     "evidence_url": "https://aes.org/publications/elibrary-page/?id=15154",
+     "capability_verdict": "supported",
+     "notes": "Olive 2009 AES 127th preprint 确认存在,摘要证实'部分商业校正产品存在音质差异/劣化'结论。小疵:AES 页面列作者为 Olive/Jackson/Devantier/Hunt 四人,扫描条目多列 'Hess, S.',正式引用前需核对作者名单;Toole 专著(3rd ed., Routledge 2017)为公知出版物,未另行抓取。"
+    },
+    {
+     "name": "REW (Room EQ Wizard)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "专有免费软件;EULA 原文已核:个人/教育/商业使用免费,严禁再分发/出售/逆向/衍生作品——与扫描认定一致",
+     "evidence_url": "https://www.roomeqwizard.com/eula.html",
+     "capability_verdict": "overstated",
+     "notes": "HTTP API 确认存在(127.0.0.1:4735,Swagger/OpenAPI,可自动化测量与 EQ 生成)。但官方 API 文档明示:'通过 API 做自动扫频测量需要 Pro upgrade(付费)许可'——扫描条目把 API 自动化描述为免费软件能力,遗漏付费门槛;'V5.40 起提供'亦未在 API 文档中得到确认。研发/产线自动化预算需计入 Pro 授权。"
+    },
+    {
+     "name": "Novak 同步扫频法 (Synchronized Swept-Sine)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文);作者站 MATLAB/Python 示例代码页无任何明示许可=默认保留权利,扫描'重实现为宜'的判断正确且已核实",
+     "evidence_url": "https://ant-novak.com/pages/sss/",
+     "capability_verdict": "supported",
+     "notes": "作者官方页确认:Novak/Lotton/Simon, JAES 63(10):786-798, 2015,相位同步扫频+谐波分析,附 MATLAB 全套代码但无许可声明——扫描标注的[代码许可未核]现已核:无明示许可,商用不可直接搬运。"
+    },
+    {
+     "name": "Mäkivirta/Karjalainen 低频模态均衡",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文)",
+     "evidence_url": "https://aes.org/publications/elibrary-page/?id=12226",
+     "capability_verdict": "supported",
+     "notes": "AES 主源确认:JAES 51(5):324-343, 2003-05,作者四人与描述一致,摘要证实'主动模态均衡选择性降低模态衰减率'宣称。Genelec 专利风险提示未另行核验。"
+    },
+    {
+     "name": "Bank 固定极点并联二阶滤波器(parfilt)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文方法可自由重实现);作者主页代码条款已核原文:'(c) Balazs Bank, 2024... Non-commercial use permitted, for all other uses, please contact the author'——非商用限制属实,MATLAB 代码及其移植不得进商业产品",
+     "evidence_url": "https://home.mit.bme.hu/~bank/parfilt/",
+     "capability_verdict": "supported",
+     "notes": "主页确认固定极点并联二阶节方法(预置极点+零点线性最小二乘)与描述一致;扫描对非商用红线的标注经原文核验准确无误。"
+    },
+    {
+     "name": "AutoEq (jaakkopasanen)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(仓库 LICENSE 原文已核,Copyright (c) 2018-2022 Jaakko Pasanen)",
+     "evidence_url": "https://raw.githubusercontent.com/jaakkopasanen/AutoEq/master/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "README 证实:参数 EQ 优化器支持 shelf 滤波器、带 Fc/Q/gain 范围限制的配置系统,PyPI 包名 autoeq——与'通用目标响应→PEQ 优化器'宣称相符;项目本体确为耳机向,移植需自加房间响应前端(扫描已注明)。"
+    },
+    {
+     "name": "python-acoustics / acoustic-toolbox",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "BSD-3-Clause(仓库 LICENSE 原文已核,Copyright (c) 2013 Python Acoustics,无附加专利条款)",
+     "evidence_url": "https://raw.githubusercontent.com/python-acoustics/python-acoustics/master/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "更正维护状态:原仓库已于 2024-02-07 正式 ARCHIVED(只读),比扫描'维护放缓/趋缓'的表述更严重——实际采用只能走 acoustic-toolbox fork,选型时应以 fork 为准。"
+    },
+    {
+     "name": "MATLAB Audio Toolbox 房间均衡自动滤波器设计示例",
+     "exists": "confirmed",
+     "license_verdict": "unresolved",
+     "license_final": "未解决:示例页面存在但无任何明示的示例代码复用条款,受 MathWorks 软件许可协议整体约束;产品移植前必须向 MathWorks 确认示例代码条款(扫描[待核]无法从公开主源闭合)",
+     "evidence_url": "https://www.mathworks.com/help/audio/ug/automated-design-of-audio-filters-for-room-equalization.html",
+     "capability_verdict": "supported",
+     "notes": "页面确认存在:Impulse Response Measurer 测量→目标曲线→lsqnonlin 优化 12 段参数 EQ(10 peaking + 2 shelf),与描述相符;仅可作算法参照,代码复用条款抓不到公开主源,维持 unresolved。"
+    },
+    {
+     "name": "Elliott & Nelson 多点均衡",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文)",
+     "evidence_url": "https://aes.org/publications/elibrary-page/?id=6063",
+     "capability_verdict": "supported",
+     "notes": "AES 主源确认:JAES 37(11):899-907, 1989-11,多测点误差平方和最小化均衡,与描述一致。"
+    }
+   ],
+   "flags": [
+    "跳过 5 个候选:观望 3(Dirac Live、EQilibrium、autoeq/pierreaubert)+ 规避 2(PORC、DRC-FIR),未核验。",
+    "REW 能力宣称 overstated:官方 API 文档明示'通过 API 自动化扫频测量需 Pro upgrade 付费许可',扫描条目把 API 自动化列为免费能力且'V5.40 起提供'未获主源确认——若把 REW API 写进研发/产线自动化流程,需计入 Pro 授权成本并留存 EULA+API 条款记录。",
+    "python-acoustics 原仓库已于 2024-02-07 ARCHIVED(只读),扫描'维护放缓'表述偏轻;评估档位应直接转向 Universite-Gustave-Eiffel/acoustic-toolbox fork(fork 许可未在本轮单独核验)。",
+    "MATLAB Audio Toolbox 示例代码许可维持 unresolved:文档页无公开复用条款,不得默认可移植进产品,需 MathWorks 书面确认。",
+    "Bank parfilt 非商用红线经作者主页原文复核属实('Non-commercial use permitted, for all other uses contact the author'),扫描的'严禁搬运代码、按论文自写'结论正确;同理 Novak 同步扫频作者站代码无任何许可声明(=保留所有权利),两处[待核]均已闭合为'不可商用搬运'。",
+    "扫描 not_covered 自认的'Karjalainen 2002 两篇 JAES 卷期页码未核'已补核闭合:模态衰减 JAES 50(11):867-878;FZ-ARMA JAES 50(12):1012-1029(作者含 Esquef)。",
+    "小疵:Olive 2009 (AES preprint 7960) 作者名单 AES 页面为 Olive/Jackson/Devantier/Hunt 四人,扫描条目多列 'Hess, S.',正式引用前需核对。",
+    "MDPI 页面(Cecchi 综述)对自动抓取返回 403,存在性经 DOI 与多源交叉确认;CC BY 4.0 未从页面原文直读,但与 MDPI 全刊开放获取政策一致。",
+    "未发现被漏标的 GPL/传染性许可或伪 BSD+专利条款:本维度 16 个核验对象中 oss 均为 MIT/BSD-3 且原文已核;总体扫描结论在许可维度基本可靠,主要修正点为 REW Pro 付费门槛与 python-acoustics 归档状态。"
+   ]
+  },
+  {
+   "dimension": "dsp-blocks",
+   "verdicts": [
+    {
+     "name": "CMSIS-DSP (Arm)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "Apache-2.0(顶层 LICENSE 原文核验,含标准 Apache 专利授权与专利诉讼终止条款);扫描所称『个别 aarch64 贡献代码 MIT』未单独核到,但两者均宽松,不影响闭源固件采用",
+     "evidence_url": "https://raw.githubusercontent.com/ARM-software/CMSIS-DSP/main/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "官方文档确认 FIR/biquad cascade IIR/FFT/矩阵向量运算,数据类型覆盖 q7/q15/q31/f32/f16/f64,提供纯 C 参考实现+Helium/Neon 向量化版本;『非 Arm 核只剩纯 C 路径』的风险描述与文档一致"
+    },
+    {
+     "name": "RBJ Audio EQ Cookbook(W3C Working Group Note 版)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(W3C Working Group Note,2021-06-08 发布,明确注明经 Robert Bristow-Johnson 授权改编;公式实现无许可障碍)",
+     "evidence_url": "https://www.w3.org/TR/audio-eq-cookbook/",
+     "capability_verdict": "supported",
+     "notes": "主源确认:2021-06-08 W3C Note,编辑 Raymond Toy(Google),'Adapted from Audio-EQ-Cookbook.txt, by Robert Bristow-Johnson, with permission';LPF/HPF/BPF(两变体)/notch/allpass/peaking/高低架公式全部在文档内"
+    },
+    {
+     "name": "SciPy signal(firwin/firwin2/remez/minimum_phase)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "BSD-3-Clause(LICENSE.txt 原文核验,版权 Enthought 2001-2002 / SciPy Developers 2003,无捆绑其他许可)",
+     "evidence_url": "https://raw.githubusercontent.com/scipy/scipy/main/LICENSE.txt",
+     "capability_verdict": "supported",
+     "notes": "官方文档确认 firwin、firwin2、remez(Remez 交换法)、minimum_phase(线性相位转最小相位)、freqz 全部存在于 scipy.signal 滤波器设计节;仅离线设计工具、系数导出,固件无 license 牵连的定位成立"
+    },
+    {
+     "name": "Giannoulis/Massberg/Reiss, \"Digital Dynamic Range Compressor Design—A Tutorial and Analysis\", JAES 60(6) pp.399-408, 2012",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(JAES 论文,版权 AES;AES E-Library 非会员 $33)",
+     "evidence_url": "https://www.aes.org/e-lib/browse.cfm?elib=16354",
+     "capability_verdict": "supported",
+     "notes": "AES E-Library 与 Semantic Scholar 均确认:JAES Vol.60 No.6 pp.399-408, 2012-06,QMUL 团队,内容为数字压缩器设计教程(拓扑/检波/攻击释放),与描述一致;卷期页码作者完全吻合"
+    },
+    {
+     "name": "ITU-R BS.1770-5 (2023) 真峰值测量算法",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(ITU-R 建议书,PDF 已实际免费下载核验;实现规范算法为通行做法)",
+     "evidence_url": "https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.1770-5-202311-I!!PDF-E.pdf",
+     "capability_verdict": "supported",
+     "notes": "PDF 原文核验:BS.1770-5 于 2023-11 批准、现行有效;Annex 2 'Guidelines for accurate measurement of true-peak level' 规定 -12.04dB 衰减→4x 过采样→低通滤波→取绝对值→dB TP 五级流程,含 48 阶 4 相 FIR 插值系数表;『4x 过采样+低通插值』宣称逐字成立"
+    },
+    {
+     "name": "Signalsmith Audio: \"Designing a straightforward limiter\" + dsp/basics 库",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(Signalsmith-Audio/dsp 与 Signalsmith-Audio/basics 两仓库均声明 MIT)",
+     "evidence_url": "https://github.com/Signalsmith-Audio/basics",
+     "capability_verdict": "supported",
+     "notes": "2022 limiter 文章存在(Geraint Luff 著),描述 lookahead+peak-hold/移动极值+FIR 平滑增益包络、保证增益不越界,与扫描描述一致;basics 仓库含 Limiter 类,文档示例即『maximum attack/lookahead of 100ms』;注意 Limiter 类在 basics 仓库而非 dsp 仓库(dsp 仓库提供 delay/envelopes/filters 等底层件),扫描已正确并列两者"
+    },
+    {
+     "name": "Iir1 (Bernd Porr,源自 Vinnie Falco DSPFilters)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(GitHub API spdx_id=MIT + 仓库 MIT 徽章;注意仓库根目录无名为 LICENSE 的文件,直链 404,以 API 检测与徽章为准)",
+     "evidence_url": "https://api.github.com/repos/berndporr/iir1",
+     "capability_verdict": "supported",
+     "notes": "README 确认 Butterworth/Chebyshev I/II/RBJ、逐样本实时处理、可经 Custom 类直接导入 scipy SOS 系数、上游为 Vinnie Falco DSPFilters(亦 MIT);2025-07 仍有提交,『长期维护』成立;注意库已移除需数值优化的设计(如椭圆滤波器)"
+    },
+    {
+     "name": "FFTConvolver (HiFi-LoFi)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(仓库页声明 MIT license)",
+     "evidence_url": "https://github.com/HiFi-LoFi/FFTConvolver",
+     "capability_verdict": "supported",
+     "notes": "README 确认:实时音频分块(uniform block)FFT 卷积 + 可选非均匀分块 TwoStageFFTConvolver;但『处理期零额外算法延迟』措辞未在 README 见到明示,TwoStage 结构的 head 段延迟特性建议采用前以代码/实测确认——核心宣称成立,该延迟表述留待实证"
+    },
+    {
+     "name": "音箱保护限幅文献组:Klippel JAES 2016 + Klippel AN28 + Linea Research \"Setting up Limiters\"",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(JAES 论文©AES 需购买/会员;AN28 与 Linea DE3457-01 白皮书公开可下载,已实际下载核验)",
+     "evidence_url": "https://www.klippel.de/fileadmin/klippel/Files/Know_How/Application_Notes/AN_28_Evaluation_of_Loudspeaker_Protection_Systems.pdf",
+     "capability_verdict": "supported",
+     "notes": "三件均实存:Klippel JAES Vol.64 No.10 pp.771-783 (2016-10) 'Mechanical Overload Protection of Loudspeaker Systems'(仅机械/位移保护,自适应无传感器方案);AN28 实际标题为 'Loudspeaker Limits and Protection Systems',是热+机械过载保护系统的功率测试/评估笔记(偏测量评估,非限幅器设计);Linea DE3457-01 确讲热/机械失效与 RMS/峰值限幅整定。热限幅『模型』主要靠 AN28/Linea 侧面覆盖,JAES 论文不含热路线——组合描述基本成立但各件分工与扫描措辞略有出入;该论文本身即扫描所警示的专利密集自适应路线(KCS 前身),风险提示得到证实"
+    },
+    {
+     "name": "Faust(函数式音频 DSP 代码生成)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "编译器 LGPL-2.1+(COPYING.txt 原文核验);官方 FAQ 明文:编译器 LGPL 不适用于生成代码,未修改的标准库与架构文件兼容闭源商用。注意 GitHub spdx 为 NOASSERTION(仓库含多许可组件),采用时仍须按扫描建议对实际用到的每个 .lib 逐一复核",
+     "evidence_url": "https://faustdoc.grame.fr/manual/faq/",
+     "capability_verdict": "supported",
+     "notes": "FAQ 原文与扫描表述逐条吻合:'You can freely use Faust to develop proprietary software. The LGPL license of the compiler doesn't apply to the code generated by the compiler'、'when used unmodified, Faust libraries and architecture files are compatible with proprietary, non-open source use';扫描既未漏报传染也未夸大宽松,且已自带『逐 .lib 复核』护栏"
+    },
+    {
+     "name": "MATLAB DSP System Toolbox / Audio Toolbox",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "商业专有许可(MathWorks;产品页确认付费商业产品,提供试用/pricing/sales 渠道)",
+     "evidence_url": "https://www.mathworks.com/products/dsp-system.html",
+     "capability_verdict": "supported",
+     "notes": "产品页确认:FIR/IIR/多速率/自适应滤波器设计、bit-accurate 定点建模、C/C++ 代码生成(含 ARM Cortex 部署);扫描自身已正确标注『MATLAB Coder 生成代码部署条款需采用前按当期条款核对』,本次未核 Coder 再分发条款细节,该保留意见应维持"
+    }
+   ],
+   "flags": [
+    "跳过 8 项未核验:观望 6 项(TI DSPLIB+MATHLIB、XMOS lib_audio_dsp、ADI SigmaStudio、ESP-DSP、DaisySP、Cycfi Q)+ 规避 2 项(KFR、chowdsp_utils)",
+    "本维度无[待核]标记项;11 项核验对象全部存在性确认,无一 misdescribed,无 license 需 corrected——扫描的 license 结论在本维度经主源复核全部成立",
+    "未发现 GPL 传染漏标或双授权漏报:Faust 编译器 COPYING.txt 实为 LGPL-2.1+ 且官方 FAQ 明文生成代码不受约束(GitHub spdx 显示 NOASSERTION 系仓库多许可混合所致,不构成风险,但生成代码所内联的每个 .lib 许可仍须按扫描建议逐一复核后才可进闭源固件)",
+    "Klippel AN28 实际标题为 'Loudspeaker Limits and Protection Systems',内容是保护系统的功率测试/评估笔记而非热/位移限幅器设计方法;热限幅『模型』在该文献组中支撑较弱,主要设计依据实为 Linea DE3457-01 + Giannoulis 2012 框架,不影响『评估』档位但引用时应校正定位",
+    "Klippel JAES 2016 (Vol.64 No.10 pp.771-783) 确为无传感器自适应机械保护路线,印证扫描的专利密集警示(KCS 系),自研实现绕开自适应权利要求的建议应保留",
+    "FFTConvolver『处理期零额外算法延迟』措辞未在仓库 README 得到明示确认(partitioned 与 TwoStageFFTConvolver 功能已确认),采用前建议以源码/实测核实该延迟宣称",
+    "Iir1 仓库根目录 LICENSE 直链 404(GitHub API spdx=MIT + 仓库 MIT 徽章为准),入库合规扫描时注意其 license 文件路径非常规",
+    "CMSIS-DSP 顶层 LICENSE 为纯 Apache-2.0;扫描所称『个别 aarch64 贡献代码 MIT』未单独核到出处,均为宽松许可不影响档位,合规清单登记时建议以 SBOM 工具扫全树确认"
+   ]
+  },
+  {
+   "dimension": "anc",
+   "verdicts": [
+    {
+     "name": "WebRTC Noise Suppression (modules/audio_processing/ns)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "BSD-3-Clause + 独立 PATENTS 文件(Google 专利授权,含诉讼终止条款:若对 WebRTC 提起专利诉讼则专利授权终止;LICENSE 本体无专利条款)",
+     "evidence_url": "https://webrtc.googlesource.com/src/+/refs/heads/main/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "主干 ns/ 目录实核:30 个 .cc/.h 文件,含 noise estimator、speech_probability_estimator、wiener_filter——'噪声谱估计+维纳增益+语音概率模型'宣称成立;主干确无定点 nsx(与'已从主干移除'一致)。PATENTS 文件原文已核,为防御性终止条款,非使用限制,但分发时需随附声明。48kHz 支持未从源码直接逐行核验(APM 全带处理属公知,不影响档位)。"
+    },
+    {
+     "name": "SpeexDSP preprocessor(speex_preprocess)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "BSD-3-Clause(COPYING 原文核验:标准三条款,无专利条款、无双授权;版权方含 Xiph.org/Valin/ADI/CSIRO 等)",
+     "evidence_url": "https://raw.githubusercontent.com/xiph/speexdsp/master/COPYING",
+     "capability_verdict": "supported",
+     "notes": "speex_preprocess.h 原文实核:纯 C,DENOISE/NOISE_SUPPRESS、AGC 全套、VAD、DEREVERB、ECHO_SUPPRESS(残余回声抑制)控制项全部存在,'MCRA 类估计+Ephraim-Malah 增益'与公开实现一致。GitHub 为镜像、开发在 gitlab.xiph.org,与扫描一致。"
+    },
+    {
+     "name": "Martin 2001 最小值统计噪声估计(Minimum Statistics)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文)",
+     "evidence_url": "https://www.scirp.org/reference/referencespapers?referenceid=909002",
+     "capability_verdict": "supported",
+     "notes": "R. Martin, IEEE Trans. Speech and Audio Processing, vol.9 no.5, pp.504-512, 2001, DOI 10.1109/89.928915——卷期页码与扫描完全一致;全文 PDF 亦有公开镜像(csd.uoc.gr)。"
+    },
+    {
+     "name": "Cohen 2003 IMCRA 噪声估计",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文)",
+     "evidence_url": "https://cris.technion.ac.il/en/publications/noise-spectrum-estimation-in-adverse-environments-improved-minima-2/",
+     "capability_verdict": "supported",
+     "notes": "I. Cohen, IEEE Trans. Speech and Audio Processing, vol.11 no.5, pp.466-475, 2003, DOI 10.1109/TSA.2003.811544——与扫描一致(Technion CRIS + Crossref 双源)。"
+    },
+    {
+     "name": "Cohen & Berdugo 2001 OM-LSA 增益规则",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文;israelcohen.com 站点 MATLAB 代码授权仍未核,扫描'不可假定可商用'的处理正确)",
+     "evidence_url": "https://israelcohen.com/wp-content/uploads/2018/05/sp_Nov2001.pdf",
+     "capability_verdict": "supported",
+     "notes": "PDF 原文首页实核:Cohen & Berdugo, 'Speech enhancement for non-stationary noise environments', Signal Processing 81 (2001) 2403-2418,摘要明确给出 OM-LSA 估计器+MCRA 噪声估计、避免音乐噪声——宣称逐条成立。"
+    },
+    {
+     "name": "Ephraim & Malah MMSE-STSA / Log-MMSE",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文)",
+     "evidence_url": "https://api.crossref.org/works/10.1109/TASSP.1984.1164453",
+     "capability_verdict": "supported",
+     "notes": "两篇均经 Crossref DOI 核验:1984 MMSE-STSA(IEEE TASSP 32(6):1109-1121, DOI 10.1109/TASSP.1984.1164453)与 1985 log-LSA(IEEE TASSP 33(2):443-445, DOI 10.1109/TASSP.1985.1164550),卷期页码与扫描完全一致。"
+    },
+    {
+     "name": "Cappé 1994 音乐噪声机理分析",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文)",
+     "evidence_url": "https://api.crossref.org/works/10.1109/89.279283",
+     "capability_verdict": "supported",
+     "notes": "O. Cappé, IEEE Trans. Speech and Audio Processing 2(2):345-349, 1994, DOI 10.1109/89.279283——Crossref 核验,与扫描一致。"
+    },
+    {
+     "name": "Gerkmann & Hendriks 2012 SPP 噪声估计(unbiased MMSE)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文;作者主页 MATLAB 参考代码授权未核,扫描'只可对照不可照搬'的处理正确)",
+     "evidence_url": "https://uol.de/fileadmin/user_upload/mediphysik/ag/speech/download/paper/gerkmann_unbiasedMMSE_TASL2012.pdf",
+     "capability_verdict": "supported",
+     "notes": "作者主页 PDF 原文首页实核:'Unbiased MMSE-Based Noise Power Estimation with Low Complexity and Low Tracking Delay', Gerkmann & Hendriks——摘要明确:固定先验 SPP 替代 VAD、免偏差补偿、低复杂度低跟踪延迟,宣称逐条成立。原 uni-oldenburg.de 链接 301 跳转至 uol.de,建议更新链接。"
+    },
+    {
+     "name": "WebRTC Transient Suppressor(键盘瞬态抑制)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "BSD-3-Clause(随 WebRTC 主仓 LICENSE)+ PATENTS 专利授权(同 WebRTC,含诉讼终止条款)",
+     "evidence_url": "https://chromium.googlesource.com/external/webrtc/+/ad34dbe934/webrtc/modules/audio_processing/transient/transient_detector.cc",
+     "capability_verdict": "supported",
+     "notes": "历史版本源码实核:transient_detector.cc 用 Daubechies-8 小波包分解(WPDTree)检测,transient_suppressor.cc 做 FFT 域抑制并含 UpdateKeypress() 按键事件门控——'小波检测+按键联动'宣称成立(准确说:检测用小波、抑制用 FFT)。已实核当前 main 分支 modules/audio_processing/ 目录:transient/ 子目录确已不存在——'新版本中被移除'属实,采用即意味着锁定历史版本自维护,扫描风险描述准确。"
+    },
+    {
+     "name": "Talmon/Hirszhorn/Cohen/Gannot 瞬态干扰抑制系列",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文)",
+     "evidence_url": "https://israelcohen.com/wp-content/uploads/2018/05/IWAENC2012_Hirszhorn.pdf",
+     "capability_verdict": "supported",
+     "notes": "两篇均核:Talmon/Cohen/Gannot 'Transient Noise Reduction Using Nonlocal Diffusion Filters', IEEE TASLP 19(6):1584-1599, 2011(Crossref DOI 10.1109/TASL.2010.2093651);Hirszhorn/Dov/Talmon/Cohen IWAENC 2012 PDF 首页实核,主题即键盘敲击/敲门类瞬态在 OM-LSA 框架内抑制。'无现成可商用开源实现'的判断未发现反例。"
+    },
+    {
+     "name": "Rangachari & Loizou 2006 快速噪声跟踪(MCRA-2)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(论文;Loizou 书配套 MATLAB 代码有出版社版权的提示正确)",
+     "evidence_url": "https://api.crossref.org/works/10.1016/j.specom.2005.08.005",
+     "capability_verdict": "supported",
+     "notes": "Crossref 核验:Rangachari & Loizou, 'A noise-estimation algorithm for highly non-stationary environments', Speech Communication 48(2):220-231, 2006——与扫描一致。utdallas.edu 原 PDF 链接证书失效(unable to verify certificate),建议换链接。"
+    },
+    {
+     "name": "Godsill & Rayner《Digital Audio Restoration》(点击/脉冲噪声修复)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(专著,Springer 版权)",
+     "evidence_url": "https://api.crossref.org/works/10.1007/978-1-4471-1561-8",
+     "capability_verdict": "supported",
+     "notes": "Crossref 核验:Godsill & Rayner, 'Digital Audio Restoration', Springer London, 1998, DOI 10.1007/978-1-4471-1561-8——书目属实(扫描含副标题 'A Statistical Model Based Approach',与出版物一致)。AR 模型点击检测+插值为该书公认核心内容。"
+    },
+    {
+     "name": "athena-signal(滴滴)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "Apache-2.0(raw LICENSE 原文 + 仓库页双核,无附加条款)",
+     "evidence_url": "https://raw.githubusercontent.com/athena-team/athena-signal/master/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "仓库页实核:athena-team 组织,8 模块(AEC/HPF/DOA/MVDR/GSC/VAD/NS/AGC)与扫描完全一致,README 明言 NS 'based on MCRA noise estimation method',主体 C 实现。唯一小瑕疵:仓库页面未明示滴滴(DiDi)归属,'滴滴开源'系业界通识而非仓库自述;仅 15 次提交,低活跃判断成立。"
+    },
+    {
+     "name": "DEMAND 多通道环境噪声库",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "Zenodo 权利页标 CC BY 4.0,但同页描述文字自称 CC BY-SA 3.0——元数据自相矛盾,扫描如实报告了两者。两者均允许商用;稳妥做法:再分发衍生音频时按更严的 BY-SA 3.0 履行 SA 义务",
+     "evidence_url": "https://zenodo.org/records/1227121",
+     "capability_verdict": "supported",
+     "notes": "Zenodo 页实核:16 通道环境噪声、48kHz 与 16kHz 双版本、含办公室/地铁/咖啡馆等环境——技术宣称成立(页面记 15 段录音,'18 种环境'为项目全集口径,差异不影响结论)。内部测试用途两种许可均无障碍,扫描风险描述准确。"
+    },
+    {
+     "name": "ETSI ES 202 396-1 背景噪声数据库",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(标准);噪声文件的商用测试/再分发条款[待核]仍未解决——docbox 公开目录无任何 LICENSE/条款文件,扫描的'需向 ETSI 核实'必须保留",
+     "evidence_url": "https://docbox.etsi.org/stq/Open/EG%20202%20396-1%20Background%20noise%20database",
+     "capability_verdict": "supported",
+     "notes": "docbox 目录实核:Binaural_Signals、Stereophonic_Signals、Calibration_Signal 三个文件夹公开可取,与'双耳/立体声实录噪声库'宣称一致。两点提醒:(1) 目录含 2026-07 新增 'NEW LOCATION.txt',数据库正在迁移,现链接可能失效;(2) docbox 文件夹沿用旧编号 EG 202 396-1,扫描所称 ES 202 396-1 为其现行标准化版本(Intertek 页佐证 V1.8.1 2022-05),命名并存,非错误。"
+    },
+    {
+     "name": "QUT-NOISE 数据库",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "数据 CC BY-SA(官方页原话:'The QUT-NOISE data itself is licensed CC-BY-SA',未注明版本号,具体版本在数据包内 LICENSE.txt);代码 BSD。无 NC 条款,商用允许,SA 对衍生再分发有传染义务",
+     "evidence_url": "https://research.qut.edu.au/saivt/databases/qut-noise-databases-and-protocols/",
+     "capability_verdict": "supported",
+     "notes": "官方页实核,许可声明与扫描逐字一致。CC BY-SA 版本号页面未标注,若需精确合规(3.0 与 4.0 的 SA 兼容规则不同)应下载数据包核 LICENSE.txt。'长时实录环境噪声+QUT-NOISE-TIMIT 协议代码'宣称与页面一致。"
+    }
+   ],
+   "flags": [
+    "跳过 4 个候选(相关性=观望/规避,按规则不核):libspecbleach/noise-repellent(观望)、Microsoft DNS-Challenge(观望)、WHAM!(规避)、RNNoise(观望)",
+    "反驳立场核验结论:16 个核验对象全部存在、无 misdescribed、无 license 错报——本维度扫描质量高,未发现影响采用档位的许可错误;以下为补充性风险,非降档项",
+    "WebRTC(NS 与 Transient Suppressor)的 BSD-3 之外另有 PATENTS 文件,原文已核:专利授权含诉讼终止(retaliation)条款——对采用无实质限制,但闭源固件分发需随附 LICENSE+PATENTS 声明,合规清单应列入",
+    "DEMAND 的 Zenodo 记录存在许可元数据自相矛盾(权利字段 CC BY 4.0 vs 描述文字 CC BY-SA 3.0):内部测试无碍,但对外发布混合音频前建议按 BY-SA 3.0 从严处理或向作者澄清",
+    "QUT-NOISE 官方页未标 CC BY-SA 版本号,精确合规需核数据包内 LICENSE.txt;SA 条款对衍生测试语料的对外再分发有传染性",
+    "ETSI 背景噪声库:docbox 目录 2026-07 出现 'NEW LOCATION.txt'(数据库迁移中,现有链接可能失效),且公开目录无任何使用条款文件——扫描的[待核]仍为未解决状态,纳入正式测试规程前必须向 ETSI 澄清商用测试/报告引用条款",
+    "WebRTC Transient Suppressor 已实核确认从当前 main 分支删除(modules/audio_processing/ 下无 transient/ 目录)——若采用必须锁定历史 revision 自维护,该风险扫描已如实标注",
+    "两处链接质量问题:Gerkmann PDF 原链接 301 至 uol.de;Rangachari PDF 的 utdallas.edu 链接 TLS 证书失效",
+    "核验手段说明:IEEE Xplore 拒绝抓取,论文类经 Crossref DOI API / 作者主页 PDF 原文 / Technion CRIS 多源核验,均为主源级证据;本会话 WebSearch 配额中途耗尽,剩余核验全部改用 WebFetch 直抓主源完成,无未核充数项"
+   ]
+  },
+  {
+   "dimension": "control",
+   "verdicts": [
+    {
+     "name": "QSC Q-SYS QRC (Q-SYS Remote Control)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "专有协议;文档公开可自由查阅(help.qsys.com 无需登录),仅作设计参照",
+     "evidence_url": "https://help.qsys.com/Content/External_Control_APIs/QRC/QRC_Commands.htm",
+     "capability_verdict": "supported",
+     "notes": "主源逐条核到:JSON-RPC 2.0 over TCP:1710、NUL 结尾分帧、ChangeGroup.AddControl/Poll/AutoPoll、Logon(User/Password)、Named Control 与 Component 两级寻址;60 秒无通信断连与 NoOp 保活在 QRC Overview 页原文确认('must communicate…at least once every 60 seconds, or the socket connection will be closed')。扫描描述无误。"
+    },
+    {
+     "name": "Biamp Tesira Text Protocol (TTP)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "专有协议;v4.2 规范 PDF(封面日期 2 DEC 2021)公开下载,无需登录",
+     "evidence_url": "https://downloads.biamp.com/assets/docs/default-source/control/tesira_text_protocol_v4-2_jan22.pdf?sfvrsn=100c2497_46",
+     "capability_verdict": "supported",
+     "notes": "v4.2 PDF 全文核验:RS-232/Telnet/SSH 承载、空格分隔的 InstanceTag+命令+属性+索引+值语法、大小写敏感、LF/CR 结束、subscribe/unsubscribe 且会话级(断线即失效需重订,support.biamp.com 原文)、登录鉴权与分级('logged in as controller or higher level to make any changes',observer 只读)。全部宣称有主源支撑。"
+    },
+    {
+     "name": "Sennheiser Sound Control Protocol (SSC)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "专有协议;TI 1245 v1.8.0(TCC2,161 页)开发者文档公开下载(经 link.sennheiser.com 重定向,CDN 对非浏览器 UA 返回 403 但浏览器 UA 可得)",
+     "evidence_url": "https://www.sennheiser.com/globalassets/digizuite/41940-en-ti_1245_v1.8.0_sennheiser_sound_control_protocol_tcc2_en.pdf",
+     "capability_verdict": "supported",
+     "notes": "PDF 原文核到:'Applying JSON to the OSC device model'章节、地址路径映射嵌套 JSON('The resulting JSON tree structure…in the same way as foreseen by OSC')、null 作 getter 伪参数(TX: {\"out1\":{\"xlr2\":{\"gain\":null}}})、/device/identity/product 等地址、UDP 默认端口 45 及 TCP/HTTP(S)/SSH 传输适配。'OSC 语义+JSON 载体'的描述准确。"
+    },
+    {
+     "name": "Shure Command Strings (P300 / MXA910)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "专有协议;官方 commandstrings 站点公开(JS 渲染,自动抓取仅得框架,内容经文档镜像核验)",
+     "evidence_url": "https://www.shure.com/en-US/docs/commandstrings/P300",
+     "capability_verdict": "supported",
+     "notes": "核到:TCP:2202、ASCII、尖括号定界帧('< GET MODEL >'、'< SET PRESET nn >'、'< REP MODEL {yyyy…} >',定长填充字段属实)、GET/SET 后设备回 REP 报告新值、'Most parameters will send a REPORT command when they change'、全文无任何鉴权机制(与扫描'明文无鉴权'一致)。唯一未逐字核到的细节:REP 是否广播至'所有'连接。"
+    },
+    {
+     "name": "Open Sound Control (OSC) 1.0 规范",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(标准/规范;主源页脚标注 'license: CC BY',协议自由实现,与扫描一致)",
+     "evidence_url": "https://opensoundcontrol.stanford.edu/spec-1_0.html",
+     "capability_verdict": "supported",
+     "notes": "主源确认:Matt Wright,2002-03-26 定稿;地址模式匹配(?、*、[]、{})、类型标签串(i/f/s/b/h/t/d…)、Bundle+时间戳语义均在规范原文;规范本身确无鉴权/会话/可靠传输语义,扫描的风险描述成立。"
+    },
+    {
+     "name": "Ember+ (Lawo)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "Boost Software License 1.0(LICENSE.TXT 原文首行 'Boost Software License - Version 1.0 - August 17th, 2003',无专利/赔偿附加条款,闭源静态链接可行)",
+     "evidence_url": "https://raw.githubusercontent.com/Lawo/ember-plus/master/LICENSE.TXT",
+     "capability_verdict": "supported",
+     "notes": "仓库确认含 libember(C++)、libember_slim(C)、EmberLib.net(C#)与文档;树形参数模型/provider-consumer 与 README 描述相符。注意:文档 PDF 是否同许可未单独核(扫描 not_covered 已如实声明)。"
+    },
+    {
+     "name": "AES70 / OCA (Open Control Architecture)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(开放标准;OCA Alliance 主源明示自由实现、无需入会:'Do I need to join the Alliance to use AES70? No',标准文本经 AES 获取)",
+     "evidence_url": "https://ocaalliance.com/what-is-aes70/",
+     "capability_verdict": "supported",
+     "notes": "存在性与'自由实现、无授权费、无需会员'的关键采用宣称在主源确认;对象模型/OCP.1 传输细节在标准文本内,本轮抓取的 Alliance 页面未逐条展示(页面仅提 2016 首版,AES70-2018/2023 版本号未在该页出现)——技术细节宣称无矛盾但主源展示有限。"
+    },
+    {
+     "name": "Symetrix Composer Control Protocol",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "专有协议;v7.0 规范 PDF 公开可得——但扫描给的官方链接(symetrix.co/wp-content/…v7.0-080918.pdf)现已 404,本轮经镜像核验全文",
+     "evidence_url": "https://audiobrains.com/data/symetrix/others/Composer-Control-Protocol-v7.0-080918.pdf",
+     "capability_verdict": "supported",
+     "notes": "PDF 全文核到:RS-232/TCP/UDP(端口 48631,最多 6 个 Telnet 会话)、控制号 1-10000 间接寻址、PUE/PUD 使能、PUI 推送间隔(20ms–30s)、PUT 推送阈值('changing by an amount larger than the threshold'才推)——电平推送节流描述准确;全文未见鉴权机制,与'鉴权能力弱'一致。需修复:雷达证据链接失效。"
+    },
+    {
+     "name": "Extron SIS (Simple Instruction Set)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "专有协议;散见各产品手册,手册 PDF 公开下载(tech92 营销页有 bot 防护,自动抓取不可达,存在性由检索结果标题与手册佐证)",
+     "evidence_url": "https://aca.im/driver_docs/Extron/PDU_IPL_T_PCS4.pdf",
+     "capability_verdict": "supported",
+     "notes": "产品手册 SIS 章节核到:命令无特殊起始定界符('No special characters are required')、每命令必有应答含错误码(E12/E13/E14/E17/E24/E27/E28,E01 见于其他型号,扫描'E01-E28'范围表述成立)、verbose 模式 0-3(1=verbose,2=tagged,3=两者)。'按型号碎片化、无统一规范文本'的风险描述与实情相符。"
+    },
+    {
+     "name": "tinyosc (mhroth/tinyosc)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "ISC(LICENSE 原文核验,无附加限制,商用闭源无碍)",
+     "evidence_url": "https://raw.githubusercontent.com/mhroth/tinyosc/master/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "仓库确认:极简 vanilla C OSC 编解码(tinyosc.c/.h)。一处与扫描相反的偏差:扫描风险称'bundle/时间戳支持有限',而 README 实际列明支持 bundle 解析/写入与 timetag(未支持的是其他非常用特性)——扫描高估了限制,方向保守,不影响档位。"
+    },
+    {
+     "name": "oscpack (Ross Bencina)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT + 非约束性'请将修改回寄原作者'请求条款(LICENSE 原文核验,该条款明确 non-binding,无额外义务)",
+     "evidence_url": "https://raw.githubusercontent.com/RossBencina/oscpack/master/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "仓库确认:C++ OSC 打包/解包库,含 Windows/POSIX 最小 UDP 收发类(TCP 分帧确需自实现);README 版权止于 2004-2013、提交稀少,'成熟但基本停更'的判断与主源一致。"
+    },
+    {
+     "name": "Crestron Certified Drivers SDK / 开发者微站",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "专有 SDK;文档站(sdkcon78221.crestron.com)公开可访问无需登录,使用受 Crestron Terms of Use/开发者条款约束",
+     "evidence_url": "https://sdkcon78221.crestron.com/sdk/Crestron_Certified_Drivers_SDK/Content/Topics/Overview/Overview.htm",
+     "capability_verdict": "supported",
+     "notes": "文档站确认覆盖驱动构建/测试流程、SIMPL/SIMPL#Pro 与 Crestron Home/.AV Framework 参考材料。扫描未提的额外限制:Overview 明示'开发新设备类型'与需受限信息的样例驱动不受支持;底层 CIP 不公开的判断与主源一致(文档不含 CIP 规范)。"
+    }
+   ],
+   "flags": [
+    "跳过 6 项未核验:观望 5(Harman HiQnet、OCAMicro/OcaToolsAndDemos、liblo、Freed&Schmeder OSC1.1 论文、AMX NetLinx)+ 规避 1(AES70.js,GPL-2.0)",
+    "证据链接失效:Symetrix 的 license_source 官方 URL(symetrix.co/wp-content/uploads/2024/04/Composer-Control-Protocol-v7.0-080918.pdf)返回 404;内容已经镜像(audiobrains.com)全文核验一致,雷达应更换/存档证据链接",
+    "链接脆弱:Sennheiser 两个 globalassets PDF 链接均 302→link.sennheiser.com→Optimizely CDN,CDN 对非浏览器客户端返回 403;文档真实存在(TI 1245 v1.8.0,161 页,已下载核验),建议本地存档",
+    "Extron tech92 页面有 bot 防护(USA-ANA Bot Defense),自动化核验不可达;SIS 宣称改经产品手册 PDF 主源核验通过",
+    "license 复核结论:未发现 GPL 传染漏标、双授权漏报或 BSD+专利条款问题——Ember+ BSL-1.0、tinyosc ISC、oscpack MIT(非约束回馈条款)、OSC 规范 CC BY 均与仓库/主源原文一致;本维度扫描对 GPL(AES70.js/liblo)的规避/观望定级正确",
+    "轻微偏差(不影响档位):tinyosc 风险'bundle/时间戳支持有限'与 README 不符——README 列明支持 bundle 解析/写入与 timetag,扫描高估了限制",
+    "补充信息:Crestron Certified Drivers SDK Overview 明示'开发新设备类型'及含受限信息的驱动不受支持,扫描条目未记录此限制,做 Crestron 对接规划时应纳入",
+    "细节未闭合:Shure 'REP 状态变更向所有连接广播'的'所有连接'表述未在可获取文档片段中逐字核到(已核到参数变更即发 REP、TCP:2202、尖括号帧、无鉴权);其余 11 项能力宣称全部主源支撑,QRC 60 秒超时/NoOp 保活亦在 Overview 页原文确认"
+   ]
+  },
+  {
+   "dimension": "aoip",
+   "verdicts": [
+    {
+     "name": "AES67-2023 标准(AES67 High-performance Streaming Audio-over-IP Interoperability)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(标准文档,文档版权非软件 license;AES 会员免费/非会员付费的获取模式属实,但扫描所写'约 $50-100'价格未核到主源)",
+     "evidence_url": "https://en.wikipedia.org/wiki/AES67",
+     "capability_verdict": "supported",
+     "notes": "存在性与描述核实:AES67-2023 已于 2023-12 发布(aes.org 标准博客标题及 intertekinform 商店条目均确认;aes2.org 的 2023-12-28 Call-for-Comment 页亦已直核)。关键宣称获支撑:IEEE 1588-2008 PTP 同步、RTP/UDP L16/L24、48kHz 强制(44.1/96k 可选)、SDP 会话描述,且 2023 版新增 IEEE 1588-2019 支持与组播地址段扩展。缺陷:扫描的 license_source(www.aes.org 博客 URL)直连已 404(AES 站点改版至 aes2.org),证据链接需更新;'2018→2023 逐条差异未核'的自认属实。"
+    },
+    {
+     "name": "Audinate Dante OEM 平台(Brooklyn 3 / Ultimo(X) / Broadway / Dante Embedded Platform / Dante IP Core)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "商业闭源,OEM 授权协议,条款非公开(Wikipedia 确认第三方须向 Audinate 取得授权;dev.audinate.com 为 OIDC 登录墙,与'签 OEM 协议后从开发者站点获取'描述一致;官方 legal/software-licensing 页 403 未能直核原文)",
+     "evidence_url": "https://en.wikipedia.org/wiki/Dante_(networking)",
+     "capability_verdict": "supported",
+     "notes": "生态与授权模式核实:Wikipedia 载 2023-09 已授权 550 家厂商、3800+ 款产品,高于扫描引用的'500+/3000+'(audioXpress 2021 文亦证 518 OEM、3034 设备、91% 市占),'会议市场事实标准'成立。模块家族 Brooklyn/Ultimo/Broadway 获证实。未核部分:'Brooklyn 3 最高 64x64 通道''Ultimo 2-4 通道''DEP 跑 Arm Cortex-A + Linux、在线授权激活''Brooklyn/DEP 支持 AES67 兼容模式'均未能从主源核到(官网反爬 403、开发者门户需登录)——扫描自己已声明此局限,采用前须商务渠道确认这些规格。"
+    },
+    {
+     "name": "flexPTP",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(GitHub 仓库页与 GitHub API spdx_id=MIT 双重确认,无附加专利/领域限制条款)",
+     "evidence_url": "https://github.com/epagris/flexPTP",
+     "capability_verdict": "supported",
+     "notes": "能力宣称逐条获支撑:OC 主/从、E2E+P2P、L2/L4、单步/两步、可作 802.1AS 时钟、PID/Kalman 伺服;底层支持 lwIP 与 EtherLib;移植覆盖 STM32F4/F7/H7、TI TM4C1294、NXP FRDM-K64F(Cortex-M4/M7),另有实验性 Linux/POSIX 移植(扫描未提,属加分)。'数十 ns 级同步'为项目文档自述(<100ns),非独立第三方测试,采用时应自测。'社区小、非大厂维护'的定性与仓库状态相符。"
+    },
+    {
+     "name": "PTPd (ptpd/ptpd)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "BSD-2-Clause(COPYRIGHT 原文逐条核对:标准两条款 BSD,无广告条款、无专利条款;注意 GitHub API spdx_id 为 NOASSERTION,因 COPYRIGHT 文件聚合多版权人声明,不影响 BSD-2 认定)",
+     "evidence_url": "https://raw.githubusercontent.com/ptpd/ptpd/master/COPYRIGHT",
+     "capability_verdict": "supported",
+     "notes": "存在性与描述相符:PTPv2(IEEE 1588-2008)守护进程,微秒级精度自述。README 确含'IEEE 1588 可能含专利技术、使用者或需另行取得授权'的提示,扫描如实记录。上游停滞的定性与仓库活动一致(无近期正式版)。'微秒级'为项目自述;'历史移植广泛'经 hasseb 等 fork 佐证但质量确实参差,扫描风险提示成立。"
+    },
+    {
+     "name": "GStreamer(rtpL24/rtpL16 + GstPtpClock)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "LGPL(官方 licensing FAQ 直核:core 及官方插件模块一律要求 LGPL,仅少量历史 BSD/MIT 例外;FAQ 页未标注 LGPL 具体版本号,通行为 2.1;FAQ 同时确认部分官方插件模块接受链接外部 GPL 库的 LGPL 插件——选用插件须逐个过 license,扫描此提示正确且必要)",
+     "evidence_url": "https://gstreamer.freedesktop.org/documentation/frequently-asked-questions/licensing.html",
+     "capability_verdict": "supported",
+     "notes": "GstPtpClock 经官方文档直核:IEEE 1588-2008、slave-only 普通时钟、不支持 BC/TC、经 helper 进程通信,无硬件时间戳支持迹象——与扫描'软件时间戳、产品级同步不够'的风险判断一致。rtpL16/rtpL24 收发本次未单独直核官方模块页,但 Collabora AES67 教程(扫描已引)为可信佐证。上位机/测试对端定位合理;LGPL 动态链接可议但需按最终构建方式评估,扫描已提示。"
+    },
+    {
+     "name": "AES67 PlugFest 报告(AES-R12 慕尼黑2014 / 华盛顿2015 / AES-R17 伦敦2017)与 AES-R16-2016",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "N/A(AES 标准报告,论文/报告类;原条目'是否免费未核[待核]'本次仍未能解决——aes.org 旧 docID 检索页(docID=106/98)已全部 404,aes2.org 站内搜索亦检不到文档页,获取条款维持未核状态,采用前需从 aes2.org 人工确认)",
+     "evidence_url": "https://aimsalliance.org/wp-content/uploads/2019/04/AES67-SMPTE-ST-2110-Commonalities-and-Constraints-Updated-April-2019.pdf",
+     "capability_verdict": "supported",
+     "notes": "存在性核实:AES-R16-2016 经 AIMS 联盟文档正文确认('The report (AES-R16-2016) is available from the AES library'),内容确为 AES67 与 ST 2059-2 的 PTP 参数建议;三次 plugfest 报告经 Wikipedia AES67 参考文献列表确认:AES-R12-2014(慕尼黑)、AES-R15-2015(华盛顿)、AES-R17-2017(伦敦)。更正:华盛顿 2015 报告编号为 AES-R15-2015,扫描条目名未标编号、易误读为 R12 覆盖两届。'伦敦 24 家厂商 36 款产品'与'作者为 SC-02-12 工作组'两项细节未能主源核到(报告正文不可得)。"
+    },
+    {
+     "name": "Wireshark(PTP/RTP/SDP/SAP 解析)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "GPL-2.0(README 原文:'Wireshark is distributed under the GNU GPLv2',并注明多数源文件按 GPL-2.0-or-later、少量文件为兼容许可;COPYING 为 GPLv2 全文)——原[待核]已解决,扫描猜测正确",
+     "evidence_url": "https://gitlab.com/wireshark/wireshark/-/raw/master/README.md",
+     "capability_verdict": "supported",
+     "notes": "扫描的 license_source 为空串,本次已补上主源。PTPv2 解析器经官方 display-filter 参考页直核(含 v2 announce priority1/priority2、domainNumber 等字段,可核 Announce/Sync 参数);RTP/SDP/SAP 解析器为内置标配(未逐一直核,属公知且低风险)。'仅内部研发使用、不随产品分发、GPL 无碍'的判断成立,档位(采用候选)无异议。"
+    }
+   ],
+   "flags": [
+    "跳过 7 项(相关性=观望/规避):linuxptp(规避)、bondagit/aes67-linux-daemon(规避)、ravenna-alsa-lkm(规避)、SMPTE ST 2110-30(观望)、RAVENNA(观望)、Statime(观望)、nmos-cpp(观望)",
+    "跳过项中 linuxptp 带 [待核](GPL 具体版本未核)——因属规避档按规则未核;若最终架构含嵌入式 Linux SoC 并拟按'独立进程调用'路径解禁,须先补核其许可版本并做法务评估,不能沿用扫描的'通说 GPLv2'",
+    "证据链接腐烂:AES 官网改版(aes.org→aes2.org)导致扫描内 AES67 博客 license_source 及 AES-R 报告 docID 检索页(docID=98/106,另 AIMS 文档中给出的 R16 为 docID=105)直连全部 404,雷达发布前应整体替换为 aes2.org 链接;AES-R 报告免费/付费获取条款至今未核实",
+    "更正:华盛顿 2015 plugfest 报告编号为 AES-R15-2015,扫描条目名漏标(仅列 R12/R17),引用时勿把两届都记在 AES-R12 名下",
+    "Dante 关键规格未核自认属实:Brooklyn 3 '64x64 通道'、Ultimo '2-4 通道'、DEP 'Arm Cortex-A + Linux'、'AES67 兼容模式'均无法从公开主源核实(官网 403、dev.audinate.com OIDC 登录墙),采用档位决策若依赖这些通道数/平台约束,必须以商务渠道书面确认为准;生态规模主张已证实且可更新为 550 厂商/3800+ 产品(2023-09)",
+    "伦敦 2017 plugfest '24 家厂商 36 款产品' 与 flexPTP '数十 ns 同步'、PTPd '微秒级' 均为项目/报告自述或未核细节,不构成独立验证",
+    "GPL/双授权专项排查结果:未发现 GPL 传染漏标或双授权只报宽松一侧的问题;PTPd COPYRIGHT 原文为标准 BSD-2(无广告/专利条款),flexPTP 为纯 MIT 无附加条款,GStreamer LGPL 经官方 FAQ 证实(但 FAQ 未标 LGPL 版本号,且官方承认部分插件模块可链外部 GPL 库——扫描的'逐插件核'提示必须保留);无 BSD+专利条款伪装情形(WebRTC PATENTS 类问题不在本维度)",
+    "本维度扫描结论总体成立,无影响采用档位的定性错误;最大实质缺口仍是扫描自认的'裸机 DSP 无成熟宽松许可完整 AES67 栈',核验未发现可推翻该结论的反例"
+   ]
+  },
+  {
+   "dimension": "host-ui",
+   "verdicts": [
+    {
+     "name": "Qt 6 (Widgets/QML)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "双轨:商业许可 + 社区版 GPLv3/LGPLv3。非 GPL-only 模块(含 Essentials)可按 LGPLv3 闭源动态链接(须允许用户重链接);官方 GPL-only 附加模块名单含 Qt Graphs/Quick 3D/MQTT/CoAP/HTTP Server/Virtual Keyboard 等;同一项目严禁商业版与社区版混用(qt.io 原文确认)",
+     "evidence_url": "https://doc.qt.io/qt-6/licensing.html",
+     "capability_verdict": "supported",
+     "notes": "扫描结论成立。qt.io/licensing 确认双轨与混用禁令原文;doc.qt.io/qt-6/licensing.html 给出 GPL-only 模块清单,Essentials 不在其中即走 LGPLv3,与'Essentials 多为 LGPLv3'一致。反驳性发现:Qt Charts/Data Visualization 已不在 Qt6 名单——其接替者 Qt Graphs 明确 GPL-only,社区版路线下频谱/图表组件不可用,须自绘或买商业版(见 flags)。"
+    },
+    {
+     "name": "Dear ImGui",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(Copyright 2014-2026 Omar Cornut,LICENSE.txt 原文,无专利条款、无附加限制)",
+     "evidence_url": "https://raw.githubusercontent.com/ocornut/imgui/master/LICENSE.txt",
+     "capability_verdict": "supported",
+     "notes": "README 自述'bloat-free graphical user interface library for C++'、面向内容创作/可视化/调试工具,docking 分支存在,均与描述相符。措辞微修:ImGui 本身不做 GPU 渲染,只输出优化后的顶点缓冲由宿主 3D 管线渲染——与扫描'GPU 渲染'表述实质一致,不构成 overstated。"
+    },
+    {
+     "name": "ImPlot",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(Copyright 2020 Evan Pezent,LICENSE 原文已核;扫描 license_source 仅给仓库页,本次补核到原文)",
+     "evidence_url": "https://raw.githubusercontent.com/epezent/implot/master/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "README 原文:'geared toward plotting application data at realtime speeds'、'You can plot tens to hundreds of thousands of points without issue, but don't expect millions to be a buttery smooth experience'——'数万至数十万点'宣称与主源逐字吻合;line/bar/heatmap 均在特性表。"
+    },
+    {
+     "name": "mdns (mjansson/mdns)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "Public domain(README:'put in the public domain; you can redistribute it and/or modify it without any restrictions'。注意:未见 MIT 备选许可文本,公有领域献弃在部分法域效力存疑,采用前建议法务留痕)",
+     "evidence_url": "https://github.com/mjansson/mdns",
+     "capability_verdict": "supported",
+     "notes": "README 逐条支撑:'header only cross-platform mDNS and DNS-SD library in C';支持 DNS-SD 发现与服务响应及一次性查询/应答;'There are no memory allocations done by the library'——零动态分配宣称属实。"
+    },
+    {
+     "name": "QMdnsEngine",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(Copyright 2018 Nathan Osman,LICENSE.txt 原文已核)",
+     "evidence_url": "https://raw.githubusercontent.com/nitroshare/qmdnsengine/master/LICENSE.txt",
+     "capability_verdict": "unverified",
+     "notes": "存在性与 license 无误,README 原句确认'implementation of multicast DNS as per RFC 6762'且为 Qt 库。但扫描宣称的'服务发布、浏览、IPv4/IPv6 解析'在 README 中无任何特性清单,详情仅在外链 CI 托管的 doxygen 文档,本次未能核到主源支撑——列为采用候选前应读源码/文档确认 Provider/Browser/Resolver 能力(见 flags)。"
+    },
+    {
+     "name": "JUCE 8/9",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "AGPLv3 / JUCE 9 商业许可双轨(仓库 LICENSE.md 现全文指向 JUCE 9 EULA;闭源商用必须购商业席位,AGPL 轨对闭源产品不可用)",
+     "evidence_url": "https://raw.githubusercontent.com/juce-framework/JUCE/master/LICENSE.md",
+     "capability_verdict": "supported",
+     "notes": "反驳未果、且补上了扫描缺口:juce.com/get-juce 实核 JUCE 9 价格档 = Starter 免费(年营收/融资≤$20,000)、Indie $40/月或 $800 永久(≤$300,000,最短 1 个月)、Pro $175/月或 $3,500 永久(最短 12 个月)、旧版持有者升级 7 折——与扫描所列数字完全一致,not_covered 中'JUCE 9 价格档未核'现已关闭。"
+    },
+    {
+     "name": "Frequalizer (ffAudio)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "BSD-3-Clause(Copyright Daniel Walz - Foleys Finest Audio UG,LICENSE.md 原文;自身宽松但构建依赖 JUCE(AGPL/商业),整包复用即背上 JUCE 义务,仅借鉴移植无碍)",
+     "evidence_url": "https://raw.githubusercontent.com/ffAudio/Frequalizer/master/LICENSE.md",
+     "capability_verdict": "supported",
+     "notes": "README 确认:六段参数 EQ、'drag frequency and gain directly in the graph'(可拖拽曲线编辑)、含 input/output analyser(频谱叠加)——能力宣称逐条属实。"
+    },
+    {
+     "name": "Avalonia UI",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(核心框架,仓库 licence.md + 徽章确认);XPF(WPF 兼容层)为按 app/按平台收费的独立商业产品,官方页面原文确认",
+     "evidence_url": "https://github.com/AvaloniaUI/Avalonia",
+     "capability_verdict": "supported",
+     "notes": "自述跨平台 .NET UI 框架、'spiritual successor to WPF',支持 Windows/macOS/Linux(另含 iOS/Android/WASM),与描述相符。音频控件生态为零的风险判断无法证伪、维持。"
+    },
+    {
+     "name": "Tauri",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT OR Apache-2.0(仓库原文措辞为 'MIT or MIT/Apache 2.0 where applicable',即部分组件仅 MIT——合规上统一按 MIT 履行义务即可,无实质影响;版权归 The Tauri Programme within The Commons Conservancy)",
+     "evidence_url": "https://github.com/tauri-apps/tauri",
+     "capability_verdict": "supported",
+     "notes": "Rust 后端 + 系统 WebView(经 WRY:Windows WebView2 / macOS WKWebView / Linux WebKitGTK)与描述一致;三平台引擎不同的渲染一致性风险由官方架构描述直接印证。"
+    },
+    {
+     "name": "Electron",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(Copyright 2013-2020 GitHub Inc. 及 Electron contributors,LICENSE 原文,无附加限制)",
+     "evidence_url": "https://raw.githubusercontent.com/electron/electron/main/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "Chromium+Node 桌面壳、渲染一致性定位属公认事实。扫描自记的遗留项仍在:mDNS npm 依赖(bonjour-service 等)license 未核,选 Electron 路线时须补。"
+    },
+    {
+     "name": "imgui-knobs",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "MIT(Copyright 2022 Simon Altschuler,LICENSE 原文已核)",
+     "evidence_url": "https://raw.githubusercontent.com/altschuler/imgui-knobs/main/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "'7 种 knob 变体'宣称精确属实:Tick/Dot/Wiper/WiperOnly/WiperDot/Stepped/Space 恰 7 种,README 确认。"
+    },
+    {
+     "name": "webaudio-controls",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "Apache-2.0([待核]已解除:仓库 LICENSE 文件为 Apache License 2.0 全文,README 亦声明 'Licensed under the Apache License, Version 2.0')",
+     "evidence_url": "https://raw.githubusercontent.com/g200kg/webaudio-controls/master/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "README 确认提供 'knobs, sliders, switches, parameter displays and keyboards' 且以 WebComponents 自定义标签实现——与扫描描述一致;确无 EQ 曲线/矩阵网格组件,该缺口判断成立。"
+    },
+    {
+     "name": "竞品调音软件文档集(Q-SYS Designer / Biamp Tesira / Symetrix / Yamaha ProVisionaire / BSS / Xilica / Shure Designer)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "专有商业软件及其官方文档,无任何复用授权;仅限在线查阅作信息架构/交互对标,不得复制视觉资产(与扫描'N/A 仅记文档链接'定位一致)",
+     "evidence_url": "https://help.qsys.com/Content/Q-Sys_Designer/001_Q-Sys_Designer_Overview.htm",
+     "capability_verdict": "supported",
+     "notes": "抽查 2/7:Q-SYS Designer 官方帮助存在(QSC 2026 版权,覆盖 schematic 创建、组件库、UI/snapshot 等)、Biamp Tesira Field Reference Guide 官方存在(2024-08 更新)。其余 5 家链接未逐一核,作对标素材风险极低。"
+    }
+   ],
+   "flags": [
+    "跳过 7 个非核验对象:观望 6(VSTGUI、iPlug2/IGraphics、Flutter desktop、WPF、Apple mDNSResponder/Bonjour、Avahi)+ 规避 1(x42 meters.lv2, GPL)",
+    "[影响绘图子选型] Qt 路线频谱图风险已从'疑似'坐实:官方 Qt6 GPL-only 名单含 Qt Graphs(Qt Charts/Data Visualization 的接替者)及 Quick 3D/MQTT/CoAP/HTTP Server 等——LGPL 社区版路线下这些模块不可用于闭源上位机,频谱/EQ 曲线必须自绘或购商业版;不动摇 Qt 的采用候选档位,但扫描 not_covered 中该补核项应升级为确定结论",
+    "[待核清零] webaudio-controls license 已核 LICENSE 原文 = Apache-2.0,扫描标注的 [待核] 解除,结论与原标注一致",
+    "[缺口关闭] JUCE:仓库 LICENSE.md 已整体切换为 JUCE 9 EULA;JUCE 9 商业价格档实核与扫描所列完全一致(Starter 免费≤$20k / Indie $40月或$800永久≤$300k / Pro $175月或$3500永久、12个月起订、旧版升级7折)——若走 JUCE 请按 JUCE 9 条款立项评估",
+    "[能力未验证] QMdnsEngine 被列为采用候选,但其'服务发布/浏览/IPv4v6 解析'能力在主源 README 无任何清单(仅确认 RFC 6762 + MIT + Qt 定位),文档托管在 CI 站点未能核到;选型定稿前需源码级确认,或直接以 mjansson/mdns(能力已全部核实)为准",
+    "[低风险法务提示] mjansson/mdns 仅有公有领域声明、无 MIT 备选许可文本,公有领域献弃在部分法域(如德国)效力存疑,建议采用时法务留痕",
+    "竞品文档集 7 条链接仅抽查 2 条(Q-SYS、Biamp)均为官方在档文档,其余 5 条未核",
+    "总体结论:host-ui 维度扫描质量高——13 项核验对象存在性 13/13 确认,license 13/13 与主源一致(0 项 corrected、0 项 GPL 漏标/双授权漏报),能力宣称 12 supported / 1 unverified(QMdnsEngine)"
+   ]
+  },
+  {
+   "dimension": "reference",
+   "verdicts": [
+    {
+     "name": "DSP Concepts Audio Weaver / AWE Core",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "Proprietary 商业授权(AWE Designer 分 Standard/Pro/Module Creator 三版;AWE Core 运行时与 royalty 条款非公开,需商务接触)",
+     "evidence_url": "https://dspconcepts.com/en/audio-weaver",
+     "capability_verdict": "supported",
+     "notes": "官方页证实:实时嵌入式音频框架,部署于 bare-metal/RTOS/Linux/Android,多通道/多核;模块库官方口径为 400+/500+/600+(不同页面不一致);Silicon Partners 页列 16 家半导体伙伴,含 ST/NXP/ADI/TI/Qualcomm 等,'与平台弱耦合、含 ST'宣称成立。但扫描所称'按处理器核授权运行时、按席位授权 Designer、每次启动联网校验授权'在官方页面均未见,其引用的社区论坛链接已 404——该三项宣称目前无主源支撑,商务接触前应按未证实处理。"
+    },
+    {
+     "name": "Analog Devices SigmaStudio / SigmaStudio for SHARC + SAM baremetal SDK",
+     "exists": "confirmed",
+     "license_verdict": "corrected",
+     "license_final": "SigmaStudio 专有工具(基础版免费下载,免费属性本轮未从 analog.com 直接复核);SigmaStudio for SHARC 需付费 CrossCore Embedded Studio 授权(wiki 证实需有效 CCES license,提及 90 天评估);sam-baremetal-sdk 仓库 LICENSE 已核:BSD-3-Clause-Clear(SPDX 标识明确)",
+     "evidence_url": "https://raw.githubusercontent.com/analogdevicesinc/sam-baremetal-sdk/master/LICENSE",
+     "capability_verdict": "supported",
+     "notes": "[待核] 已解决:sam-baremetal-sdk 为 BSD-3-Clause-Clear——注意 Clear 变体条文明示'不授予任何专利权',即采用该代码无专利默示授权,属任务警戒的'BSD±专利条款'情形,IP 评估需记入。wiki.analog.com FAQ 证实 SigmaStudio 图形化环境+预制算法块、支持 SigmaDSP(ADAU1452/66/67)与 SHARC(经 SS for SHARC,需联系 ADI 区域代表获取)。analog.com 产品页两次抓取失败(socket hang up),'工具免费'一项凭 wiki+常识,未见反证。"
+    },
+    {
+     "name": "AES17-2020(数字音频设备测量方法)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "na(付费标准;aes2.org 标准商店证实定价模式:AES 会员 $0、非会员 $50-100,与扫描'会员免费获取'一致)",
+     "evidence_url": "https://aes2.org/publications/standards-store/",
+     "capability_verdict": "unverified",
+     "notes": "证据缺口:扫描给出的 license_source(aes.org docID=21)已 404(AES 网站迁移至 aes2.org);新站商店显示 126 项标准但检索不可用,document-center/ANSI webstore 均 403,本轮未能抓到 AES17 专页主源。AES17 标准本身(数字音频设备 THD+N/动态范围/频响等测量方法)为行业周知现行标准、存在性无实质疑问,但'Audio Precision 测试仪直接内置 AES17 测量模式'等宣称本轮未核到主源,采用前建议补一条可用主源链接。"
+    },
+    {
+     "name": "IEC 60268 系列(重点 -3 放大器 与 -16 STI)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "na(付费标准:IEC 60268-3:2018 与 60268-16:2020 经 EVS 渠道核实均现行有效,PDF 约 €506-540/份,整套购齐费用不低——扫描风险提示成立)",
+     "evidence_url": "https://www.evs.ee/en/iec-60268-3-2018",
+     "capability_verdict": "supported",
+     "notes": "60268-3:2018(第5版,Sound system equipment - Amplifiers,2018-04-25 起有效,含数字输入额定条件新规)与 60268-16:2020(STI 客观语音可懂度评价,2020-09-25 起有效,替代 2011 版)均核实为现行版本,与扫描所记年份完全一致。GB/T 12060 采标途径未核(中文渠道,非本轮范围)。"
+    },
+    {
+     "name": "ITU-T P.340 / P.341(免提终端传输特性)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "na(ITU-T 建议书;ITU 官网提供 PDF,ITU-T 建议书自 2007 年起普遍免费公开,页面本身未标注收费)",
+     "evidence_url": "https://www.itu.int/rec/T-REC-P.340/en",
+     "capability_verdict": "supported",
+     "notes": "P.340 'Transmission characteristics and speech quality parameters of hands-free terminals',现行版 (05/00)+Amd.2(2019-01),in force;P.341 'Transmission characteristics for wideband digital loudspeaking and hands-free telephony terminals' (03/11),in force,宽带 150-7000Hz——与扫描描述(P.341 为宽带扩展、免提/会议终端语音验收参照系)相符。注意 P.340 主体文本为 2000 年版,应用到现代会议设备时的裁剪风险扫描已如实记载。"
+    },
+    {
+     "name": "ITU-T G.167(声学回声控制器)+ G.168(线路回声消除器)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "na(ITU-T 建议书,ITU 官网获取;G.167 状态 withdrawn,G.168 (04/2015)+2022 勘误 in force)",
+     "evidence_url": "https://www.itu.int/rec/T-REC-G.167/en",
+     "capability_verdict": "overstated",
+     "notes": "存在性与 G.168 现行状态均证实。但扫描称 G.167 '已边缘化(defunct)但无直接替代'与 ITU 主源矛盾:ITU 页面明示 G.167 内容已由 P.340(2000)(承接 G.167 第1-5章)与 G.161(2002)(承接第6节)覆盖——存在明确的承接标准,规格制定应直接引 P.340/G.161 而非以'无替代'为由沿用 1993 版 G.167。'要求覆盖至 400ms 回声路径'的具体条款本轮未读原文核对。同一 JSON 的 aec 维度条目表述正确(已被 P.340 取代),reference 维度此条与之自相矛盾。"
+    },
+    {
+     "name": "Biamp Tesira 公开架构/设计资料(Cornerstone 知识库)",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "专有产品文档,公开可阅(© Biamp Systems,support.biamp.com 无需登录)",
+     "evidence_url": "https://support.biamp.com/Tesira/Programming/AEC_in_Tesira",
+     "capability_verdict": "supported",
+     "notes": "'AEC in Tesira' 页面实抓证实:AEC Input/Processing/Reference 三块划分、须同 partition、逐通道与单通道 reference 配置、信号流路由规则、含 AGC/滤波的通道处理参数——与扫描描述逐项吻合。Design Library 与 TesiraFORTE 数据手册链接未逐一复抓,但主证据页已充分支撑'免费公开的会议 DSP 工程参照系'定位。"
+    },
+    {
+     "name": "Shure IntelliMix P300 公开资料",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "专有产品文档,公开可阅(© Shure,产品页与用户指南公开)",
+     "evidence_url": "https://www.shure.com/en-US/products/mixers/p300",
+     "capability_verdict": "supported",
+     "notes": "官方产品页逐项证实:Audio Conferencing Processor,'8 channels of microphone processing featuring AEC, noise reduction, and automatic gain control',并含 'IntelliMix automatic mixing, matrix mixing, delay, compressor and PEQ'——扫描的能力描述与主源措辞几乎逐字对应,无夸大。扫描注记的 Shure 自动调参在授专利(US11985488)本轮未核,不影响文档参照用途。"
+    },
+    {
+     "name": "CamillaDSP",
+     "exists": "confirmed",
+     "license_verdict": "confirmed",
+     "license_final": "GPL-3.0 与 MPL-2.0 双许可(用户任选);重要例外:启用 asio-backend 特性构建时(Windows ASIO,依赖 GPLv3 的 ASIO SDK 绑定)产物仅受 GPLv3 约束",
+     "evidence_url": "https://github.com/HEnquist/camilladsp",
+     "capability_verdict": "supported",
+     "notes": "反驳失败——扫描此条精确无误:双许可及 ASIO=GPL-only 细节均与仓库主源一致,未犯'双授权只报宽松一侧'错误。能力宣称全部证实:matrix mixer、级联 biquad IIR、FFT 卷积 FIR、WebSocket 控制接口(默认启用)、YAML pipeline 配置;1000+ stars、1754 commits,活跃度描述属实。采用提醒:走 MPL-2.0 轨取用代码须保持文件级 copyleft,且上位机若做 Windows ASIO 构建即触 GPL——扫描风险栏已载。"
+    },
+    {
+     "name": "ITU-T P.862 (PESQ) / P.863 (POLQA)",
+     "exists": "confirmed",
+     "license_verdict": "na",
+     "license_final": "na(标准;但注意:参考实现的商用授权条款 [待核] 本轮仍未能核到主源,维持未决——OPTICOM 等权利方条款不得按已核处理)",
+     "evidence_url": "https://www.itu.int/rec/T-REC-P.862/en",
+     "capability_verdict": "overstated",
+     "notes": "ITU 主源显示 P.862 已 superseded,且过期文本'已于 2024-01-05 删除',页面明确指引改用 P.863/P.863.1/P.863.2——扫描'P.862 建议书文本免费,附参考代码'的表述已过时,当前 ITU 页面未证实文本可免费下载。'附参考实现与一致性数据'的存在得到页面佐证,但其商用授权(历史上需向 OPTICOM/Psytechnics 等取得)未核到任何主源条款,PESQ 相关专利到期状态亦未核。若拟将 PESQ/POLQA 纳入研发回归指标,须先完成该项授权专项核实,或改用开源 ViSQOL。"
+    }
+   ],
+   "flags": [
+    "跳过 7 条未核验(观望 4:freeDSP aurora、QSC Q-SYS、DSPPA DP8005、OLMS;规避 3:aes67-linux-daemon、ravennakit、Elk Audio Sushi)",
+    "专利条款警戒命中:sam-baremetal-sdk 实为 BSD-3-Clause-Clear(非普通 BSD-3),条文明示'不授予任何一方专利权'——采用其代码得不到 ADI 的专利默示授权,评估 SigmaStudio/SHARC 路线档位时应计入 IP 风险;扫描原文仅标 [待核],未识别此变体",
+    "AES17-2020 证据链断裂:扫描给出的 aes.org 主源链接已 404(网站迁移),aes2.org 新站无法检索到 AES17 专页,ANSI/GlobalSpec/document-center 渠道均 403;存在性无实质疑问但'AP 测试仪内置 AES17 模式'等宣称未核到主源,建议定档前补有效主源",
+    "Audio Weaver 授权模式宣称失据:'按 core 授权运行时、每次启动联网校验授权'的唯一出处(dspconcepts 社区论坛链接)已 404,官方页面无此说明——联网校验若属实将影响产线/离线开发场景,商务接触时必须书面确认",
+    "P.862 状态过时:ITU 已于 2024-01-05 删除过期文本并指引改用 P.863 系列,扫描'文本免费公开'表述不再成立;参考实现商用授权 [待核] 经核仍无法解决(unresolved),纳入 CI/回归指标前须专项法务核实",
+    "G.167 描述自相矛盾且有误:reference 维度称'无直接替代',但 ITU 主源明示内容由 P.340(2000) 第1-5章 + G.161(2002) 第6节承接(同文件 aec 维度记载正确);验收规格应直接引 P.340/G.161",
+    "CamillaDSP 双许可核验通过(GPL-3.0/MPL-2.0,ASIO 构建仅 GPLv3),扫描无'只报宽松一侧'问题;但提醒:上位机 Windows ASIO 构建即触 GPL,MPL 轨须逐文件保留 copyleft",
+    "核验手段受限声明:本会话 WebSearch 预算耗尽(200/200),全部核验仅靠 WebFetch 主源直抓;analog.com 产品页(socket hang up)与多家标准经销渠道(403)不可达,SigmaStudio'免费'属性与 AES17 专页两处留有次级证据缺口"
+   ]
+  }
+ ]
+}
