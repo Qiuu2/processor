@@ -6,7 +6,7 @@ f0= 1000.0Hz depth=-18.0dB bw_set=0.10oct | closed-form@f0=-18.000dB freqz@f0=-1
 f0=  250.0Hz depth= -3.0dB bw_set=0.20oct | closed-form@f0= -3.000dB freqz@f0= -3.000dB 两轨差=1.56e-07dB | 半深点带宽=0.200oct | 稳定=True
 f0=  100.0Hz depth=-12.0dB bw_set=0.10oct | closed-form@f0=-12.000dB freqz@f0=-12.000dB 两轨差=9.18e-06dB | 半深点带宽=0.100oct | 稳定=True
 f0= 6300.0Hz depth= -6.0dB bw_set=0.10oct | closed-form@f0= -6.000dB freqz@f0= -6.000dB 两轨差=1.67e-12dB | 半深点带宽=0.100oct | 稳定=True
-判定:两轨差应 <1e-4 dB(低频 f0/fs 小时 float64 调理数变差,100Hz 例实测 ~1e-5,无工程影响但如实记录;这也是文档 §4.4 低频定点精度警示的浮点侧影);@f0 深度应=设定深度;半深点带宽应≈设定 BW(RBJ 定义即半增益点)
+判定:两轨差应 <1e-4 dB(低频 f0/fs 小时 float64 调理数变差,100Hz 例约 1e-5,无工程影响但如实记录;这也是文档 §4.4 低频定点精度警示的浮点侧影);@f0 深度应=设定深度;半深点带宽应≈设定 BW(RBJ 定义即半增益点)
 
 ========================================================================
 CHECK B: Quinn 第二估计器 bin 内插精度(1024pt Hann @16kHz, bin=15.625Hz, B3)
