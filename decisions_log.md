@@ -62,6 +62,11 @@
 - **可逆性**:1/2/4 = 方向性(实现顺序与架构可调,留痕即可);**3 = 强约束**(对外规格,变更须走 §7 变更审计)。
 - **验证状态**:全部未证——N 值待 D13 实算;8 点在 21569 上的算力/音质待 L2 桌面→L1 板上;FIR 群延迟对 <12ms 的占用待 D13。
 - **风险声明**:①竞品 8 点是"陷波式啸叫抑制(NHS)"口径,若我们选自适应反馈消除(AFC)路线,"点数"语义不同,须在 W1 明确路线再冻结参数;②N 由预算定 = D13 成为 AEC/ANS 架构的前置阻塞项;③FIR 保留 + <12ms + 8ch 全功能同开三者是否相容,是 D13 的核心裁决点。
+- **2026-07-31 补:NHS 路线的三项风险(D0c 四路补搜产出)**
+  - **R-AFC-1 专利(须转法务)**:**US9794695B2 "Detection of whistling in an audio system"**(GN Hearing A/S,优先权 2009-12-29,**active,预计 2032-03-03 到期**;同族 US8477976)[L4/Google Patents]。权利要求核心=**以"谱质心/平均频率在连续块间的稳定性"判定啸叫**+功率门限+频段限制(典型 1–6.5kHz)。**若"频率稳定度"做主判据须过权利要求范围**;PX4 移植件的帧间配对本质亦属频率稳定性判据,一并评估。另中文专利两件待扫:CN116916223A、CN106373587B。**处置:转 CTO/法务,冻结 NHS 方案前完成 FTO。**
+  - **R-AFC-2 许可污染(两起实证)**:①**chapro 仓库自相矛盾**——`LICENSE`=CC0-1.0 但 `README`=CC BY-NC-SA(**NC 禁商用**),原"chapro CC0 已核"判定**推翻为存疑**,Tympan(MIT)上游 provenance 连带存疑,量产前须法务澄清/联系 BTNRH;②`hm-li0420/Howling-Suppression` 标 MIT 实为 vendor 无 license 的 pyHowling 后改标,**MIT 无效力**。**纪律:license 判定不得只看 LICENSE 文件,须并查 README/文件头/上游来源。**
+  - **R-AFC-3 GPL 思路污染**:Betaflight/ArduPilot(GPL-3)的动态陷波设计是工业界最成熟参考,**只读文档/PR、严禁读或抄代码**;该纪律须写进实现工单,并由 critic 专项核。
+- **2026-07-31 增量(利好,改变实现路线)**:**PX4-Autopilot(BSD-3-Clause)陀螺动态陷波可直接移植**——lead 已独立核验主源(LICENSE 顶层+`GyroFFT.cpp` 文件头均 BSD-3;SNR 判据 :514 与 PAPR 同构;近邻豁免 :525;100ms 老化 :632;`NotchFilter::setParameters` 仅三参数**无深度**已核)。粗估省 ~50% 工作量 [L4/估算]。详见 `research/D0c_nhs_scout.md` §1.6-1.10。
 
 ## 假设台账(A1–A9)
 | # | 假设 | 状态 |
