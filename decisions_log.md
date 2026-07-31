@@ -67,5 +67,5 @@
 | 接收时间 | 来源 | 内容 | 入库日 | 超24h? | 备注 |
 |---|---|---|---|---|---|
 | 2026-07-30 | CTO | 产品需求书 PRD(会话粘贴全文) | 2026-07-30 | 否 | `00_input/PRD_CONFDSP.md`;F-01(BLOCKER)修复件,全库「← PRD §」引用基线 |
-| 2026-07-30 | CTO | ADSP-21569 芯片信息卡+复制清单(会话粘贴) | 2026-07-30 | 否 | `00_input/DSP_ADSP21569_infocard.md`;选型 DEC-0006;bulk 资料待复制入 `knowledge_base/adsp21569/`,到位后核对补登;第3层清单待确认 |
+| 2026-07-30 | CTO | ADSP-21569 芯片信息卡+复制清单(会话粘贴) | 2026-07-30 | 否 | `00_input/DSP_ADSP21569_infocard.md`;选型 DEC-0006;bulk 资料**已复制核对**(2026-07-30 同日):bsp 93M/278文件 逐字节抽核一致+第2层 6 组全到位,溯源见 `platform_lessons/PROVENANCE.md`、清点见 `INVENTORY.md`;不含 a2b/installers(CTO 确认);bsp 二进制不入 git(清点单留痕);第3层=不复制件已关闭 |
 | (待)| CTO | 上游厂家界面编辑软件 | — | — | 到手入库+对标工单(host-software/architect) |
