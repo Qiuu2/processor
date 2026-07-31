@@ -3,7 +3,7 @@
 - 出生先验:`ee-agent-team-starter/00_governance/LESSONS_SEED.md`。
 
 ## 2026-07-31 · W1-A AFC(NHS)架构+预算
-- 交付稿 `01_design/W1A_AFC_architecture_budget.md` **v0.3 修正稿**(critic-w1 首审 FAILED 0B/4M/7m → 逐条修复,待复核;PASS 前不 commit)。接口合同独立成文件 `01_design/contracts/W1_system-architect_adaptive-dsp_interface_v1.0.md`(IF-v1.0,接收方回执待)。
+- 交付稿 `01_design/W1A_AFC_architecture_budget.md` **v0.4 修正稿**(critic-w1 首审 FAILED 0B/5M/7m——F5 竞态增补后共 5 MAJOR;F1-F5+m1-m7 逐条闭环,待复核;PASS 前不 commit)。接口合同同目录文件现行版 **IF-v1.0a**(C5 勘误:我曾把对方 +1/3 oct 转写成 ±1/6 oct——**owner 转写自家合同也会错,"逐条对表"纪律双向有效**;接收方 v1.0 已回执,v1.0a 补充回执待);W1-B v1.0 已对齐交审。critic F5 预判三裁定已落:B3=草稿态、§3.4 需求推导(初咬≥2dB⇒BW/4)、合同独立成文件。DEC-0009=口径变更台账(lead 笔,含 8.51 敞口与 40-50% 重裁风险)。**2026-07-31 晚:无待办,休眠让位;唤醒点=critic 复核 verdict / W1-C 开工 / CTO 第三关。**
 - 定标要点(全 [L3/L4],待 V-1~V-10 回填):检测旁链抽取 16k、引擎参数化(B3=1024/16ms 默认、B2=2048/42.7ms 备选,V-10 ROC 定案);AFC 计入 155,914 cyc/帧=11.7%(部分上界 22.7%,T2 无板证界);陷波系数 Q1.30+64/80-bit 累加+DF1+EF;旁链 float32=对 DEC-0006 例外申请待 CTO。
 
 ## 教训(候选蒸馏件,过门后进 skill §A)
