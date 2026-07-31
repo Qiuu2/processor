@@ -161,7 +161,33 @@ for name, traj in cases.items():
     b, s, dL, hit = imsd(np.asarray(traj, dtype=float))
     print(f"{name:26s} b={b:+6.2f}dB/hop s={s:5.2f}dB dL={dL:+6.1f}dB -> "
           f"{'GROWTH' if hit else 'not-growth'}")
-print("判定:a/a2 应 GROWTH;b/c/d 应 not;e 应 not(设计上由 PANIC 电平路兜住,见§3.2)")
+print("判定:a/a2 应 GROWTH;b/c/d 应 not;e 应 not(e 的分类路覆盖见 CHECK D2 与文档 §3.2/§3.5-#11)")
+
+print()
+print("=" * 72)
+print("CHECK D2: 快升入台签名检测器(B-F1 修法①的可测性预检,参数 [L4/待标定])")
+print("=" * 72)
+# 签名定义(文档 §3.2 v1.1):任意 ≤N_RISE hop 内升幅 ≥R_RISE,其后 ≥MIN_PLAT hop
+# 平台(std ≤ S_PLAT)。作用:使 PHPR 削波豁免在"IMSD 结构性不中"的快饱和场景可达
+# (B-F1 修复);它**不承担**元音区分——区分靠 PHPR 因果时序(谐波出现晚于增长起点),
+# 该时序超出本标量轨迹测试床,归 §7.3 ROC(合成削波啸叫素材)。
+R_RISE, N_RISE, S_PLAT, MIN_PLAT = 18.0, 2, 2.0, 3
+
+def fast_rise_plateau(traj):
+    for i in range(len(traj) - MIN_PLAT):
+        for j in range(i + 1, min(i + N_RISE, len(traj) - MIN_PLAT) + 1):
+            if traj[j] - traj[i] >= R_RISE:
+                plat = traj[j:]
+                if len(plat) >= MIN_PLAT and np.std(plat) <= S_PLAT:
+                    return True
+    return False
+
+for name, traj in cases.items():
+    fired = fast_rise_plateau(np.asarray(traj, dtype=float))
+    print(f"{name:26s} -> fast_rise_plateau = {fired}")
+print("判定:fast_howl_saturating 必须 True(否则 B-F1 修法失效=FAIL);")
+print("      稳态/渐强/慢啸应 False;元音起音若 True 属预期内(签名不区分元音,")
+print("      豁免仍被因果时序条件拦住——该拦截须 ROC 素材验证,此处如实暴露依赖)")
 print()
 print("声明:CHECK D 仅证明规则在构造轨迹上自洽,不构成误触发率/检出率结论;")
 print("真判别力须真实素材(会议录音/乐音/长笛)+ 闭环 RIR 仿真,见 §7 与素材采集工单。")

@@ -31,7 +31,20 @@ steady_tone                b= +0.00dB/hop s= 0.56dB dL=  -0.2dB -> not-growth
 vowel_attack+plateau       b= +1.77dB/hop s= 4.45dB dL= +19.1dB -> not-growth
 crescendo_relative         b= +0.14dB/hop s= 0.55dB dL=  +1.5dB -> not-growth
 fast_howl_saturating       b= +2.72dB/hop s= 8.31dB dL= +31.6dB -> not-growth
-判定:a/a2 应 GROWTH;b/c/d 应 not;e 应 not(设计上由 PANIC 电平路兜住,见§3.2)
+判定:a/a2 应 GROWTH;b/c/d 应 not;e 应 not(e 的分类路覆盖见 CHECK D2 与文档 §3.2/§3.5-#11)
+
+========================================================================
+CHECK D2: 快升入台签名检测器(B-F1 修法①的可测性预检,参数 [L4/待标定])
+========================================================================
+howl_130dB/s               -> fast_rise_plateau = False
+howl_70dB/s                -> fast_rise_plateau = False
+steady_tone                -> fast_rise_plateau = False
+vowel_attack+plateau       -> fast_rise_plateau = True
+crescendo_relative         -> fast_rise_plateau = False
+fast_howl_saturating       -> fast_rise_plateau = True
+判定:fast_howl_saturating 必须 True(否则 B-F1 修法失效=FAIL);
+      稳态/渐强/慢啸应 False;元音起音若 True 属预期内(签名不区分元音,
+      豁免仍被因果时序条件拦住——该拦截须 ROC 素材验证,此处如实暴露依赖)
 
 声明:CHECK D 仅证明规则在构造轨迹上自洽,不构成误触发率/检出率结论;
 真判别力须真实素材(会议录音/乐音/长笛)+ 闭环 RIR 仿真,见 §7 与素材采集工单。

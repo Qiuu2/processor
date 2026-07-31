@@ -1,9 +1,9 @@
-# W1-B · NHS(陷波式啸叫抑制)算法详细设计 v1.0(交审稿,待独立 critic verdict)
+# W1-B · NHS(陷波式啸叫抑制)算法详细设计 v1.1(修正稿,待 critic-w1 闭环核)
 
 - **作者**:adaptive-dsp ｜ 2026-07-31
-- **状态**:交审稿(critic-w1),已过桌面自验(关1,`01_design/selfcheck_W1B/`,v3=按 B3 运行点重跑),**未 commit**
-- **接口合同引用(唯一权威源)**:`01_design/W1A_AFC_architecture_budget.md` **§7,合同版本 v0.2**(2026-07-31,critic-w1 锁版 sha256 `bfc9f27d…3cab94858`)。本文所有合同来源参数以「合同 §7-x」标注;数值以合同为准,本文标注值仅为阅读便利,冲突时合同胜。**合规声明**:team_config「Interface contract discipline」(2026-07-31 生效)要求合同独立成文件于 `01_design/contracts/`,owner=提供方(system-architect);该件尚未发出,发出后本文改引其版本号(已向 owner 提出)。
-- **修订记录**:v0.9 初稿(运行点 1024@16k/16ms、tap=陷波前,自设)→ v0.95 误对齐 W1-A **v0.1** 已作废条款(2048/42.7ms、tap=陷波后)——**合同版本竞态,lead 叫停,DEC-0008 F-16 留痕** → **v1.0 对齐合同 v0.2**:运行点=B3(合同 §1.2 裁决,即 v0.9 原案)、tap=陷波器组入口(合同 §4 C-3,即 v0.9 原案)、精度语义 p95|Δf|≤BW/4(合同 §7-6)、IMSD 阈值保持 dB/s 定义按 B3 槽率换算、新增 F3/F4(W1-A verdict,DEC-0008)对本文的联动声明(§8.2/§3.6)。
+- **状态**:v1.0 verdict = **FAILED**(critic-w1 @ claude-fable-5 / 2026-07-31,0B/2M/5m/3I)→ 本稿逐条修复,**修正稿同等过门,未 commit**。自验件 `01_design/selfcheck_W1B/` v4(新增 CHECK D2)。
+- **接口合同引用(唯一权威源)**:`01_design/contracts/W1_system-architect_adaptive-dsp_interface_v1.0.md`,**现行版 IF-v1.0a**(v1.0 + C5 勘误;双方回执闭环:我方确认 v1.0 = msg ab9f11c6、确认 v1.0a = msg 894ae7b0,owner 已补记合同头)。本文合同来源参数以「IF-v1.0 Cx」标注(指向现行版);链序约束(AEC 后/判决前/入口 tap/panic-AGC 互斥)不在合同内、属 W1-A §4,以「链序 C-1..C-4(W1-A §4)」标注,与合同条款号 C1-C9 显式区分。数值以合同为准,本文标注值仅为阅读便利。
+- **修订记录**:v0.9 初稿(1024@16k/16ms、tap=陷波前)→ v0.95 误对齐 W1-A v0.1 已作废条款(**竞态,DEC-0008 F-16**)→ v1.0 对齐合同 v0.2(B3/入口 tap/p95≤BW/4)交审,verdict FAILED → **v1.1 修正稿**:B-F1 四件套(§3.2 豁免放宽 + §3.5-#11 场景补录 + §1.2/§3.3 T_panic 增益结构前提 + 链序约束 C9 重议发 architect,§8.3)｜B-F2 = C5 已经 IF-v1.0a 勘误双回执闭环(证据见上行)｜B-m1 预设表 β_min 统一 dB/s｜B-m2 伪代码 W_MAX+LIFT clamp｜B-m3 pareq 改"待做"｜B-m4 反应时间与 W1-A 同参(含窗填充)｜B-m5 措辞降档(CHECK C 结论限定/ s_max 证据定级)｜INFO②③ 采纳｜合并项:引用切换 IF-v1.0a、B3 引用挂"草稿态裁决"(F5)、看门狗 X/Y 与劣化素材入 §7.3。
 - **上游口径(禁止推翻,本文全部遵从)**:DEC-0007(路线=NHS 非自适应 AFC;8 陷波/通道;首攻)、DEC-0006(平台 ADSP-21569,48kHz/64 样本帧,定点口径)、DEC-0003.3(无 NN)、A9(链序:AEC 前置,architect 定稿)
 - **输入**:`research/D0c_nhs_scout.md`(判据/厂商惯例/可用件)、`research/D0b_competitor_teardown.md` §2.3(竞品 AFC)、`00_input/PRD_CONFDSP.md` §二.5、`vendor/px4_dynamic_notch/`(BSD-3,NOTICE.md 已读)
 - **L 标纪律**:本文所有数字挂 L 标;厂商/文献值给出处;自定初值一律 [L4/待标定] 或 [L3/手算]。**本项目零实测,本文不含任何效果数字(ERLE/GBF/检出率)。**
