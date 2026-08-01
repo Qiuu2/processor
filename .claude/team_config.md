@@ -2,7 +2,8 @@
 
 > 权威团队配置。任何 teammate spawn 必须对照本表;改任何角色的模型 = 改本表 + decisions_log 记一行(旧→新/日期/原因/谁批),禁静默改。
 > 环境:Claude Code CLI ≥2.1.220,Agent Teams 实验特性已启用(`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`,settings.json env 块)。
-> **v2.1.178 起为隐式团队**:无 TeamCreate/TeamDelete;spawn 时用 `Agent` 工具 `name` 参数命名,即可被 `SendMessage({to: name})` 寻址。teammate **不跨会话持久**(/resume 后须重 spawn + 用四件套/handoff 重新交底;任务清单在 `~/.claude/tasks/` 留存)。
+> **v2.1.178 起为隐式团队**:无 TeamCreate/TeamDelete;spawn 时用 `Agent` 工具 `name` 参数命名,即可被 `SendMessage({to: name})` 寻址。teammate **不跨会话持久**(`/resume` 后须重 spawn + 用四件套/handoff 重新交底;任务清单在 `~/.claude/tasks/` 留存)。
+> ⚠ **但"不跨会话持久" ≠ "中断即死"(F-18 血的教训,DEC-0011)**:**同一会话内**因**额度上限**中止的实例,额度恢复后**可被消息复活**(SendMessage 向其名字发送 = 从 transcript 恢复),**且带完整上下文**。lead 曾据本行原文误判"旧实例已死"而直接新建 → 四实例并发裂脑。**纪律:重启前必先探活,见下「Instance addressing discipline」。**
 
 ## 模型解析表(alias → 精确 ID,本环境)
 | alias | 精确模型 ID | 代际 |
