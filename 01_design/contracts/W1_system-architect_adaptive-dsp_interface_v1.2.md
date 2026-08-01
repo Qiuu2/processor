@@ -1,3 +1,5 @@
+> ⛔ **已被取代 — 非权威源**。现行生效版 = `W1_system-architect_adaptive-dsp_interface_v1.4.md`(2026-08-01)。本文件仅作过程证据保留,**不得引用其条款**。
+
 # 接口合同:AFC 检测旁链/执行器 ←→ NHS 判据/状态机
 
 > **合同版本 v1.2** ｜ 生成时间 2026-08-01 ｜ owner(提供方)= system-architect ｜ 接收方 = adaptive-dsp

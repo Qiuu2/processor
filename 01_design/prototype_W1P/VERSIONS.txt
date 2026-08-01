@@ -1,0 +1,17 @@
+# W1-P 原型件版本台账(DEC-0016:nhs.py 是 NHS 算法行为的唯一权威源)
+# 规矩:改动 = 新版本号 + 本台账行 + decisions_log 台账行 + W1-B 引用版本同步
+# ⚠ 全部 [L2/宿主仿真];本件尚未过任何门(未经独立 critic 评审)
+
+vP1.0 | 2026-08-01 | sha256[0:16] = 7907fec001d081b0 | adaptive-dsp-3
+  首个版本化快照。内容 = 五轮原型的终态:
+   - 核心链(候选提取/六判据/三路分类/陷波状态机/分配-加深-回收)
+   - F4 修法(T_low_gr 放宽的非自指出口 _notch_covers,nhs.py:458)
+   - F9 修法(影子继承不再以 GR 为前提)
+   - F10 修法(inherit_credit 默认关:死亡时刻信用会毒化重生轨)
+   - B9 护栏参数化(gap_guard_ratio,定标结论见 results_r5.txt:25-31)
+   - 计数器仪表(ctr:table_full/unobs/readback_ok/shadow_new/shadow_inherit/umax_hit/gapguard)
+  配套件:env.py(image-source RIR + 合成素材 + 单通道闭环台架)
+          multi.py(多通道 + 共享母线 + 8段动态PEQ,空闲严格单位增益)
+          experiments.py / run_all.py / r4_*.py / r5*.py
+  证据:results.txt / results_r4.txt / results_r5.txt
+  待办:①补独立 critic 评审(含本件)②定点移植须对本件 bit-exact

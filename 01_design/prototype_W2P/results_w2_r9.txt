@@ -1,0 +1,41 @@
+====================================================================================================
+W2-P C-8f 线收口 · 验收阈值已回填(P.341 原文)· [L2/宿主仿真]
+====================================================================================================
+
+### 验收阈值(L4/待核 → **L1/标准原文**;我方逐字核过 PDF,不采信转述)
+  TCLw_nominal_db      = 46.0    [L1] P.341 §5.1.3.1.1「The TCLw shall be ≥ 46 dB at the nominal setting of the user selectable volume control」
+  TCLw_maxvol_db       = 40.0    [L1] 同款「With the volume control set to maximum, TCLw shall be ≥ 40 dB」 + 附加义务:音量须每次通话后自动复位至标称,除非最大音量下也能保持 ≥46dB
+  stability_loss_db    = 6.0     [L1] P.341 §5.1.3.2「Stability loss shall be at least 6 dB at all frequencies in the range 100 Hz to 8000 Hz **and at all settings of the receiving volume control**」
+  ERLE_min_db          = None    **无独立门**。ERLE 不等于 TCLw —— TCLw 是 Rin→Sout **整机**耦合损耗 = 声学 ERL + AEC 线性级 ERLE + NLP 抑制,三者之和。ERLE 的分配门须由 TCLw 分解导出,归 D13。**不得把 46dB 当 ERLE 门。**
+
+  ⚠ 三条使用限定(lead 给的两条 + 我核原文多找到的两条):
+    ① TCLw ≠ ERLE(整机耦合损耗 = 声学ERL + AEC线性ERLE + NLP抑制),不得直接当 ERLE 门;
+    ② P.340 无数值门(其 §10.3.2.1 指向 P.341);P.340 的 [20 dB] 带方括号=ITU 暂定值,非硬门;
+    ③ **附加义务**:音量控制须每次通话后自动复位至标称,除非最大音量下也能保持 TCLw≥46dB;
+    ④ stability loss ≥6dB 须在 **100–8000Hz 全频段 且 全部接收音量档位**上成立。
+
+### 候选工作点(两项分列 + **NLP 承担列**)
+  NLP 需补 = TCLw(46) − 声学ERL − AEC线性ERLE。**声学 ERL 归整机设计,本原型 RIR 已按
+  最大频响归一(最不利频点 ERL≈0dB)⇒ 不代表真实整机。故按 ERL ∈ {0,6,12}dB 三档并列。**
+                         工作点         C-8f ERLE-CSS   ERLE-双讲   NLP需补@ERL=0     @6    @12
+       μ0.2 攻0.3/放0.95 δ0.01      0.15 过门      5.5       2.8          40.5   34.5   28.5
+                  μ0.2 对称 δ1   0.41 超1.6×     12.8       6.5          33.2   27.2   21.2
+        μ0.4 攻0.3/放0.95 δ0.1   0.30 超1.2×     10.4       5.8          35.6   29.6   23.6
+                  μ0.4 对称 δ1   0.76 超3.1×     19.6       6.4          26.4   20.4   14.4
+       μ0.7 攻0.3/放0.95 δ0.01   0.44 超1.7×     15.0       8.9          31.0   25.0   19.0
+                  μ0.7 对称 δ1   1.37 超5.5×   -179.5    -124.2         225.5  219.5  213.5
+
+### ★ 本轮最重要的耦合链(此前无人连起来)
+  把 AEC 线性级 ERLE 压下去 ⇒ 剩余担子全部转给 **NLP**;
+  而 NLP 正是 **C10 管辖的那个元件**(频段选择性快衰减,实测最大 −40.1dB),
+  **必须留在 NHS tap 下游**。⇒ 三者构成闭链:
+     C-8f 门(NHS可检出性)↓ 收紧 → AEC 线性 ERLE ↓ → NLP 承担 ↑ → C10 压力 ↑ + 音质代价 ↑
+  ⇒ **不能只在 AEC 内部找工作点**;C-8f 的每一 dB 都会以 NLP 抑制量的形式重新出现。
+  ⇒ 且 NLP 抑制量本身还受 stability loss ≥6dB(全频段/全音量档)与双讲档次(P.340 Table 4)双重约束。
+
+### 双讲品质定档(P.340 Table 4;分级不是门)
+  Behaviour 1    双讲衰减 ≤3 dB
+  Behaviour 2a   双讲衰减 3–6 dB
+  Behaviour 2b   双讲衰减 6–9 dB
+  Behaviour 2c   双讲衰减 9–12 dB
+  Behaviour 3    双讲衰减 >12 dB

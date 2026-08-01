@@ -1,0 +1,8 @@
+# W2-P 原型件版本台账(DEC-0016 同规矩:可执行件是行为唯一权威源)
+# ⚠ 全部 [L2/宿主仿真];未过任何门(未经独立 critic)
+vW2P0.1 | 2026-08-01 | adaptive-dsp-3
+  aec.py  : MDF 分块频域自适应(Soo&Pang 1990)+ Valin 2007 连续学习率 + NLP(谱域)
+  g168.py : G.168 结构实现(CSS/ERLE/收敛/双讲/发散);**合格阈值全为 None,待原文回填**
+  rig.py  : 回声路径台架(复用 W1 env.py 的 image-source RIR,重采到 16k)
+            ★ v0.1 修正:ref 与 far 可分(第一版同源 ⇒ "参考错位"类 broken 根本没错位)
+  证据:results_w2_r1.txt
