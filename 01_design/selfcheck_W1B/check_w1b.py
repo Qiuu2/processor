@@ -123,7 +123,9 @@ for g, D_ms, T_sim in [(1.05, 10.0, 2.0), (1.02, 25.0, 8.0)]:
     slope = np.polyfit(hops[seg], mags[seg], 1)[0]
     print(f"g={g} τ={D_ms}ms: 理论={theory:8.2f} dB/s  STFT轨迹拟合={slope:8.2f} dB/s  "
           f"偏差={abs(slope-theory)/theory*100:5.1f}%  (拟合点数={seg.sum()})")
-print("判定:偏差应 <10% → 支撑 IMSD 的『dB 域线性增长』物理模型(文档§2.2)")
+print("判定:偏差应 <10% → 证明本设计的 STFT 轨迹提取管线(1024 Hann/hop 256/峰值/LS 拟合)")
+print("      对指数增长信号**无斜率偏置**(IMSD 测量链可信);『dB 域线性增长』模型本身")
+print("      是反馈环路常识 [L3],不由本检查证明(B-m5 结论域限定,文档 §2.1/§2.5)")
 
 print()
 print("=" * 72)
