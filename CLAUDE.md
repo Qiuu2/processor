@@ -4,7 +4,8 @@
 > PRD:`00_input/PRD_CONFDSP.md`(2026-07-30 入库,台账见 decisions_log);本文件是每个 session/teammate 的入口。
 
 ## 0. 当前状态(2026-07-30)
-- 阶段:骨架+W0 技术雷达(D0)就绪。**DSP 平台已定型:ADSP-21569**(SHARC+ 单核,定点口径,DEC-0006;信息卡 `00_input/DSP_ADSP21569_infocard.md`,平台料入 `knowledge_base/adsp21569/`,30-50 cyc/MAC 记账纪律);上游厂家界面编辑软件待 CTO 提供(到手走铁律六 24h 入库)。
+- **W1 工单进行中(AFC/NHS),会话中断于 2026-07-31 08:52(teammate 额度上限)——恢复工作先读 `01_design/W1_HANDOFF.md`。**
+- 阶段:骨架+W0 技术雷达(D0)+ 竞品解剖(D0b)+ NHS 定向调查(D0c)就绪。**DSP 平台已定型:ADSP-21569**(SHARC+ 单核,定点口径,DEC-0006;信息卡 `00_input/DSP_ADSP21569_infocard.md`,平台料入 `knowledge_base/adsp21569/`,30-50 cyc/MAC 记账纪律);上游厂家界面编辑软件待 CTO 提供(到手走铁律六 24h 入库)。
 - 所有 skill 均为**薄骨架**(域未跑、无真料),真本事按 Playbook Part 2 蒸馏 SOP 随真跑长入,禁一次性写"完美 skill"。
 
 ## 1. 治理(先读,红线)
