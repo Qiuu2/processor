@@ -6,7 +6,10 @@
    ⇒ 排他区选点是等价的便宜做法:选中一个后剔除其 ±1 带宽内的所有候选。
    ⇒ **若它能拿到接近顺序挂的收益,则 3.26dB 从"调试期收益"变成"运行期也能拿"**
      (不必付顺序挂 4–8s 的整定时间)。
-同时报**全带中位 |N|**(宽带衰减)—— SD 落地前的**临时代理指标**,⚠ **它不是 SD**。
+同时报**检测带 100-8000Hz 内的中位 |N|**(宽带衰减)—— SD 落地前的**临时代理指标**,⚠ **它不是 SD**。
+⚠ 标签勘正(2026-08-02,adaptive-dsp-4):本文原写"全带中位"是**过时标签**——
+   数值一直是在 fm=100-8000Hz 上算的(:25-:29 同一个 fm),**数对、标签错**。
+   这是 §6.3 撤回 -0.65dB(0-24kHz 口径)时**只改了值没改标签**的残留(D3:只改首要位置≠闭合)。
 """
 import sys; sys.path.insert(0,'/home/it1234/processor/01_design/prototype_W1P')
 import numpy as np
@@ -26,7 +29,8 @@ def evaluate(he, picks):
     fm=f0[m]; Hm=H0[m].copy(); Hn_tot=np.ones(len(fm),dtype=complex)
     for f_ in picks: Hn_tot = Hn_tot*notch_H(f_,fm)
     _,m0 = clrig._crit_from_H(fm,Hm); _,m1 = clrig._crit_from_H(fm,Hm*Hn_tot)
-    bb = 20*np.log10(np.median(np.abs(Hn_tot)))          # 全带中位 |N|(宽带衰减代理)
+    bb = 20*np.log10(np.median(np.abs(Hn_tot)))          # **检测带 100-8000Hz 内**中位 |N|
+    #   ⚠ Hn_tot 建在 fm 上(:26),fm = 100-8000Hz ⇒ 本量口径 = 带内,**不是全带**。
     return float(m0.max()-m1.max()), float(bb)
 def pick_batch(he,k=8):
     fc,mdb = clrig.critical_points(he); o=np.argsort(mdb)[::-1]
@@ -51,7 +55,8 @@ def pick_seq(he,k=8):
         H = H*notch_H(f_,fm)
     return picks
 print("r49 · 三臂选点策略(神谕层)")
-print("⚠ 全带中位|N| 是 SD 的**临时代理**,**不是 SD**\n")
+print("⚠ 宽带衰减 = **检测带 100-8000Hz 内中位|N|**,是 SD 的**临时代理**,**不是 SD**")
+print("⚠ 本表两轴(ΔMSG / 宽带衰减)**同口径**,均在 100-8000Hz 上算 ⇒ 三臂比较是内部比较,结论存活\n")
 print(f"{'T60':>5}{'seed':>5} | " + " | ".join(f"{n:>22}" for n in ['批量 ΔMSG/宽带','批量+排他区','顺序挂']))
 res={'batch':[], 'excl':[], 'seq':[]}
 for T60 in [0.2,0.5]:
