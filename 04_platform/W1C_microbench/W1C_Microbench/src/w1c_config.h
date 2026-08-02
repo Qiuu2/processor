@@ -22,6 +22,11 @@
 #define ENABLE_T3_NHS         1   /* T3:NHS 判据/状态机标量码(adaptive-dsp 20k cyc/槽 包络回填钩子) */
 #define ENABLE_MEM_SIZEOF     1   /* DEC-0014 ⑤ / W1-B §8.2 WORD32 档:SHARC 编译器现场 sizeof */
 
+/* 时钟树回读:把 "SYSCLK=CCLK/2" 这个 [L4/未核] 假设升成 [L1/实测]。
+ * 依赖 ADI BSP 电源服务(services/pwr/adi_pwr.h)。若这台 CCES 缺该服务导致编译不过,
+ * 把本开关改 0 即可,其余内核不受影响 —— 并把报错原文回传。 */
+#define ENABLE_CLK_READBACK   1
+
 /* 每个耗时内核的"热"重复测量次数(冷启动 1 次 + 热平均 N 次,见各内核文件注释) */
 #define W1C_WARM_REPEAT       32
 

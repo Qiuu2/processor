@@ -62,6 +62,7 @@ int main(int argc, char *argv[])
     t1b_polyphase_run(fcsv);
     t2_fft_run(fcsv);
     t3_nhs_scalar_run(fcsv);
+    w1c_clk_readback_run(fcsv);
     mem_sizeof_check_run(fcsv);
 
     printf("\n==== DONE ====\n");

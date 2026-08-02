@@ -141,3 +141,78 @@ void mem_sizeof_check_run(FILE *fcsv)
 }
 
 #endif /* ENABLE_MEM_SIZEOF */
+
+/*****************************************************************************
+ * w1c_clk_readback_run — 时钟树回读 + 基本类型 sizeof
+ *
+ * 缘起(2026-08-02):兄弟项目(同芯片 ADSP-21569,定向音柱)明确回复——
+ *   「CCLK 已 [L1] 确认 1.0 GHz;SYSCLK / SCLK 本项目从未配置/读回/记录,
+ *     你那个 SYSCLK=CCLK/2 的假设既不能证实也不能证伪。
+ *     别用我这边的任何数当 SYSCLK。上你自己的板读 CGU 寄存器才是真值。
+ *     这是本项目 PF-1 的血泪教训:CCLK 都不许假设标称 1GHz,SYSCLK 更不能。」
+ *
+ * 本函数把 t1b_polyphase.c:28 那条 [L4/待核 datasheet] 的
+ * 「SYSCLK = CCLK/2 ⇒ L2 的 <32-bit 写罚 3 周期 ≈ 0.20%」假设,
+ * 用一次板上回读升成 [L1]。成本近零 —— 只是几次寄存器读。
+ *
+ * ⚠ 依赖 ADI BSP 电源服务。若这台 CCES 缺该服务导致编译不过:
+ *   把 w1c_config.h 的 ENABLE_CLK_READBACK 改 0,其余内核不受影响,
+ *   并把完整报错原文回传 —— 不要自己猜一个频率填进去。
+ *****************************************************************************/
+#if ENABLE_CLK_READBACK
+#include <limits.h>
+#include <services/pwr/adi_pwr.h>
+
+void w1c_clk_readback_run(FILE *fcsv)
+{
+    uint32_t fcclk = 0u, fsysclk = 0u, fsclk0 = 0u, fsclk1 = 0u;
+    ADI_PWR_RESULT r_core, r_sys;
+
+    /* 若板级启动代码已 adi_pwr_Init 过,这里直接读回;未初始化则返回错误码,
+     * 我们如实打印错误码,不做任何补救性猜测。 */
+    r_core = adi_pwr_GetCoreFreq(0u, &fcclk);
+    r_sys  = adi_pwr_GetSystemFreq(0u, &fsysclk, &fsclk0, &fsclk1);
+
+    printf("CLK_READBACK,core_rc=%d,sys_rc=%d,CCLK_Hz=%lu,SYSCLK_Hz=%lu,"
+           "SCLK0_Hz=%lu,SCLK1_Hz=%lu\n",
+           (int)r_core, (int)r_sys,
+           (unsigned long)fcclk, (unsigned long)fsysclk,
+           (unsigned long)fsclk0, (unsigned long)fsclk1);
+
+    /* ★ 承重结论:SYSCLK/CCLK 的实际比值。我方 t1b 罚周期估算假设它 = 0.5。 */
+    if ((r_core == ADI_PWR_SUCCESS) && (r_sys == ADI_PWR_SUCCESS) && (fsysclk != 0u)) {
+        printf("CLK_RATIO,CCLK_over_SYSCLK=%.4f,assumed_by_t1b=2.0000,%s\n",
+               (double)fcclk / (double)fsysclk,
+               (((double)fcclk / (double)fsysclk) > 1.99 &&
+                ((double)fcclk / (double)fsysclk) < 2.01) ? "ASSUMPTION_HOLDS" : "ASSUMPTION_BROKEN");
+    } else {
+        printf("CLK_RATIO,N/A,reason=pwr_service_returned_error\n");
+    }
+
+    /* 基本类型 sizeof + CHAR_BIT —— 经典 SHARC 是 CHAR_BIT=32、char/short/int 皆 32bit,
+     * 但那是"通用 SHARC 特性"的传闻,不是本板实测。此处求实测。 */
+    printf("BASIC_SIZEOF,char=%d,short=%d,int=%d,long=%d,longlong=%d,"
+           "float=%d,double=%d,longdouble=%d,CHAR_BIT=%d\n",
+           (int)sizeof(char), (int)sizeof(short), (int)sizeof(int),
+           (int)sizeof(long), (int)sizeof(long long),
+           (int)sizeof(float), (int)sizeof(double), (int)sizeof(long double),
+           (int)CHAR_BIT);
+
+    if (fcsv != NULL) {
+        fprintf(fcsv, "CLK_READBACK,core_rc=%d,sys_rc=%d,CCLK_Hz=%lu,SYSCLK_Hz=%lu,SCLK0_Hz=%lu,SCLK1_Hz=%lu\n",
+                (int)r_core, (int)r_sys, (unsigned long)fcclk,
+                (unsigned long)fsysclk, (unsigned long)fsclk0, (unsigned long)fsclk1);
+        fprintf(fcsv, "BASIC_SIZEOF,char=%d,short=%d,int=%d,long=%d,longlong=%d,float=%d,double=%d,longdouble=%d,CHAR_BIT=%d\n",
+                (int)sizeof(char), (int)sizeof(short), (int)sizeof(int),
+                (int)sizeof(long), (int)sizeof(long long), (int)sizeof(float),
+                (int)sizeof(double), (int)sizeof(long double), (int)CHAR_BIT);
+    }
+}
+#else  /* !ENABLE_CLK_READBACK —— 关掉时留空桩,保持链接完整 */
+void w1c_clk_readback_run(FILE *fcsv)
+{
+    (void)fcsv;
+    printf("CLK_READBACK,SKIPPED,reason=ENABLE_CLK_READBACK=0\n");
+    if (fcsv != NULL) fprintf(fcsv, "CLK_READBACK,SKIPPED,reason=ENABLE_CLK_READBACK=0\n");
+}
+#endif /* ENABLE_CLK_READBACK */
