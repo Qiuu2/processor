@@ -67,7 +67,7 @@ def scen_step(alg, dur=6.0, g0=-6.0, gstep=+10.0, t_step=2.0, rt60=0.35, seed=0)
         mic = src[i:i+FRAME] + fb
         t = mic * lp.g_pre
         y = alg.process_frame(t, {'out_lim_active': False, 'out_lim_gr_db': 0.0})
-        y = np.clip(y * gf * alg.duck_gain(), -8.0, 8.0)
+        y = np.clip(y * gf, -8.0, 8.0)
         fb, zi = lfilter(h, [1.0], y, zi=zi)
         out[i:i+FRAME] = y; tap[i:i+FRAME] = t
     return out, tap

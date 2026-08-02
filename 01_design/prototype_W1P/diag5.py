@@ -11,7 +11,7 @@ n=(len(src)//FRAME)*FRAME; fb=np.zeros(FRAME); zi=np.zeros(len(h)-1); gf=10**(50
 for i in range(0,n,FRAME):
     mic=src[i:i+FRAME]+fb
     y=a.process_frame(mic,{'out_lim_active':bool(lim.active),'out_lim_gr_db':float(lim.gr_db)})
-    y=np.clip(y*gf*a.duck_gain(),-8,8); y=lim.process(y)
+    y=np.clip(y*gf,-8,8); y=lim.process(y)
     fb,zi=lfilter(h,[1.0],y,zi=zi)
 print("F4 LIFT探针场景 计数器:", a.ctr)
 print("影子继承事件:", [e for e in a.events if e[1]=='shadow_inherit'][:6])

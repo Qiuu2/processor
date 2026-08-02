@@ -52,9 +52,14 @@ def image_source_rir(room=(5.0, 4.0, 3.0), mic=(1.2, 1.0, 1.5), spk=(3.4, 2.6, 1
     # ★ 换能器带限(物理必需):image-source 的抽头全为正 ⇒ RIR 含巨大直流分量,
     #   若不带限,|H(f)| 峰必落在 0Hz,闭环会"在直流啸叫"——那是仿真伪影不是声学。
     #   扬声器/传声器都不通直流,故对 RIR 施加 80Hz–8kHz 带通代表电声通路。
-    from scipy.signal import butter, filtfilt
+    # ★ 台架修(critic 第四条):原用 filtfilt(零相位)⇒ **RIR 非因果**
+    #   ⇒ 直达前有 3.76% 能量、首个 >峰−80dB 抽头落在 n=0
+    #   ⇒ ClosedLoop 的 `direct_delay > FRAME` 断言校验的是**几何**延迟,
+    #      **并未建立它声称的前提**(分块闭环要求真实首抽头晚于块长)。
+    #   改为**因果** lfilter;换能器本就是因果系统。
+    from scipy.signal import butter, lfilter as _lf
     bb, aa = butter(2, [80.0/(fs/2), 8000.0/(fs/2)], btype='band')
-    h = filtfilt(bb, aa, h)
+    h = _lf(bb, aa, h)
     # ★ 按**带内最大频响**归一(不是时域峰值):使 |H(f)|_max = 1
     #   ⇒ g_pre_db + g_fwd_db 直接就是"最不利频点的环路增益(dB)",0dB = 起振临界。
     Hf = np.abs(np.fft.rfft(h, 1 << 16))
@@ -109,8 +114,12 @@ def synth_transients(dur, fs=FS, seed=3, kind='clap'):
     n = int(dur * fs); x = np.zeros(n)
     rate = 3.0 if kind == 'clap' else 0.7
     for _ in range(max(1, int(dur * rate))):
-        p = rng.integers(0, max(1, n - 4000))
         ln = int(0.02*fs) if kind == 'clap' else int(0.25*fs)
+        # ★ r10 修:原护栏写死 n-4000,而 cough 的 ln = 0.25*fs = 12000 > 4000
+        #   ⇒ dur 较短时 p+ln 越界崩溃。护栏须按 ln 取。
+        if n <= ln:
+            continue
+        p = rng.integers(0, n - ln)
         env = np.exp(-np.arange(ln) / (ln/4))
         burst = rng.normal(0, 1, ln) * env
         if kind == 'cough':                      # 咳嗽:带低频成分
@@ -172,7 +181,7 @@ class ClosedLoop:
             y = self.nhs.process_frame(tap, gr)          # 陷波器组(检测在其入口)
             if g_fwd_ramp_db_per_s:
                 self.g_fwd *= 10 ** (g_fwd_ramp_db_per_s * (FRAME / self.fs) / 20.0)
-            y = y * self.g_fwd * self.nhs.duck_gain()
+            y = y * self.g_fwd
             if self.lim is not None:
                 y = self.lim.process(y)
             y = np.clip(y, -8.0, 8.0)                    # 数值安全钳(非声学元件,仅防 inf/nan)

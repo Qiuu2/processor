@@ -19,7 +19,7 @@ def run(brk, label, dur=18.0, g0=50.0, lg0=3.0, t_step=8.0, dlg=1.5):
         if i == int(t_step*FS)//FRAME*FRAME: gf *= 10**(dlg/20.0)
         mic=src[i:i+FRAME]+fb
         y=a.process_frame(mic,{'out_lim_active':bool(lim.active),'out_lim_gr_db':float(lim.gr_db)})
-        y=np.clip(y*gf*a.duck_gain(),-8,8); y=lim.process(y)
+        y=np.clip(y*gf,-8,8); y=lim.process(y)
         fb,zi=lfilter(h,[1.0],y,zi=zi); out[i:i+FRAME]=y
         if i>int(t_step*FS): gr_on.append(int(lim.active))
     e=env_db(out); m=metrics(out)

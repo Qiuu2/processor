@@ -20,7 +20,7 @@ def run(brk, label, dur=24.0, g0=50.0, lg0=3.0):
     for i in range(0,n,FRAME):
         mic=src[i:i+FRAME]+fb
         gr={'out_lim_active':bool(lim.active),'out_lim_gr_db':float(lim.gr_db)}
-        y=a.process_frame(mic,gr); y=np.clip(y*gf*a.duck_gain(),-8,8); y=lim.process(y)
+        y=a.process_frame(mic,gr); y=np.clip(y*gf,-8,8); y=lim.process(y)
         fb,zi=lfilter(h,[1.0],y,zi=zi); out[i:i+FRAME]=y
         if i%(FRAME*750)==0:      # 每 1s 采样
             s0=[s for s in a.slots if s.st!=0]

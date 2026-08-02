@@ -1,411 +1,651 @@
-# W1-B NHS 设计桌面自验(关1,非门)· adaptive-dsp
-# 定级声明:本脚本全部为 [L2/桌面数值](公式/估计器/模型层面的数学核对),
-# **不构成任何检测率/抑制效果宣称**(效果判据须真实素材+闭环,见设计文档 §7)。
-# 铁律七双轨:关键响应用 闭式|H| 与 np.freqz 两条独立路径互核。
+"""W1-B 自验 v7 —— ★ B-2 修:九组 CHECK **全部 import 并调用 `nhs.py`**
+adaptive-dsp-3 · 2026-08-02 · [L2/宿主仿真]
+
+⚠ v6 及以前的致命缺陷(critic BLOCKER-2):
+  本文件唯一 import 是 numpy;九组 CHECK 全是 `nhs.py` 公式的**独立转写**
+  ⇒ **删掉 nhs.py,九组照常 PASS** ⇒ 假绿纪律「测试须真依赖被测物」被违反在根上。
+  实证:`_is_dom` 已与自验模型分叉(PAPR vs PNPR),CHECK G 照报 ✓。
+
+v7 的两条硬要求:
+  ① 每组 CHECK 必须**调用 nhs.py 的函数/类**,不得自行转写公式;
+  ② 附**变异测试**(mutation harness):人为改坏 nhs.py 的行为,
+     **CHECK 必须 FAIL** —— 这是「代码的失效会被测出来」的直接证据。
+"""
+import sys, os, copy
 import numpy as np
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                '..', 'prototype_W1P'))
+import nhs                      # ★ 被测物
+from nhs import NHS, Params, Track, rbj_peaking, NFFT, FS_SC, HOP_SC
 
-# v6(2026-08-01,adaptive-dsp 第 3 实例;critic-w1b-r2 复审 FAILED 后):
-#   - 新增 **CHECK G**(豁免式合取门可达性审计,MAJOR-1 的机械核对);
-#   - CHECK A2 增"报数用值=实跑最大值"行(m-4:文档曾报得比实测紧 5 倍);
-#   - CHECK F-1 由"空场景"改为带伴随语音(m-5:原构造下三门必过=检查不可能失败);
-#   - 新增同目录 `mem_sizeof.c`(§8.2 内存的**编译器实算第二轨**,MAJOR-3)。
-# v5(2026-08-01):
-#   - 契约引用全量切 **IF-v1.4 条款Cx**(旧注释的 "§7-x"/"v0.2 §7-4" 系合同独立成文件之前的
-#     章节号,已作废;IF-v1.4 sha256[0:16]=ee35800c0be9844c,接收方回执 2026-08-01);
-#   - 新增 CHECK A2(B-m3 真·异源第二轨,来源 = adaptive-dsp-2 的 bm3_second_track/,署名 -2);
-#   - 新增 CHECK E(跳槽 × LS 时间轴,支撑 IF-v1.4 C4 使用注记:计数语义二分);
-#   - 新增 CHECK F(候选表容量轴排挤,支撑 C4 "无绝对电平门" 的容量轴保留)。
-# v4:新增 CHECK D2(快升入台签名);v3:按 B3 运行点重跑;
-# v2 曾按已作废口径(2048/42.7ms)跑过一轮,合同版本竞态已由 lead 裁定,B3 为准。
-# 运行点 = B3(V1 默认,IF-v1.4 C4):16kHz / N=1024 / 每通道 hop 16ms(75% 重叠)。
-# B2=2048/42.7ms 为备选运行点,对决走 V-10 ROC,本脚本参数化即可复跑。
-fs_sc = 16000.0   # 检测旁链采样率(IF-v1.4 C4:抽取 16k 固定)
-N_FFT = 1024
-HOP = 256         # 16ms/通道 hop(系统 500 FFT/s、8 通道错峰,IF-v1.4 C1)
-
-print("=" * 72)
-print("CHECK A: RBJ peaking(cut) 深度陷波 — 深度/带宽双轨核")
-print("=" * 72)
-# 设计文档 §4.1:深度可控陷波 = RBJ peaking EQ 负增益(RBJ Cookbook, W3C Note, W0 已核)
-fs = 48000.0
-
-def rbj_peaking(fs, f0, gain_db, bw_oct):
-    A = 10.0 ** (gain_db / 40.0)
-    w0 = 2 * np.pi * f0 / fs
-    # RBJ cookbook BW(oct) 公式: alpha = sin(w0)*sinh(ln2/2 * BW * w0/sin(w0))
-    alpha = np.sin(w0) * np.sinh(np.log(2) / 2 * bw_oct * w0 / np.sin(w0))
-    b = np.array([1 + alpha * A, -2 * np.cos(w0), 1 - alpha * A])
-    a = np.array([1 + alpha / A, -2 * np.cos(w0), 1 - alpha / A])
-    return b / a[0], a / a[0]
-
-def mag_closed_form(b, a, f, fs):
-    # 闭式 |H|(与 vendor NotchFilter.hpp getMagnitudeResponse 同法,独立于 freqz 的多项式求值)
-    w = 2 * np.pi * f / fs
-    b0, b1, b2 = b
-    a1, a2 = a[1], a[2]
-    num = (b0 * b0 + b1 * b1 + b2 * b2
-           + 2 * (b0 * b1 + b1 * b2) * np.cos(w) + 2 * b0 * b2 * np.cos(2 * w))
-    den = (1 + a1 * a1 + a2 * a2 + 2 * (a1 + a1 * a2) * np.cos(w) + 2 * a2 * np.cos(2 * w))
-    return np.sqrt(num / den)
-
-def mag_freqz(b, a, f, fs):
-    w = 2 * np.pi * f / fs
-    z = np.exp(1j * w)
-    H = (b[0] + b[1] / z + b[2] / z**2) / (1 + a[1] / z + a[2] / z**2)
-    return np.abs(H)
-
-for f0, depth, bw in [(1000.0, -3.0, 0.1), (1000.0, -18.0, 0.1), (250.0, -3.0, 0.2),
-                      (100.0, -12.0, 0.1), (6300.0, -6.0, 0.1)]:
-    b, a = rbj_peaking(fs, f0, depth, bw)
-    m_cf = 20 * np.log10(mag_closed_form(b, a, f0, fs))
-    m_fz = 20 * np.log10(mag_freqz(b, a, f0, fs))
-    # 半深点带宽数值核算(C2 措辞:本脚本全部为 L2 桌面数值,不用"实测"一词)
-    fr = np.geomspace(f0 / 2, f0 * 2, 20001)
-    mag = 20 * np.log10(mag_freqz(b, a, fr, fs))
-    half = depth / 2
-    idx = np.where(mag <= half)[0]
-    bw_meas_oct = np.log2(fr[idx[-1]] / fr[idx[0]]) if len(idx) > 1 else float("nan")
-    stable = np.all(np.abs(np.roots([1, a[1], a[2]])) < 1.0)
-    print(f"f0={f0:7.1f}Hz depth={depth:+5.1f}dB bw_set={bw:.2f}oct | "
-          f"closed-form@f0={m_cf:+7.3f}dB freqz@f0={m_fz:+7.3f}dB "
-          f"两轨差={abs(m_cf-m_fz):.2e}dB | 半深点带宽={bw_meas_oct:.3f}oct | 稳定={stable}")
-print("判定:两轨差应 <1e-4 dB(低频 f0/fs 小时 float64 调理数变差,100Hz 例约 1e-5,"
-      "无工程影响但如实记录;这也是文档 §4.4 低频定点精度警示的浮点侧影);"
-      "@f0 深度应=设定深度;半深点带宽应≈设定 BW(RBJ 定义即半增益点)")
-
-print()
-print("=" * 72)
-print("CHECK A2: 陷波系数第二轨 — RBJ(sin 映射) vs Välimäki-Reiss 2016(tan 预畸变)")
-print("=" * 72)
-# B-m3 闭合件。**来源:adaptive-dsp-2**(`01_design/incident_20260801/bm3_second_track/`,
-# 2026-08-01 跑通),本轮集成为 CHECK A2 —— v1.0 曾把 pareq 第二轨写成"已做"实为虚账,
-# 处置 = **补跑关闭**(非删宣称),署名保留给 -2(DEC-0011 归因更正的落实)。
-# 轨1 = RBJ Cookbook peaking(负增益):alpha = sin(w0)*sinh(ln2/2*BW*w0/sin(w0))
-# 轨2 = Orfanidis 系 / Välimäki & Reiss 2016 Table 7.2:beta = sqrt((GB^2-1)/(G^2-GB^2))*tan(dw/2)
-# 两轨=不同推导、不同带宽映射 ⇒ 系数本就不同;互核点 = 设计规格点(@f0 深度、半深带宽、极点)。
-def vr_pareq(fs, f0, gain_db, bw_oct):
-    G = 10.0 ** (gain_db / 20.0)
-    GB = 10.0 ** (gain_db / 40.0)          # sqrt(G):半增益 dB 点(与 RBJ 同一 BW 语义)
-    w0 = 2 * np.pi * f0 / fs
-    w1 = 2 * np.pi * f0 * 2 ** (-bw_oct / 2) / fs
-    w2 = 2 * np.pi * f0 * 2 ** (+bw_oct / 2) / fs
-    beta = np.sqrt((GB * GB - 1.0) / (G * G - GB * GB)) * np.tan((w2 - w1) / 2)
-    b = np.array([(1 + G * beta), -2 * np.cos(w0), (1 - G * beta)]) / (1 + beta)
-    a = np.array([1.0, -2 * np.cos(w0) / (1 + beta), (1 - beta) / (1 + beta)])
-    return b, a
-
-def half_depth_bw_oct(b, a, f0, depth, fs):
-    fr = np.geomspace(f0 / 2, f0 * 2, 20001)
-    mag = 20 * np.log10(mag_freqz(b, a, fr, fs))
-    idx = np.where(mag <= depth / 2)[0]
-    return np.log2(fr[idx[-1]] / fr[idx[0]]) if len(idx) > 1 else float("nan")
-
-print("case                      | @f0: RBJ      VR       互差    | 半深BW(oct): RBJ    VR     互差 | VR极点稳")
-_a2_dmax, _a2_bwmax = 0.0, 0.0
-for f0, depth, bw in [(1000.0, -3.0, 0.1), (1000.0, -18.0, 0.1), (250.0, -3.0, 0.2),
-                      (100.0, -12.0, 0.1), (6300.0, -6.0, 0.1)]:
-    b1, a1 = rbj_peaking(fs, f0, depth, bw)
-    b2, a2 = vr_pareq(fs, f0, depth, bw)
-    m1 = 20 * np.log10(mag_freqz(b1, a1, f0, fs))
-    m2 = 20 * np.log10(mag_freqz(b2, a2, f0, fs))
-    bw1, bw2 = half_depth_bw_oct(b1, a1, f0, depth, fs), half_depth_bw_oct(b2, a2, f0, depth, fs)
-    stable = np.all(np.abs(np.roots(a2)) < 1.0)
-    _a2_dmax = max(_a2_dmax, abs(m1 - m2)); _a2_bwmax = max(_a2_bwmax, abs(bw1 - bw2))
-    print(f"f0={f0:6.0f} {depth:+5.1f}dB {bw:.2f}oct | {m1:+8.4f} {m2:+8.4f} {abs(m1-m2):.2e} | "
-          f"{bw1:6.4f} {bw2:6.4f} {abs(bw1-bw2):6.4f} | {stable}")
-# m-4:文档须按**实跑最大值**报,不得报得比实测更紧(方向=高估一致性)
-print(f"** 报数用值(m-4):@f0 两轨互差 **最大** = {_a2_dmax:.2e} dB;半深带宽两轨互差最大 = {_a2_bwmax:.1e} oct")
-print("判定:①@f0 两轨深度都=设定值(互差 <1e-3dB);②半深带宽各自≈设定 BW,两轨互差=sin vs tan")
-print("      映射的约定差(<0.01oct,如实记录);③VR 轨极点全稳。任一不满足 → FAIL。")
-
-print()
-print("=" * 72)
-print("CHECK B: Quinn 第二估计器 bin 内插精度(1024pt Hann @16kHz, bin=15.625Hz, B3)")
-print("=" * 72)
-def quinn2(X, k):
-    # Quinn's Second Estimator(与 vendor GyroFFT.cpp EstimatePeakFrequencyBin 同式,float 重写)
-    def tau(x):
-        return 0.25 * np.log(3 * x * x + 6 * x + 1) - np.sqrt(6) / 24 * np.log(
-            (x + 1 - np.sqrt(2 / 3)) / (x + 1 + np.sqrt(2 / 3)))
-    ap = (X[k + 1].real * X[k].real + X[k + 1].imag * X[k].imag) / (abs(X[k]) ** 2)
-    dp = -ap / (1 - ap)
-    am = (X[k - 1].real * X[k].real + X[k - 1].imag * X[k].imag) / (abs(X[k]) ** 2)
-    dm = am / (1 - am)
-    d = (dp + dm) / 2 + tau(dp * dp) - tau(dm * dm)
-    return k + d
-
-rng = np.random.default_rng(1234)
-win = np.hanning(N_FFT)
-for snr_db in [30.0, 10.0]:
-    errs = []
-    for _ in range(200):
-        f_true = rng.uniform(200, 7000)
-        n = np.arange(N_FFT)
-        sig = np.sin(2 * np.pi * f_true / fs_sc * n + rng.uniform(0, 2 * np.pi))
-        noise = rng.normal(0, 10 ** (-snr_db / 20) / np.sqrt(2), N_FFT)
-        X = np.fft.rfft((sig + noise) * win)
-        k = np.argmax(np.abs(X[2:N_FFT // 2 - 2])) + 2
-        f_est = quinn2(X, k) * fs_sc / N_FFT
-        errs.append(abs(f_est - f_true))
-    errs = np.array(errs)
-    print(f"SNR={snr_db:4.0f}dB: |f_err| median={np.median(errs):6.3f}Hz "
-          f"p95={np.percentile(errs, 95):6.3f}Hz max={errs.max():6.3f}Hz (200 trials)")
-print("判定:合同精度语义(IF-v1.4 C7)= p95|Δf| ≤ BW/4(恒带宽下限见 W1-A §5 字典 → 3.75Hz);"
-      "FFT 供给归架构侧,本检查是该语义可实现性的独立旁证(p95 应 ≤3.75Hz)")
-
-print()
-print("=" * 72)
-print("CHECK C: 环路增长物理模型 — 闭环仿真斜率 vs 理论 20·log10(g)/τ")
-print("=" * 72)
-# 模型:y[n] = g·y[n-D] + e[n](环路延迟 D,环路增益 g>1 → 指数增长,dB 域线性)
-# 用脉冲种子(确定性)激励:e = δ[0],此后环路自持增长,消除噪声实现的随机抖动;
-# 拟合段取轨迹尾部线性区(终值-40dB → 终值-3dB),避开起始瞬态。
-for g, D_ms, T_sim in [(1.05, 10.0, 2.0), (1.02, 25.0, 8.0)]:
-    D = int(D_ms / 1000 * fs_sc)
-    theory = 20 * np.log10(g) / (D_ms / 1000)  # dB/s
-    Nsim = int(T_sim * fs_sc)
-    y = np.zeros(Nsim)
-    y[0] = 1e-6
-    for n in range(D, Nsim):
-        y[n] = g * y[n - D]
-    # 用设计的旁链参数(1024 Hann, hop 256)提 STFT 峰值轨迹,LS 拟合 dB 斜率
-    hops, mags = [], []
-    for start in range(0, Nsim - N_FFT, HOP):
-        X = np.abs(np.fft.rfft(y[start:start + N_FFT] * win))
-        mags.append(20 * np.log10(X.max() + 1e-30))
-        hops.append(start / fs_sc)
-    hops, mags = np.array(hops), np.array(mags)
-    seg = (mags > mags[-1] - 40) & (mags < mags[-1] - 3)
-    slope = np.polyfit(hops[seg], mags[seg], 1)[0]
-    print(f"g={g} τ={D_ms}ms: 理论={theory:8.2f} dB/s  STFT轨迹拟合={slope:8.2f} dB/s  "
-          f"偏差={abs(slope-theory)/theory*100:5.1f}%  (拟合点数={seg.sum()})")
-print("判定:偏差应 <10% → 证明本设计的 STFT 轨迹提取管线(1024 Hann/hop 256/峰值/LS 拟合)")
-print("      对指数增长信号**无斜率偏置**(IMSD 测量链可信);『dB 域线性增长』模型本身")
-print("      是反馈环路常识 [L3],不由本检查证明(B-m5 结论域限定,文档 §2.1/§2.5)")
-
-print()
-print("=" * 72)
-print("CHECK D: IMSD 判别边界自洽性(合成轨迹,阈值初值 [L4/待标定] 的桌面预检)")
-print("=" * 72)
-# 规则(文档§2.2,B3 hop=16ms):W=8 hop(128ms)窗上 LS 斜率 b、残差 RMS s、总升幅 dL,
-# 判 GROWTH ⟺ β_min≤b≤β_max ∧ s≤s_max ∧ dL≥ΔL_min
-# 阈值以 dB/s 定义、换算到 16ms/hop:β_min=60dB/s→0.96, β_max=750dB/s→12 [dB/hop]
-W = 8
-BETA_MIN, BETA_MAX, S_MAX, DL_MIN = 0.96, 12.0, 1.5, 6.0
-
-def imsd(traj):
-    x = np.arange(len(traj))
-    b, c = np.polyfit(x, traj, 1)
-    s = np.sqrt(np.mean((traj - (b * x + c)) ** 2))
-    dL = traj[-1] - traj[0]
-    return b, s, dL, (BETA_MIN <= b <= BETA_MAX and s <= S_MAX and dL >= DL_MIN)
-
-cases = {}
-# a) 中速啸叫:130dB/s ≈ 2.08dB/hop@16ms 线性增长 + 0.5dB shimmer(应 GROWTH)
-cases["howl_130dB/s"] = 2.08 * np.arange(W) + rng.normal(0, 0.5, W)
-# a2) 慢啸叫:70dB/s ≈ 1.12dB/hop(应 GROWTH;注意对 β_min=0.96 与 ΔL_min=6 均为边际通过,
-#     70dB/s 附近即本判据的设计灵敏度下缘,更慢者交 PERSIST 路——如实记录)
-cases["howl_70dB/s"] = 1.12 * np.arange(W) + rng.normal(0, 0.3, W)
-# b) 稳态纯音/工频(应 NOT — 由持续路 B 另行处理)
-cases["steady_tone"] = 60.0 + rng.normal(0, 0.5, W)
-# c) 元音:128ms 窗见起音+平台前段(音节周期 125-250ms ≥ 窗长)(应 NOT:残差大)
-vowel = np.concatenate([[40, 55], 60 + np.cumsum(rng.normal(0, 1.2, W - 2))])
-cases["vowel_attack+plateau"] = vowel
-# d) 渐强音乐(相对量:PAPR 轨迹——峰与谱底同升 → 相对斜率≈0)(应 NOT)
-cases["crescendo_relative"] = 20.0 + rng.normal(0, 0.5, W)  # PAPR 不变
-# e) 起音后即饱和的快啸(前 2 hop 冲顶):IMSD 窗内非线性 → 由 PANIC 路兜(标注)
-cases["fast_howl_saturating"] = np.concatenate([[30, 60], 62 + rng.normal(0, 0.5, W - 2)])
-for name, traj in cases.items():
-    b, s, dL, hit = imsd(np.asarray(traj, dtype=float))
-    print(f"{name:26s} b={b:+6.2f}dB/hop s={s:5.2f}dB dL={dL:+6.1f}dB -> "
-          f"{'GROWTH' if hit else 'not-growth'}")
-print("判定:a/a2 应 GROWTH;b/c/d 应 not;e 应 not(e 的分类路覆盖见 CHECK D2 与文档 §3.2/§3.5-#11)")
-
-print()
-print("=" * 72)
-print("CHECK D2: 快升入台签名检测器(B-F1 修法①的可测性预检,参数 [L4/待标定])")
-print("=" * 72)
-# 签名定义(文档 §3.2 v1.1):任意 ≤N_RISE hop 内升幅 ≥R_RISE,其后 ≥MIN_PLAT hop
-# 平台(std ≤ S_PLAT)。作用:使 PHPR 削波豁免在"IMSD 结构性不中"的快饱和场景可达
-# (B-F1 修复);它**不承担**元音区分——区分靠 PHPR 因果时序(谐波出现晚于增长起点),
-# 该时序超出本标量轨迹测试床,归 §7.3 ROC(合成削波啸叫素材)。
-R_RISE, N_RISE, S_PLAT, MIN_PLAT = 18.0, 2, 2.0, 3
-
-def fast_rise_plateau(traj):
-    for i in range(len(traj) - MIN_PLAT):
-        for j in range(i + 1, min(i + N_RISE, len(traj) - MIN_PLAT) + 1):
-            if traj[j] - traj[i] >= R_RISE:
-                plat = traj[j:]
-                if len(plat) >= MIN_PLAT and np.std(plat) <= S_PLAT:
-                    return True
-    return False
-
-for name, traj in cases.items():
-    fired = fast_rise_plateau(np.asarray(traj, dtype=float))
-    print(f"{name:26s} -> fast_rise_plateau = {fired}")
-print("判定:fast_howl_saturating 必须 True(否则 B-F1 修法失效=FAIL);")
-print("      稳态/渐强/慢啸应 False;元音起音若 True 属预期内(签名不区分元音,")
-print("      豁免仍被因果时序条件拦住——该拦截须 ROC 素材验证,此处如实暴露依赖)")
-print()
-print("=" * 72)
-print("CHECK E: 跳槽 × LS 时间轴(IF-v1.4 C4 slot_seq 使用注记的数值坐实)")
-print("=" * 72)
-# IF-v1.4 C4 原文:"接收方全部连续性/老化/驻留计数按已交付分析槽计"。
-# 本检查坐实:该规则对**存在性计数**正确,对**速率估计**(IMSD 的 b/s)有害——
-# IMSD 的 LS 拟合 x 轴必须用 slot_seq 差值(真实时间轴),否则跳槽窗被压缩,
-# 斜率与线性度残差同时失真。**双向都错**(既漏检真啸叫,又把慢升虚警成 GROWTH)。
-def imsd_x(traj, x):
-    b, c = np.polyfit(x, traj, 1)
-    s = np.sqrt(np.mean((traj - (b * x + c)) ** 2))
-    dP = traj[-1] - traj[0]
-    return b, s, dP, (BETA_MIN <= b <= BETA_MAX and s <= S_MAX and dP >= DL_MIN)
-
-HOP_S = 0.016
-for nm, seq, rate in [
-        ("真啸叫 250dB/s,窗中跳 6 槽", np.array([0, 1, 2, 3, 10, 11, 12, 13]), 250.0),
-        ("真啸叫 400dB/s,窗中跳 4 槽", np.array([0, 1, 2, 3, 4, 9, 10, 11]), 400.0),
-        ("慢升 40dB/s(设计上应交PERSIST),跳 8 槽", np.array([0, 1, 2, 3, 12, 13, 14, 15]), 40.0),
-        ("无跳槽对照 250dB/s", np.arange(8), 250.0)]:
-    traj = rate * HOP_S * seq.astype(float)
-    bn, sn, dn, hn = imsd_x(traj, np.arange(len(seq), dtype=float))   # 朴素:已交付槽序当 x
-    bt, st, dt, ht = imsd_x(traj, seq.astype(float))                  # 正确:x = Δslot_seq
-    print(f"{nm}")
-    print(f"   朴素 x=0..W-1: b={bn:+6.2f}dB/hop({bn/HOP_S:7.1f}dB/s) s={sn:5.2f} -> "
-          f"{'GROWTH' if hn else 'not-growth'}")
-    print(f"   正确 x=Δseq  : b={bt:+6.2f}dB/hop({bt/HOP_S:7.1f}dB/s) s={st:5.2f} -> "
-          f"{'GROWTH' if ht else 'not-growth'}")
-print("判定:前两例朴素列必须 not-growth 而正确列 GROWTH(=朴素口径漏检真啸叫);")
-print("      第三例朴素列必须 GROWTH 而正确列 not(=朴素口径虚警)。任一同向 → 本注记失去依据。")
-print("      配套设计规则(文档 §2.2):窗内空号 > W_used/2 时本槽不出 IMSD 判定,交 PERSIST 路。")
-
-print()
-print("=" * 72)
-print("CHECK F: 钉住啸叫的前置门可达性(容量轴 + PAPR 全带统计;D1 扫的数值坐实)")
-print("=" * 72)
-# 两个子场景,**结论相反**,故必须并列跑——只跑其一都会得出错误的一般结论:
-#  F-1 宽带限幅钉住的稳态平衡(语音间歇):啸叫是本通道 tap 上的主导分量 ⇒ 门全可达;
-#  F-2 频段选择性钉住(8段动态PEQ,IF-v1.4 C10/C11 作用域内)+ 带外强语音:
-#      啸叫未被抑制,却要与几十条语音谐波争 ≤16 个候选名额,且 PAPR 是**全带**统计。
-# 度量约定(v1.2 勘正,见文档 §1.2):PAPR/PNPR 均取 **20·log10(幅度比)= 常规 dB**。
-#  ⚠ PX4 GyroFFT.cpp:514 对同一幅度比取 10·log10(= 本文数值的一半),其 MIN_SNR/参数
-#    **不可直接搬**;本行是本项目第三次同族二义(每侧/全宽、半/满 LSB、半/常规 dB)。
-NB, DF = 512, fs_sc / N_FFT          # 512 bin @ 15.625Hz(B3,IF-v1.4 C4)
-T_PAPR, T_PNPR = 15.0, 8.0           # 候选门初值 [L4/待标定](常规 dB 约定)
-
-def build_spec(speech_peak_db):
-    # m-5 修正:F-1 不再用"空场景"(仅底噪+一条线)——那种构造下三门必过,检查不可能失败。
-    # 现按钉住平衡的物理约束给 F-1 配真实伴随内容:啸叫顶到母线天花板 ⇒ 本通道其余内容
-    # 必在其下,故语音峰取 啸叫−10dB(仍是有利条件,但**可能失败**,不再是恒真构造)。
-    s = -95.0 + rng.normal(0, 1.5, NB)                       # 本底
-    if speech_peak_db is not None:
-        for h in range(1, 41):                               # 语音谐波族(-6dB/oct 滚降)
-            fh = 140.0 * h
-            if fh < NB * DF:
-                k = int(round(fh / DF))
-                s[k] = max(s[k], speech_peak_db - 6.0 * np.log2(h) + rng.normal(0, 2.0))
-                s[k - 1] = max(s[k - 1], s[k] - 12); s[k + 1] = max(s[k + 1], s[k] - 12)
-    k_h = int(round(2500.0 / DF))
-    s[k_h] = -56.0                                           # 钉住啸叫:单线,tap 电平
-    return 10 ** (s / 20.0), k_h
-
-def papr_db(M, k):   # 峰 vs 全带均值(幅度比 → 常规 dB);原料 = C4 的 P_peak/全带均值
-    return 20 * np.log10((NB - 1) * M[k] / (np.sum(M) - M[k]))
-
-def pnpr_db(M, k):   # 峰 vs 邻域均值;邻域定义以 IF-v1.4 C5 为准(此处按其形态构造)
-    f = k * DF
-    kk = int(round(max(187.0, f * (2 ** (1 / 3) - 1)) / DF))
-    idx = [j for j in range(max(0, k - kk), min(NB, k + kk + 1)) if abs(j - k) > 3]
-    return 20 * np.log10(M[k] / np.mean(M[idx]))
-
-for tag, spk in [("F-1 宽带钉住稳态(伴随语音在啸叫下 10dB,由钉住平衡物理定)", -66.0),
-                 ("F-2 频段选择性钉住 + 带外强语音(语音峰 −30dB)", -30.0)]:
-    M, k_h = build_spec(spk)
-    loc = [k for k in range(2, NB - 2) if M[k] > M[k - 1] and M[k] >= M[k + 1]]
-    by_mag = sorted(loc, key=lambda k: -M[k])
-    by_papr = sorted(loc, key=lambda k: -papr_db(M, k))
-    pa, pn = papr_db(M, k_h), pnpr_db(M, k_h)
-    line16 = 20 * np.log10(M[by_mag[min(15, len(by_mag) - 1)]])
-    print(f"{tag}")
-    print(f"   局部峰数={len(loc):3d} | 幅度 top-16 含啸叫线={k_h in by_mag[:16]!s:5s} "
-          f"(第16名={line16:6.1f}dBFS = 该槽的**有效**准入线) | PAPR top-16 含={k_h in by_papr[:16]}")
-    print(f"   已知 bin 直读主谱:PAPR={pa:+6.1f}dB(门{T_PAPR:.0f}) {'✓' if pa>=T_PAPR else '✗'}"
-          f"   PNPR={pn:+6.1f}dB(门{T_PNPR:.0f}) {'✓' if pn>=T_PNPR else '✗'}")
-print("判定与结论域(如实,含一条推翻我方事前预期的结果):")
-print(" ① F-1(伴随语音在啸叫下 10dB,**非空场景**)三门全过 ⇒ 主场景前置门可达,不得夸大为普遍洞。")
-print("    ⚠ m-5 勘正:F-1 仍是**有利条件下的存在性演示**;承重的是同段 [L3] 物理论证(啸叫顶到")
-print("      母线天花板 ⇒ 它在 tap 上亦为主导),**本检查是该论证的旁证,不是『证明』**;")
-print(" ② F-2 幅度 top-16 **排除**啸叫线 ⇒ 容量轴的有效准入线随房间变吵而抬高(回执 §3 保留成立);")
-print(" ③ F-2 的 **PAPR(全带统计)亦不过门** —— 本项事前预期是'PAPR 排序能救回来',**被本检查证伪**:")
-print("    全带均值被带外语音抬高,弱峰的 PAPR 随之塌陷 ⇒ PAPR 排序同样排除它。")
-print("    ⇒ 掩蔽下**唯一存活的窄带证据是 PNPR(局部统计)**,这是文档 §1.2/§3.2 GR 放宽路径")
-print("      改以 PNPR 承重、并对 IF-v1.4 C11-② 的 'PAPR ≥ T_papr_high' 提点单的依据。")
-print(" 阈值全为初值 [L4/待标定];本检查是构造谱上的**存在性**演示,不构成检出率/排挤概率结论。")
-
-print()
-print("声明:CHECK D/D2/E/F 仅证明规则在构造轨迹/构造谱上自洽,不构成误触发率/检出率结论;")
-print("真判别力须真实素材(会议录音/乐音/长笛)+ 闭环 RIR 仿真,见 §7 与素材采集工单。")
-
-print()
-print("=" * 72)
-print("CHECK G: 豁免式**合取门**可达性审计(MAJOR-1 修法的机械核对)")
-print("=" * 72)
-# 立法理由(critic-w1b-r2 MAJOR-1):v1.2 的可达性表按"**哪条臂能命中**"填,
-# 而规则本体是**三重合取** `族内最大 ∧ 因果时序 ∧ (臂1∨臂2∨臂3)`。
-# 合取门为假时,臂命中也不产生豁免。本检查把规则本体编码,对每个场景**逐合取项**求值,
-# 再与文档表的宣称逐格比对 —— 即"用检查别人的尺子量自己"。
-#
-# 因果时序定义:causal_ok ⟺ (t_veto_start − t_onset) ≥ CAUSAL_MIN 槽
-CAUSAL_MIN = 2
-
-# 场景:(名, t_onset, t_veto_start, family_max, arm1, arm2, arm3, dom_v12, dom_v13,
-#        是否重生轨, 继承来的 causal_ok, v1.2 文档表宣称是否"豁免可达")
-SC = [
- ("(a) 慢升削波啸叫",            100, 106, True,  True,  False, True,  True,  True,  False, None, True),
- ("(a) 快升入台",                100, 103, True,  False, True,  True,  True,  True,  False, None, True),
- ("(a') 臂间隙(仅臂3)",         100, 104, True,  False, False, True,  True,  True,  False, None, True),
- ("(b1) NOM 开门接入已振铃环路",  200, 200, True,  False, False, True,  True,  True,  False, None, True),
- ("(b4) 中断重生·v1.2 影子",      300, 250, True,  False, False, True,  True,  True,  True,  None, True),
- ("(b4) 中断重生·完全不继承",     300, 300, True,  False, False, True,  True,  True,  True,  None, True),
- ("(b5) 冷启动接入已振铃环路",      0,   0, True,  False, False, True,  True,  True,  False, None, True),
- ("(c1) 讲话后重生(保鲜期内)",   400, 350, True,  False, False, True,  True,  True,  True,  True, True),
- ("(c2) 掩蔽:2f 与语音谐波重合",  100, 106, False, True,  False, True,  False, True,  False, None, True),
-]
-
-def eval_v12(t_on, t_veto, fam, a1, a2, a3, dom12, reborn, inh):
-    causal = (t_veto - t_on) >= CAUSAL_MIN       # 重生轨:t_on=重生时刻,t_veto=继承的旧值 ⇒ 负
-    arm = a1 or a2 or (a3 and dom12)
-    return fam, causal, arm, (fam and causal and arm)
-
-def eval_v13(t_on, t_veto, fam, a1, a2, a3, dom13, reborn, inh):
-    # v1.3 修法:①重生轨的因果时序按**继承的锚**求值(继承 causal_ok 布尔 + t_onset),
-    #            不用重生时刻重算;②臂3 谓词 dom 改按 PNPR(局部统计)定义,掩蔽下不塌陷。
-    if reborn and inh is not None:
-        causal = inh
-    else:
-        causal = (t_veto - t_on) >= CAUSAL_MIN
-    arm = a1 or a2 or (a3 and dom13)
-    return fam, causal, arm, (fam and causal and arm)
-
-print(f"{'场景':30s} | v1.2: 族最大 因果 臂 => 豁免 | v1.3: 族最大 因果 臂 => 豁免 | v1.2表宣称 | 一致?")
-mismatch = 0
-for (nm, t_on, t_veto, fam, a1, a2, a3, d12, d13, reborn, inh, claim) in SC:
-    f2, c2, m2, e2 = eval_v12(t_on, t_veto, fam, a1, a2, a3, d12, reborn, inh)
-    f3, c3, m3, e3 = eval_v13(t_on, t_veto, fam, a1, a2, a3, d13, reborn, inh)
-    ok = (e2 == claim)
+FAILS = []
+def check(name, ok, detail="", hits=None):
+    """★ r15 D-J:证伪测试必须自带**触达断言**。
+    `hits` = 被测分支的实际执行次数。**hits==0 ⇒ 判「无效」,不得判「通过」。**
+    「预期结果」与「触达次数」必须同屏。"""
+    if hits is not None and hits == 0:
+        print(f"  [**无效**] {name}  {detail}  | 触达=0 ⇒ 该分支本次未执行,结果不成立")
+        FAILS.append(name + "(触达=0/无效)")
+        return False
+    tag = 'PASS' if ok else '**FAIL**'
+    ht = f"  | 触达={hits}" if hits is not None else ""
+    print(f"  [{tag}] {name}  {detail}{ht}")
     if not ok:
-        mismatch += 1
-    B = lambda x: "T" if x else "F"
-    print(f"{nm:30s} |   {B(f2)}     {B(c2)}   {B(m2)} =>   {B(e2)}   |   {B(f3)}     {B(c3)}   {B(m3)} =>   {B(e3)}   |     {B(claim)}      | {'✓' if ok else '**不符**'}")
+        FAILS.append(name)
+    return ok
 
-print()
-print(f"v1.2 规则求值与 v1.2 可达性表宣称**不符的格数 = {mismatch}/{len(SC)}**")
-print("判定与结论(本检查的存在意义 = 机械暴露下面这条,而不是确认设计正确):")
-print(" ① v1.2 的可达性表在 (b1)/(b4)/(b5)/(c1)/(c2) 上宣称豁免可达,而**规则本体求值为 False**")
-print("    —— 因果时序是三臂**共用**的合取门,臂3 命中不能绕过它。文档表按'哪条臂命中'填,")
-print("    这正是 B-F1 病型第二次复现(用目标场景里为假的前提去关/开一条路)。")
-print(" ② (b4) v1.2 影子只继承 t_veto_start 不继承 t_onset ⇒ 重生轨 t_veto < t_onset ⇒ 因果时序")
-print("    **结构性为假**:救 case (b) 的机制反而把被救的轨焊死(继承比不继承更糟)。")
-print(" ③ v1.3 修法后:重生/继承类((b4)继承态、(c1))恢复可达;**(b1)/(b5) 真·诞生即平台**")
-print("    **仍不可达 —— 这是真盲区,v1.3 按此改写盲区公式,不再宣称'有臂3 即可达'**。")
-print(" ④ (c2) 族内最大在掩蔽下可为假(2f 与语音谐波重合)⇒ 另一条独立失效路径,已入 D1 表。")
-print(" 本检查为规则层求值,不含物理量;场景的可能性判断见文档 §3.2 与 §10.3。")
+print("=" * 76)
+print(f"W1-B 自验 v7 · 被测物 = nhs.py(vP1.1)· 全部经 import 调用")
+print("=" * 76)
+
+# ---------------------------------------------------------------- CHECK A
+print("\nCHECK A: 深度可控陷波(调用 nhs.rbj_peaking)")
+fs = 48000.0
+def mag_closed(b, a, f, fs):
+    w = 2*np.pi*f/fs; b0,b1,b2 = b; a1,a2 = a[1],a[2]
+    num = b0*b0+b1*b1+b2*b2+2*(b0*b1+b1*b2)*np.cos(w)+2*b0*b2*np.cos(2*w)
+    den = 1+a1*a1+a2*a2+2*(a1+a1*a2)*np.cos(w)+2*a2*np.cos(2*w)
+    return np.sqrt(num/den)
+def mag_fz(b, a, f, fs):
+    z = np.exp(1j*2*np.pi*f/fs)
+    return np.abs((b[0]+b[1]/z+b[2]/z**2)/(1+a[1]/z+a[2]/z**2))
+okA = True; dmax = 0.0
+for f0, depth, bw in [(1000.,-3.,.1),(1000.,-18.,.1),(250.,-3.,.2),(100.,-12.,.1),(6300.,-6.,.1)]:
+    b, a = rbj_peaking(fs, f0, depth, bw)          # ← 调用被测物
+    m1 = 20*np.log10(mag_closed(b,a,f0,fs)); m2 = 20*np.log10(mag_fz(b,a,f0,fs))
+    dmax = max(dmax, abs(m1-m2))
+    okA &= abs(m1-depth) < 0.01 and np.all(np.abs(np.roots([1,a[1],a[2]])) < 1.0)
+check("A 陷波 @f0 深度=设定值 且极点稳 且两轨一致", okA, f"两轨最大差={dmax:.2e}dB")
+
+# ---------------------------------------------------------------- CHECK B
+print("\nCHECK B: Quinn 内插精度(调用 NHS._quinn)")
+rng = np.random.default_rng(1234); win = np.hanning(NFFT); errs = []
+for _ in range(200):
+    ft = rng.uniform(200, 7000); n = np.arange(NFFT)
+    sig = np.sin(2*np.pi*ft/FS_SC*n + rng.uniform(0,2*np.pi))
+    X = np.fft.rfft((sig + rng.normal(0,10**(-30/20)/np.sqrt(2),NFFT))*win)
+    k = int(np.argmax(np.abs(X[2:NFFT//2-2]))) + 2
+    errs.append(abs(NHS._quinn(X, k)*FS_SC/NFFT - ft))   # ← 调用被测物
+p95 = float(np.percentile(errs, 95))
+check("B Quinn p95|Δf| ≤ 3.75Hz(=BW/4@15Hz)", p95 <= 3.75, f"p95={p95:.3f}Hz")
+
+# ---------------------------------------------------------------- CHECK L(新)
+print("\nCHECK L: 电平标定(调用 NHS._level)—— ★ M-1 回归锁")
+alg = NHS()
+okL = True; rows = []
+for f0, amp in [(1000., 1.0), (2000., 0.5), (3000., 0.1), (500., 0.25)]:
+    n = np.arange(NFFT)
+    x = amp*np.sin(2*np.pi*f0/FS_SC*n)
+    Mg = np.abs(np.fft.rfft(x*np.hanning(NFFT)))
+    k = int(round(f0/(FS_SC/NFFT)))
+    lv = alg._level(Mg, k)                              # ← 调用被测物
+    true_db = 20*np.log10(amp)
+    rows.append((f0, lv, true_db)); okL &= abs(lv-true_db) < 0.5
+check("L _level 对已知幅度正弦读数误差 <0.5dB", okL,
+      f"最大偏差={max(abs(l-t) for _,l,t in rows):.2f}dB")
+
+# ---------------------------------------------------------------- CHECK D/E
+print("\nCHECK D/E: IMSD 判别与空号护栏(调用 NHS._imsd)")
+P = Params()
+def mk_track(papr, seq):
+    t = Track(); t.active=True; t.papr_hist=list(papr); t.pnpr_hist=[20.]*len(papr)
+    t.seq_hist=list(seq); t.hist_n=len(papr); return t
+def imsd(papr, seq):
+    return alg._imsd(mk_track(papr, seq))               # ← 调用被测物
+W = P.W_long
+cases = {
+ 'howl_130dB/s':  2.08*np.arange(W)+rng.normal(0,.5,W),
+ 'howl_70dB/s':   1.12*np.arange(W)+rng.normal(0,.3,W),
+ 'steady_tone':   60.+rng.normal(0,.5,W),
+ 'vowel':         np.concatenate([[40,55],60+np.cumsum(rng.normal(0,1.2,W-2))]),
+ 'crescendo':     20.+rng.normal(0,.5,W),
+}
+res = {k: imsd(v, np.arange(W))[0] for k, v in cases.items()}
+check("D 真啸叫命中 / 稳态·元音·共模拒", res['howl_130dB/s'] and not res['steady_tone']
+      and not res['vowel'] and not res['crescendo'], str({k:int(v) for k,v in res.items()}))
+# E:跳槽下 x 轴用 slot_seq
+gap_seq = np.array([0,1,2,3,10,11,12,13]); rate = 250.
+traj = rate*P.T_hop*gap_seq
+hit_correct = imsd(traj, gap_seq)[0]
+hit_naive   = imsd(traj, np.arange(W))[0]
+check("E 跳槽窗:按 slot_seq 命中、按朴素序号漏检", hit_correct and not hit_naive,
+      f"正确={hit_correct} 朴素={hit_naive}")
+
+# ---------------------------------------------------------------- CHECK F
+print("\nCHECK F: PAPR/PNPR 在掩蔽下的行为(调用 NHS._papr/_pnpr)")
+NB = NFFT//2+1; DF = FS_SC/NFFT
+def spec(speech_pk):
+    s = -95.+rng.normal(0,1.5,NB)
+    if speech_pk is not None:
+        for h in range(1,41):
+            fh = 140.*h
+            if fh < NB*DF:
+                kk = int(round(fh/DF)); s[kk] = max(s[kk], speech_pk-6*np.log2(h))
+    kh = int(round(2500./DF)); s[kh] = -56.
+    return 10**(s/20.), kh
+res_f = {}
+for tag, pk in (('F-1 无掩蔽', None), ('F-2 带外强语音', -30.)):
+    Mg, kh = spec(pk)
+    res_f[tag] = (alg._papr(Mg,kh), alg._pnpr(Mg,kh))   # ← 调用被测物
+check("F-2 掩蔽下 PAPR 塌陷而 PNPR 存活(臂3 须用 PNPR 的依据)",
+      res_f['F-2 带外强语音'][0] < res_f['F-1 无掩蔽'][0] - 10
+      and res_f['F-2 带外强语音'][1] > res_f['F-2 带外强语音'][0],
+      f"F-2 PAPR={res_f['F-2 带外强语音'][0]:.1f} PNPR={res_f['F-2 带外强语音'][1]:.1f}dB")
+
+# ---------------------------------------------------------------- CHECK G
+print("\nCHECK G: 豁免式合取门(调用 NHS._phpr_veto / _is_dom)")
+def veto(t_born, t_veto, causal_ok, imsd_hit, rapid, gr_ok, pnpr_rank_top,
+         persist_path=True):
+    a2 = NHS(); a2.slot_seq = 200
+    tr = mk_track([30.]*P.W_long, np.arange(P.W_long))
+    tr.t_born = t_born; tr.t_veto = t_veto; tr.causal_ok = causal_ok
+    tr.rapid_onset = rapid
+    tr.pnpr_hist = [40. if pnpr_rank_top else 5.]
+    a2.tracks[0] = tr
+    other = mk_track([30.]*P.W_long, np.arange(P.W_long)); other.pnpr_hist=[20.]
+    a2.tracks[1] = other
+    df = FS_SC/NFFT; Mg = np.full(NB, 1e-6)
+    kh = int(round(2500./df)); Mg[kh] = 1.0
+    for nmul in (2,3):                                  # 造谐波族 ⇒ 触发否决
+        Mg[int(round(2500.*nmul/df))] = 0.5
+    tr.f = 2500.
+    return a2._phpr_veto(tr, Mg, df, imsd_hit, gr_ok, persist_path)   # ← 调用被测物
+g_a  = veto(100, 106, True,  True,  False, True,  True)    # (a) PERSIST:因果真 + 臂1
+g_b  = veto(200, 200, False, False, False, True,  True)    # (b) 因果假 ⇒ 应仍否决
+g_b4 = veto(300, 300, True,  False, False, True,  True)    # (b4) 继承 causal_ok ⇒ 可豁免
+check("G (a) PERSIST 路:因果真+臂1 ⇒ 豁免(不否决)", not g_a, f"veto={g_a}")
+check("G (b) 真·诞生即平台(causal 假)⇒ 仍否决", g_b, f"veto={g_b}")
+check("G (b4) 继承 causal_ok ⇒ 恢复豁免", not g_b4, f"veto={g_b4}")
+
+# ★★ D6-e 回归锁:豁免条件不得是其所豁免路径入选条件的子式
+#   GROWTH 入选式 = (imsd_hit ∨ rapid_onset);故 arm1/arm2 **不得**能豁免 GROWTH
+g_c = veto(100, 106, False, True, True, True, True, persist_path=False)
+check("G (c) ★D6-e:GROWTH 路 causal假 + 臂1真 + 臂2真 ⇒ **仍否决**(臂不得豁免增长路)",
+      g_c, f"veto={g_c}")
+g_d = veto(100, 106, True, False, False, False, False, persist_path=False)
+check("G (d) GROWTH 路 causal真(族后到)⇒ 豁免 —— 新判据是增长路唯一豁免依据",
+      not g_d, f"veto={g_d}")
+# ★★ 旧口径回归锁:t_veto−t_born 很大但 causal_ok 假 ⇒ 不得豁免(证明旧式已废弃)
+g_e = veto(100, 100 + 50*P.causal_min, False, True, False, True, True)
+check("G (e) ★旧 causal 口径(t_veto−t_born 巨大)已废:causal_ok 假 ⇒ 仍否决",
+      g_e, f"veto={g_e}")
+
+# ---------------------------------------------------------------- CHECK M
+print("\nCHECK M: 臂3 谓词 dom 按 **PNPR** 排序(★ B-1 回归锁)")
+a3 = NHS()
+t_hi_pnpr = mk_track([10.]*P.W_long, np.arange(P.W_long)); t_hi_pnpr.pnpr_hist=[40.]
+t_hi_papr = mk_track([90.]*P.W_long, np.arange(P.W_long)); t_hi_papr.pnpr_hist=[5.]
+a3.tracks[0] = t_hi_pnpr; a3.tracks[1] = t_hi_papr
+for t in a3.tracks[2:]: t.active = False
+check("M dom 选 PNPR 最高者(而非 PAPR 最高者)",
+      a3._is_dom(t_hi_pnpr) and not a3._is_dom(t_hi_papr),
+      f"PNPR高={a3._is_dom(t_hi_pnpr)} PAPR高={a3._is_dom(t_hi_papr)}")
+
+# ---------------------------------------------------------------- CHECK N
+print("\nCHECK N: relaxed 非粘滞(★ MAJOR 回归锁:C12 输入侧担保不得被架空)")
+a4 = NHS()
+tr4 = mk_track([30.]*P.W_long, np.arange(P.W_long))
+tr4.relaxed = True                      # 曾经经放宽门入轨
+a4._track_hit(tr4, dict(f=2500., lv=0.0, papr=40., pnpr=40., relaxed=False), True)
+check("N 电平升到 0dBFS 后 relaxed 应被释放(恢复 PANIC 资格)",
+      tr4.relaxed is False, f"relaxed={tr4.relaxed}")
+tr5 = mk_track([30.]*P.W_long, np.arange(P.W_long))
+a4._track_hit(tr5, dict(f=2500., lv=-60.0, papr=40., pnpr=40., relaxed=True), True)
+check("N 电平仍低于 T_low 时 relaxed 应保持(收紧仍生效)",
+      tr5.relaxed is True, f"relaxed={tr5.relaxed}")
+
+# ---------------------------------------------------------------- CHECK O
+print("\nCHECK O: g_duck 由权威源自己施加(★ r9 MAJOR 回归锁)")
+# 立法理由:g_duck 此前只在 nhs.py 算、由 8 个台架各自施加 ⇒ 照 nhs.py 做的
+# bit-exact 移植会把它整条丢掉。本 CHECK 直接测 process_frame 的**输出信号**。
+a5 = NHS()
+x5 = np.ones(nhs.FRAME) * 0.1
+y_unity = a5.process_frame(x5.copy(), {})          # g_duck_db = 0 ⇒ 应恒等
+a5.g_duck_db = -6.0                                 # 手动置兜底态
+y_duck = a5.process_frame(x5.copy(), {})
+r_db = 20*np.log10(np.sqrt(np.mean(y_duck**2)) / (np.sqrt(np.mean(y_unity**2)) + 1e-30))
+check("O (a) g_duck=0dB 时 process_frame 对未陷波信号恒等",
+      np.allclose(y_unity, x5, atol=1e-12), f"max|y-x|={np.max(np.abs(y_unity-x5)):.2e}")
+check("O (b) g_duck=-6dB 时输出确实低 6dB(施加点在权威源内)",
+      abs(r_db - (-6.0)) < 0.05, f"实测 {r_db:.3f}dB(期望 -6.000)")
+
+# ---------------------------------------------------------------- CHECK P
+print("\nCHECK P: 深度状态机容差 DEPTH_EPS_DB(★ r9 MAJOR 回归锁:定点可迁移性)")
+# 立法理由:原 1e-6/1e-9 dB 是**伪装成容差的精确相等判断**,定点量化步长
+# (Q7.8=3.9e-3 dB)比它大 3 个数量级 ⇒ 移植后跃迁永不触发/永不复位。
+eps = nhs.DEPTH_EPS_DB
+step = Params().ramp_db_per_s * Params().T_hop
+check("P (a) 容差 >> 定点量化步长(Q7.8 = 3.9e-3 dB),至少 3×",
+      eps > 3 * 0.0039, f"eps={eps} vs Q7.8 quantum=0.0039 (比值 {eps/0.0039:.1f}×)")
+check("P (b) 容差 << 一个斜坡步长,至少 3× 余量(否则提前迁移)",
+      eps < step / 3, f"eps={eps} vs ramp step={step:.3f}dB (比值 {step/eps:.1f}×)")
+# 行为侧:注入一个定点量级的残差,ENGAGE→HOLD 仍须迁移
+s6 = nhs.NotchSlot(); s6.st = nhs.NotchSlot.ENGAGE
+s6.depth = -3.0 + 0.0039; s6.target = -3.0        # 差 1 个 Q7.8 量子
+a6 = NHS(); a6.slots = [s6]; a6.tracks = []
+a6._slots_tick()
+check("P (c) 深度与 target 差 1 个定点量子时仍迁 HOLD(原 1e-6 判据会卡死)",
+      s6.st == nhs.NotchSlot.HOLD, f"st={s6.st}(HOLD={nhs.NotchSlot.HOLD})")
+
+# ---------------------------------------------------------------- CHECK Q
+print("\nCHECK Q: 重定义的 causal_ok —— 族到达时序(★ r12 D6-e 修法回归锁)")
+# 立法理由:旧 causal 测"候选轨龄相对否决起点",实测几乎恒真(钢琴 4814/4814)
+#   ⇒ 它测的不是因果。新式测**族成员到达时刻 vs 候选自身增长起点**,与 imsd 不同源。
+# ⚠ D6-f:本判据是单边(≥ fam_late_min),消融朝**更不满足**方向做 —— 令族**提前**到达。
+df = FS_SC/NFFT
+def scan_causal(fam_delay_slots):
+    """把族成员出现推迟 fam_delay_slots 槽,看 causal_ok 是否按新式建立。"""
+    a5 = NHS()
+    tr = mk_track([30.]*P.W_long, np.arange(P.W_long))
+    tr.f = 2500.; tr.lv0 = -60.0; tr.t_grow0 = -1; tr.t_fam0 = -1; tr.causal_ok = False
+    a5.tracks[0] = tr
+    for t2 in a5.tracks[1:]: t2.active = False
+    M_no = np.full(NB, 1e-6); M_no[int(round(2500./df))] = 1.0          # 只有基频
+    M_fam = M_no.copy()
+    for nm2 in (2, 3): M_fam[int(round(2500.*nm2/df))] = 0.5            # 族成员到场
+    for sq in range(0, 40):
+        a5.slot_seq = sq
+        tr.last_level = -60.0 if sq < 5 else -50.0        # 第 5 槽起增长(t_grow0=5)
+        a5._causal_scan(M_fam if sq >= fam_delay_slots else M_no, df)   # ← 调用被测物
+    return tr.causal_ok, tr.t_grow0, tr.t_fam0
+c_sim, g1, f1 = scan_causal(0)      # 族**同时/更早**到达(乐音)⇒ 不得建立 causal
+c_late, g2, f2 = scan_causal(20)    # 族**后到**(削波)⇒ 必须建立 causal
+check("Q (a) 族同时到(乐音)⇒ causal_ok **不**建立",
+      c_sim is False, f"causal={c_sim} t_grow0={g1} t_fam0={f1}")
+check("Q (b) 族后到(渐长后削波)⇒ causal_ok 建立",
+      c_late is True, f"causal={c_late} t_grow0={g2} t_fam0={f2}")
+check("Q (c) 两者结果**必须不同**(同结果 ⇒ 本款未实现)",
+      c_sim != c_late, f"同时到={c_sim} 后到={c_late}")
+
+# ---------------------------------------------------------------- CHECK R
+print("\nCHECK R: C8-② 事后甄别探针(★ r13 回归锁;**物理实验非统计阈值**)")
+# 立法理由:PERSIST 侧"持续纯音 vs 啸叫"在单帧谱观测集下不可分(C8-②)。
+#   本判据不测频率稳定性,测**对本层干预的响应** ⇒ 与 US9794695B2 不同域(FTO)。
+# ⚠ D6-f:单边判据(ΔL ≥ thr),消融朝**更不满足**方向 —— 令 ΔL 变小,不是置零。
+a7 = NHS(); df7 = FS_SC/NFFT; f7 = 2500.0; k7 = int(round(f7/df7))
+def probe_once(drop_db):
+    """真跑 _probe_tick:挂陷后第二次读数比第一次低 drop_db ⇒ 看判决。"""
+    a = NHS(); a.slots[0].st = nhs.NotchSlot.ENGAGE; a.slots[0].f = f7
+    a.probes = {0: dict(f=f7, seq0=0, L0=None, d=3.0, cls='PERSIST')}
+    M1 = np.full(NB, 1e-6); M1[k7] = 1.0
+    a.slot_seq = 0; a._probe_tick(M1, df7)              # 记 L0
+    M2 = np.full(NB, 1e-6); M2[k7] = 10 ** (-drop_db/20.0)
+    a.slot_seq = a.P.probe_hops; a._probe_tick(M2, df7)  # 判决
+    return a.c8_log[0]['verdict'] if a.c8_log else None
+v_howl = probe_once(30.0)     # 环路被打断:大幅下降
+v_ext  = probe_once(0.0)      # 源仍在:无下降
+check("R (a) ΔL 大(环路被打断)⇒ 判**啸叫**、保留",
+      v_howl == 'howl', f"verdict={v_howl}")
+check("R (b) ΔL≈0(源仍在)⇒ 判**外部音**、撤陷",
+      v_ext == 'ext', f"verdict={v_ext}")
+check("R (c) 两者**必须不同**(同结果 ⇒ 本款未实现)",
+      v_howl != v_ext, f"howl臂={v_howl} ext臂={v_ext}")
+# 撤陷必须是**真撤**(系数回恒等),不是只改状态位
+a8 = NHS(); a8.slots[0].st = nhs.NotchSlot.ENGAGE; a8.slots[0].f = f7
+a8.slots[0].depth = -3.0; a8.slots[0].set_coef(nhs.FS, a8.P.bw_oct)
+b_before = a8.slots[0].b.copy()
+a8.probes = {0: dict(f=f7, seq0=0, L0=None, d=3.0, cls='PERSIST')}
+M1 = np.full(NB, 1e-6); M1[k7] = 1.0
+a8.slot_seq = 0; a8._probe_tick(M1, df7)
+a8.slot_seq = a8.P.probe_hops; a8._probe_tick(M1, df7)
+check("R (d) 判外部后**真撤陷**(系数回恒等,非仅改状态位)",
+      np.allclose(a8.slots[0].b, [1.0, 0, 0]) and a8.slots[0].st == nhs.NotchSlot.FREE,
+      f"b={np.round(a8.slots[0].b,4)} st={a8.slots[0].st} 撤前b={np.round(b_before,4)}")
+
+# ---------------------------------------------------------------- CHECK S
+print("\nCHECK S: C8-③ 差分判据 + 硬要求②结构纪律(★ r14 回归锁)")
+import re as _re
+_src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         '..', 'prototype_W1P', 'nhs.py'), encoding='utf-8').read()
+# 硬要求②:「探针判为啸叫」不得被任何其他机制当作正向证据。
+#   结构检查:c8_howl / c8_log / c8_bare_stop 只允许出现在 _probe_tick 内(及注释)。
+_body = _src.split('def _probe_tick')[1].split('\n    def ')[0]
+_outside = _src.replace(_body, '')
+_leak = [ln.strip() for ln in _outside.splitlines()
+         if ('c8_howl' in ln or 'c8_bare_stop' in ln
+             or ("verdict" in ln and 'has_affirmative_verdict' not in ln))
+         and not ln.strip().startswith('#') and 'c8_log = []' not in ln]
+check("S (a) ★硬要求②:探针判决不外泄(c8_howl/verdict 未被其他机制读取)",
+      len(_leak) == 0, f"泄漏行={_leak if _leak else '无'}")
+# 差分判据的三种情形(真跑 _probe_tick,不转写公式)
+df8 = FS_SC/NFFT; f8 = 2500.0; k8 = int(round(f8/df8))
+def probe3(drop_f_db, drop_rest_db):
+    """f 处掉 drop_f_db,其余全谱掉 drop_rest_db ⇒ 看差分判据给什么。"""
+    a = NHS(); a.slots[0].st = nhs.NotchSlot.ENGAGE; a.slots[0].f = f8
+    a.probes = {0: dict(f=f8, seq0=0, L0=None, d=3.0, cls='PERSIST')}
+    M1 = np.full(NB, 1e-3); M1[k8] = 1.0
+    a.slot_seq = 0; a._probe_tick(M1, df8)
+    M2 = M1 * (10 ** (-drop_rest_db/20.0))
+    M2[k8] = M1[k8] * (10 ** (-drop_f_db/20.0))
+    a.slot_seq = a.P.probe_hops; a._probe_tick(M2, df8)
+    return a.c8_log[0]['verdict'] if a.c8_log else None
+v1 = probe3(30.0,  0.0)    # ①真啸叫:只有 f 掉  ⇒ 差分大 ⇒ 判啸叫
+v2 = probe3( 0.0,  0.0)    # ②外部持续:都没掉  ⇒ 差分≈0 ⇒ 判外部
+v3 = probe3(30.0, 30.0)    # ③外部源停:一起掉  ⇒ 差分≈0 ⇒ 判外部(★ F25 修法本体)
+check("S (b) 只有 f 掉(环路被打断)⇒ 判啸叫", v1 == 'howl', f"verdict={v1}")
+check("S (c) 都没掉(外部持续)⇒ 判外部",     v2 == 'ext',  f"verdict={v2}")
+check("S (d) ★F25 修法:f 与全谱**一起**掉(源自己停了)⇒ 判**外部**,不再误判啸叫",
+      v3 == 'ext', f"verdict={v3}")
+check("S (e) 三情形不得同结果(①与②③必须可分)",
+      v1 != v2 and v1 != v3, f"①={v1} ②={v2} ③={v3}")
+# D6-f:单边/有界判据的消融朝**更不满足**方向 —— 令差分**变大**(不是置零)
+v4 = probe3(30.0, 25.0)    # 一起掉但差 5dB(< X=8)⇒ 仍判外部
+v5 = probe3(30.0, 15.0)    # 差 15dB(> X=8)⇒ 翻为判啸叫
+check("S (f) D6-f:差分跨过 X 时判定必须翻转(5dB→外部 / 15dB→啸叫)",
+      v4 == 'ext' and v5 == 'howl', f"差5dB={v4} 差15dB={v5}")
+
+# ---------------------------------------------------------------- CHECK T
+print("\nCHECK T: r15 机制A(共模单边钳位)+ 机制B(三态弃权)(★ 回归锁;D-J 带触达断言)")
+dfT = FS_SC/NFFT; fT = 2500.0; kT = int(round(fT/dfT))
+_T_hits = {'clamp': 0, 'abstain': 0}
+def probeT(dropf, droprest, base=1e-3, peak=1.0):
+    """真跑 _probe_tick。base=本底幅度,peak=f 处幅度。"""
+    a = NHS(); a.slots[0].st = nhs.NotchSlot.ENGAGE; a.slots[0].f = fT
+    a.probes = {0: dict(f=fT, seq0=0, L0=None, d=3.0, cls='PERSIST')}
+    M1 = np.full(NB, base); M1[kT] = peak
+    a.slot_seq = 0; a._probe_tick(M1, dfT)
+    M2 = M1 * (10 ** (-droprest/20.0)); M2[kT] = M1[kT] * (10 ** (-dropf/20.0))
+    a.slot_seq = a.P.probe_hops; a._probe_tick(M2, dfT)
+    return (a.c8_log[0] if a.c8_log else None)
+
+# ── 机制A:rest **上升**(dR<0)时,钳位须使判据**退化为单量**,不得增加判啸叫证据
+rA = probeT(0.0, -20.0)          # f 不变、rest 上升 20dB ⇒ 未钳位则 diff=+20 ⇒ 误判啸叫
+if rA is not None and rA['verdict'] != 'abstain':
+    _T_hits['clamp'] += 1
+check("T (a) ★机制A:rest 上升 20dB 而 f 不变 ⇒ 钳位后仍判**外部**(未钳位则误判啸叫)",
+      rA is not None and rA['verdict'] == 'ext',
+      f"verdict={rA['verdict'] if rA else None} dL={rA['dL']:.2f} dR={rA['dR']:.2f} diff={rA['diff']:.2f}"
+      if rA else "无判决", hits=_T_hits['clamp'])
+# ── 机制A:f 处电平**上升**(dL<0)不得成为啸叫证据(去绝对值)
+rA2 = probeT(-12.0, 0.0)
+check("T (b) ★机制A:f 处电平**上升** 12dB ⇒ 判**外部**(取绝对值则误判啸叫)",
+      rA2 is not None and rA2['verdict'] == 'ext',
+      f"verdict={rA2['verdict'] if rA2 else None} diff={rA2['diff']:.2f}" if rA2 else "无判决",
+      hits=1 if rA2 is not None else 0)
+# ── 机制B:L0/L1 落在本底附近 ⇒ **弃权**(第三态),既非啸叫也非外部
+rB = probeT(0.0, 0.0, base=1e-3, peak=1.2e-3)     # 峰仅高出本底 ~1.6dB < M=10
+if rB is not None and rB['verdict'] == 'abstain':
+    _T_hits['abstain'] += 1
+check("T (c) ★机制B:读数落在本底+M 以内 ⇒ **弃权**(第三态,非啸叫非外部)",
+      rB is not None and rB['verdict'] == 'abstain',
+      f"verdict={rB['verdict'] if rB else None}" if rB else "无判决", hits=_T_hits['abstain'])
+# ── 机制B:弃权**不得**登记保鲜期(登记=对"这是外部源"的正向断言)
+aB = NHS(); aB.slots[0].st = nhs.NotchSlot.ENGAGE; aB.slots[0].f = fT
+aB.probes = {0: dict(f=fT, seq0=0, L0=None, d=3.0, cls='PERSIST')}
+Mb = np.full(NB, 1e-3); Mb[kT] = 1.2e-3
+aB.slot_seq = 0; aB._probe_tick(Mb, dfT)
+aB.slot_seq = aB.P.probe_hops; aB._probe_tick(Mb, dfT)
+check("T (d) ★机制B:弃权**不登记保鲜期**,且**保留陷波**(偏置原则)",
+      len(aB.ext_reg) == 0 and aB.slots[0].st != nhs.NotchSlot.FREE,
+      f"ext_reg={len(aB.ext_reg)} st={aB.slots[0].st}", hits=1)
+# ── D-H 两端(M 的取值必须落在论证区间内)
+check("T (e) D-H:弃权门 M 须 >6dB(本底估计不确定度)且 <15dB(T_papr,否则合法候选恒弃权)",
+      6.0 < Params().probe_floor_M < 15.0, f"M={Params().probe_floor_M}")
+
+# ---------------------------------------------------------------- CHECK U
+print("\nCHECK U: r17 `t_last_hit` 刷新条件 + EXHAUSTED + 回收优先序(★ 回归锁,带 D-J 触达)")
+# 立法理由:tap 在陷波器组入口、陷波在**下游** ⇒ 外部持续源**永远在 tap 上看得见**
+#   ⇒ 永远复检 ⇒ 无条件刷新 t_last_hit 会让 LIFT 永不启动(r16 实测回收率仅 14.1%)。
+#   「该峰仍被检出」**不是**「该陷波仍被需要」的证据。
+def alloc_once(from_abstain, target0, tw=100.0):
+    """真跑 _allocate 的 same 分支。返回 (t_last_hit 是否被刷新, EXHAUSTED 次数)。"""
+    a = NHS(); a.t_wall = tw
+    s0 = a.slots[0]
+    s0.st = nhs.NotchSlot.HOLD; s0.f = 2500.0
+    s0.target = target0; s0.depth = target0
+    s0.from_abstain = from_abstain
+    s0.has_affirmative_verdict = not from_abstain   # ★ r27:肯定式(弃权来源 ⇒ 无肯定结论)
+    s0.t_last_hit = 0.0
+    for s2 in a.slots[1:]:
+        s2.st = nhs.NotchSlot.FREE
+    a._allocate([dict(cls='PERSIST', f=2500.0, tr=None, lv=-20.0, b=0.0)])
+    return (s0.t_last_hit > 0.0), a.ctr.get('depth_exhausted', 0), s0.target
+
+r1, e1, _ = alloc_once(False, -3.0)      # 正向分类 + 可继续加深 ⇒ **应刷新**
+r2, e2, _ = alloc_once(True,  -3.0)      # **弃权来源** + 可加深   ⇒ **不应刷新**
+r3, e3, t3 = alloc_once(False, Params().max_depth)  # 已达 max_depth ⇒ 不加深 ⇒ 不刷新 + EXHAUSTED
+check("U (a) 正向分类 ∧ 导致加深 ⇒ **刷新** t_last_hit(复发→加深路径无损)",
+      r1 is True, f"refreshed={r1}", hits=1)
+check("U (b) ★弃权来源的占用 ⇒ **不刷新**(外部源永远复检,刷新不正当)",
+      r2 is False, f"refreshed={r2}", hits=1)
+check("U (c) 已达 max_depth ⇒ 不加深 ⇒ **不刷新**(推迟量被加深梯级钉死 ⇒ 有界)",
+      r3 is False, f"refreshed={r3} target={t3}", hits=1)
+check("U (d) ★已达 max_depth 仍被复检 ⇒ 记 **EXHAUSTED**(修法前被永久占槽掩盖)",
+      e3 > 0, f"exhausted={e3}", hits=e3)
+# 回收优先序:弃权产生的占用优先被回收
+a9 = NHS(); a9.t_wall = 200.0
+for si, s9 in enumerate(a9.slots):
+    s9.st = nhs.NotchSlot.STANDBY; s9.f = 400.0 + si*100; s9.t_last_hit = 100.0 + si
+    s9.from_abstain = False; s9.has_affirmative_verdict = True     # ★ r27 肯定式
+a9.slots[3].from_abstain = True; a9.slots[3].has_affirmative_verdict = False          # 唯一弃权来源,但 t_last_hit **不是最老**
+a9._allocate([dict(cls='PERSIST', f=9000.0, tr=None, lv=-20.0, b=0.0)])
+picked = [si for si, s9 in enumerate(a9.slots) if abs(s9.f - 9000.0) < 1.0]
+check("U (e) ★回收优先序:弃权来源的占用**优先**被回收(即使它不是最老的)",
+      picked == [3], f"被改派的槽位={picked}(期望 [3])", hits=len(picked))
+# ★ U(f):端到端 —— **探针判弃权时是否真的会打上 from_abstain 标记**
+#   (U(b) 是手工设标记,测的是"标记生效";本条测"标记会被设上"。二者缺一不可。)
+dfU = FS_SC/NFFT; fU = 2500.0; kU = int(round(fU/dfU))
+aU = NHS(); aU.slots[0].st = nhs.NotchSlot.ENGAGE; aU.slots[0].f = fU
+aU.slots[0].from_abstain = False
+aU.probes = {0: dict(f=fU, seq0=0, L0=None, d=3.0, cls='PERSIST')}
+MU = np.full(NB, 1e-3); MU[kU] = 1.2e-3          # 峰仅高出本底 ~1.6dB < M=10 ⇒ 弃权
+aU.slot_seq = 0; aU._probe_tick(MU, dfU)
+aU.slot_seq = aU.P.probe_hops; aU._probe_tick(MU, dfU)
+_v = aU.c8_log[0]['verdict'] if aU.c8_log else None
+check("U (f) ★端到端:探针判**弃权**时,须真的给槽位打上 from_abstain 标记",
+      _v == 'abstain' and aU.slots[0].from_abstain is True,
+      f"verdict={_v} from_abstain={aU.slots[0].from_abstain}",
+      hits=1 if _v == 'abstain' else 0)
+# ★ U(g) 可抢占:正向分类的真啸叫可**直接抢走**弃权产生的占用(不限 STANDBY)
+aP = NHS(); aP.t_wall = 300.0
+for si, sp in enumerate(aP.slots):                 # 全部槽位占满,且**均非 STANDBY**
+    sp.st = nhs.NotchSlot.HOLD; sp.f = 400.0 + si*100
+    sp.t_last_hit = 200.0 + si; sp.from_abstain = False
+    sp.has_affirmative_verdict = True                              # ★ r27 肯定式
+aP.slots[5].from_abstain = True; aP.slots[5].has_affirmative_verdict = False                    # 唯一弃权来源
+aP._allocate([dict(cls='PERSIST', f=9000.0, tr=None, lv=-20.0, b=0.0)])
+_pk = [si for si, sp in enumerate(aP.slots) if abs(sp.f - 9000.0) < 1.0]
+check("U (g) ★可抢占:满槽且无 STANDBY 时,真啸叫抢走**弃权来源**的占用",
+      _pk == [5] and aP.ctr.get('preempt', 0) > 0,
+      f"被抢槽位={_pk}(期望 [5]) preempt={aP.ctr.get('preempt', 0)}", hits=aP.ctr.get('preempt', 0))
+# 阴性:无弃权来源时不得抢占(应退回宽带兜底)
+aN = NHS(); aN.t_wall = 300.0
+for si, sn in enumerate(aN.slots):
+    sn.st = nhs.NotchSlot.HOLD; sn.f = 400.0 + si*100
+    sn.t_last_hit = 200.0 + si; sn.from_abstain = False
+    sn.has_affirmative_verdict = True                              # ★ r27 肯定式
+aN._allocate([dict(cls='PERSIST', f=9000.0, tr=None, lv=-20.0, b=0.0)])
+check("U (h) 阴性对照:无弃权来源占用时**不得抢占**(退回宽带兜底)",
+      aN.ctr.get('preempt', 0) == 0 and aN.g_duck_db < 0.0,
+      f"preempt={aN.ctr.get('preempt', 0)} g_duck={aN.g_duck_db}", hits=1)
+# ★ U(i) EXHAUSTED 计数口径(DEC-0010:必须写明"每什么计一次")
+aE = NHS(); aE.t_wall = 100.0
+sE = aE.slots[0]; sE.st = nhs.NotchSlot.HOLD; sE.f = 2500.0
+sE.target = Params().max_depth; sE.depth = Params().max_depth
+sE.from_abstain = False; sE.exhausted_flag = False
+for s2 in aE.slots[1:]:
+    s2.st = nhs.NotchSlot.FREE
+for _ in range(5):                                  # **同一次占用复检 5 次**
+    aE._allocate([dict(cls='PERSIST', f=2500.0, tr=None, lv=-20.0, b=0.0)])
+check("U (i) ★DEPTH_EXHAUSTED = **每次占用计一次**(同一占用复检 5 次仍只计 1)",
+      aE.ctr.get('depth_exhausted', 0) == 1,
+      f"exhausted={aE.ctr.get('depth_exhausted', 0)}(期望 1) rechecks={aE.ctr.get('depth_exhausted_rechecks', 0)}(期望 5)",
+      hits=aE.ctr.get('depth_exhausted_rechecks', 0))
+check("U (j) 复检次数单独计,与事件数**不混用**(两个量各有单位)",
+      aE.ctr.get('depth_exhausted_rechecks', 0) == 5,
+      f"rechecks={aE.ctr.get('depth_exhausted_rechecks', 0)}", hits=1)
+
+# ---------------------------------------------------------------- CHECK V
+print("\nCHECK V: r20 两条耗尽路径**各自有动作**(★ 静默失效回归锁,带 D-J 触达)")
+# 立法理由(架构侧读权威源查实):原实现撞顶只发事件、无动作,而宽带兜底挂在 `if not free:`;
+#   撞顶时槽仍占着 ⇒ free 非空 ⇒ **g_duck 永不触发** ⇒ 报警但不作为 = **静默失效**。
+#   ⚠ **与发生率无关**:哪怕 0.1 次/试次也必须封。安全兜底静默不触发是缺陷,不是概率问题。
+Pv = Params()
+# ── V(a) 深度撞顶:槽**未**耗尽(有空槽)⇒ 仍须触发兜底
+av = NHS(); av.t_wall = 100.0
+sv = av.slots[0]
+sv.st = nhs.NotchSlot.HOLD; sv.f = 2500.0
+sv.target = Pv.max_depth; sv.depth = Pv.max_depth
+sv.from_abstain = False; sv.exhausted_flag = False
+for s2 in av.slots[1:]:
+    s2.st = nhs.NotchSlot.FREE                     # ★ 关键:**有空槽**
+av._allocate([dict(cls='PERSIST', f=2500.0, tr=None, lv=-20.0, b=0.0)])
+_de = av.ctr.get('depth_exhausted', 0)
+check("V (a) ★撞顶且**有空槽**时,仍须发 DEPTH_EXHAUSTED",
+      _de == 1, f"depth_exhausted={_de}", hits=_de)
+check("V (b) ★撞顶必须**有动作**(g_duck 真的降),不得只报警",
+      av.g_duck_db < 0.0,
+      f"g_duck={av.g_duck_db}dB(修前此处恒为 0 = 静默失效)", hits=1 if _de else 0)
+check("V (c) 撞顶发的是 DEPTH_EXHAUSTED,**不是** SLOTS_EXHAUSTED(不同源不得混)",
+      any(e[1] == 'DEPTH_EXHAUSTED' for e in av.events)
+      and not any(e[1] == 'SLOTS_EXHAUSTED' for e in av.events),
+      f"事件={[e[1] for e in av.events]}", hits=1)
+# ── V(d) 槽位耗尽:全部占满且无可抢占 ⇒ SLOTS_EXHAUSTED + 兜底 + n_blocked
+aw = NHS(); aw.t_wall = 300.0
+for si, sw in enumerate(aw.slots):
+    sw.st = nhs.NotchSlot.HOLD; sw.f = 400.0 + si*100
+    sw.t_last_hit = 200.0 + si; sw.from_abstain = False; sw.exhausted_flag = False
+    sw.has_affirmative_verdict = True     # ★ r27:全部持肯定结论 ⇒ 不可抢占 ⇒ 才走槽位耗尽
+    sw.target = Pv.depth0; sw.depth = Pv.depth0
+aw._allocate([dict(cls='PERSIST', f=9000.0, tr=None, lv=-20.0, b=0.0)])
+check("V (d) 槽位耗尽 ⇒ 发 SLOTS_EXHAUSTED 且 g_duck 降",
+      aw.ctr.get('slots_exhausted', 0) == 1 and aw.g_duck_db < 0.0,
+      f"slots_exhausted={aw.ctr.get('slots_exhausted', 0)} g_duck={aw.g_duck_db}",
+      hits=aw.ctr.get('slots_exhausted', 0))
+# ── V(e) D-K:B_obs 的计数单位 = **每个被拒绝的候选一次**(不是每帧/每复检)
+check("V (e) ★D-K:n_blocked = **每个被拒绝的候选计一次**(单次分配 ⇒ 恰好 +1)",
+      aw.ctr.get('n_blocked', 0) == 1,
+      f"n_blocked={aw.ctr.get('n_blocked', 0)}(期望 1)", hits=1)
+check("V (f) n_carried = 每个**成功入槽**的候选一次(V(a) 场景有空槽但走 same 分支 ⇒ 不计)",
+      av.ctr.get('n_carried', 0) == 0,
+      f"n_carried={av.ctr.get('n_carried', 0)}(期望 0:走的是 deepen 不是新占用)", hits=1)
+
+# ---------------------------------------------------------------- CHECK W
+print("\nCHECK W: r24 P0 测量有效性门(★ 回归锁 + **门不过强**的阴性对照,带 D-J 触达)")
+# 立法理由:_classify 按**轨的累积历史**判 PERSIST,不要求当前槽有观测
+#   ⇒ 数字静默帧也能挂陷 + 起探针 ⇒ 探针基线取自全零帧 ⇒ 256ms 后必然弃权。
+# ⚠ 该门是**测量有效性门,不是门限**:只拒绝数值退化读数,物理上拒绝不了真实候选。
+dfW = FS_SC / NFFT; fW = 2500.0; kW = int(round(fW / dfW))
+def alloc_with(M):
+    aw = NHS(); aw.t_wall = 100.0
+    for s2 in aw.slots:
+        s2.st = nhs.NotchSlot.FREE
+    aw._allocate([dict(cls='PERSIST', f=fW, tr=None, lv=-20.0, b=0.0)], M, dfW)
+    engaged = sum(1 for s2 in aw.slots if s2.st != nhs.NotchSlot.FREE)
+    return engaged, aw.ctr.get('p0_blocked_novalid', 0), len(aw.probes)
+# (a) 数字静默(全零谱)⇒ 必须拦下,且不起探针
+e0, b0, p0 = alloc_with(np.zeros(NB))
+check("W (a) ★数字静默帧(全零谱)⇒ **不挂陷、不起探针**",
+      e0 == 0 and b0 == 1 and p0 == 0,
+      f"engaged={e0} blocked={b0} probes={p0}", hits=b0)
+# (b) ★阴性对照:**门不得过强** —— 电平低到接近 T_low 但物理真实 ⇒ 必须放行
+#     取 −44dBFS(刚过 T_low=−45),这是该门绝不能拦的那一类
+amp = 10 ** (-44.0 / 20.0) * NFFT / 4.0
+Mw = np.full(NB, amp * 1e-3); Mw[kW] = amp
+e1, b1, p1 = alloc_with(Mw)
+check("W (b) ★阴性对照:−44dBFS(刚过 T_low)的真实候选 ⇒ **必须放行**(门不过强)",
+      e1 == 1 and b1 == 0 and p1 == 1,
+      f"engaged={e1} blocked={b1} probes={p1}  实测电平={NHS()._level(Mw,kW):.1f}dBFS", hits=1)
+# (c) 门只拒绝数值退化区:−250dB 以下才拦
+check("W (c) 门限落在数值退化区(−250dBFS),远低于 T_low(−45)⇒ 不可能拒绝真实候选",
+      Params().level_valid_db < -200.0 and Params().level_valid_db > -600.0,
+      f"level_valid_db={Params().level_valid_db} vs T_low={Params().T_low}")
+# (d) deepen 分支**不受该门影响**(历史累积设计未被触碰)
+aw2 = NHS(); aw2.t_wall = 100.0
+sw = aw2.slots[0]; sw.st = nhs.NotchSlot.HOLD; sw.f = fW
+sw.target = Params().depth0; sw.depth = Params().depth0
+sw.from_abstain = False; sw.exhausted_flag = False
+for s2 in aw2.slots[1:]:
+    s2.st = nhs.NotchSlot.FREE
+aw2._allocate([dict(cls='PERSIST', f=fW, tr=None, lv=-20.0, b=0.0)], np.zeros(NB), dfW)
+# (e) ★★ 决定性阴性对照:**低于 T_low 的合法候选必须放行** ——
+#     B-F1 钉住啸叫的 tap 实测 −57~−70dBFS,**低于 T_low(−45)**,靠 T_low_gr 放宽门入轨。
+#     若把该门写成 `<= T_low`,**B-F1 会被直接拦掉** ⇒ 漏检最重的那一类。
+amp2 = 10 ** (-60.0 / 20.0) * NFFT / 4.0
+Mw2 = np.full(NB, amp2 * 1e-3); Mw2[kW] = amp2
+e2, b2, p2 = alloc_with(Mw2)
+check("W (e) ★★−60dBFS(**低于 T_low**,B-F1 钉住啸叫量级)⇒ **必须放行**"
+      "(写成 T_low 门会拦掉 B-F1)",
+      e2 == 1 and b2 == 0,
+      f"engaged={e2} blocked={b2}  实测电平={NHS()._level(Mw2,kW):.1f}dBFS "
+      f"(T_low={Params().T_low})", hits=1)
+check("W (d) ★deepen 分支不受该门影响(只堵新挂陷,不废掉历史累积判定)",
+      aw2.ctr.get('p0_blocked_novalid', 0) == 0
+      and any(e[1] == 'deepen' for e in aw2.events),
+      f"blocked={aw2.ctr.get('p0_blocked_novalid', 0)} 事件={[e[1] for e in aw2.events]}", hits=1)
+
+# ---------------------------------------------------------------- CHECK X'
+print("\nCHECK X': 无判决路径必须有独立计数器(★ E-03 教训锁;原挂断言,r31 改挂 P0)")
+# ⚠ 本条**不是**断言的配套件 —— 它守的是 E-03 那条教训:
+#   「凡新增的『不产生判决』的代码路径,必须有独立计数器,否则该路径不可见」。
+#   断言已于 r31 撤除(原意在本架构下恒真、且 P0 已在源头封死其检出对象),
+#   但**这条教训与断言无关** ⇒ 保留,改挂到 P0 的 `p0_blocked_novalid`。
+dfX2 = FS_SC / NFFT; fX2 = 2500.0
+aX2 = NHS(); aX2.t_wall = 100.0
+for s2 in aX2.slots:
+    s2.st = nhs.NotchSlot.FREE
+aX2._allocate([dict(cls='PERSIST', f=fX2, tr=None, lv=-20.0, b=0.0)], np.zeros(NB), dfX2)
+_nb = aX2.ctr.get('p0_blocked_novalid', 0)
+check("X' (a) ★E-03:P0 拦下候选(不产生判决)⇒ **必须有独立计数器**",
+      _nb == 1, f"p0_blocked_novalid={_nb}", hits=_nb)
+check("X' (b) 该路径还须留痕(供'门是否过强'判定),不能只有计数",
+      len(aX2.p0_block_log) == 1 and 'lv' in aX2.p0_block_log[0],
+      f"留痕条目={aX2.p0_block_log}", hits=1)
+
+# ---------------------------------------------------------------- CHECK Y
+print("\nCHECK Y: r27 **肯定式豁免**(★ 机制锁:未来新增的无判决类别须自动落安全侧)")
+# 立法理由:否定式 `not from_abstain` ⇒ 新增的无判决类别默认落进「刷新租约」= 危险侧
+#   ⇒ 每加一条无判决路径就自动重新引入 C6-② 修掉的无限推迟 bug(仪表故障孤儿即此)。
+Py = Params()
+def lease(mark_affirm, extra=None):
+    """真跑 _allocate 的 same/deepen 分支;返回 t_last_hit 是否被刷新。"""
+    ay = NHS(); ay.t_wall = 500.0
+    sy = ay.slots[0]
+    sy.st = nhs.NotchSlot.HOLD; sy.f = 2500.0
+    sy.target = Py.depth0; sy.depth = Py.depth0
+    sy.t_last_hit = 0.0
+    sy.has_affirmative_verdict = mark_affirm
+    if extra:
+        setattr(sy, extra, True)           # 模拟"未来新增的某种标记"
+    for s2 in ay.slots[1:]:
+        s2.st = nhs.NotchSlot.FREE
+    ay._allocate([dict(cls='PERSIST', f=2500.0, tr=None, lv=-20.0, b=0.0)], None, None)
+    return sy.t_last_hit > 0.0
+check("Y (a) 持有**肯定分类结论**的占用 ⇒ 刷新租约(真啸叫的复发→加深路径无损)",
+      lease(True) is True, f"refreshed={lease(True)}", hits=1)
+check("Y (b) ★**无**肯定结论的占用 ⇒ **不刷新**(弃权/仪表故障/在飞 一律安全侧)",
+      lease(False) is False, f"refreshed={lease(False)}", hits=1)
+# ★★ Y(c):机制锁 —— 模拟一条**未来新增的无判决类别**(带一个此前不存在的标记)
+check("Y (c) ★★机制锁:**虚构的新无判决类别**(带未知标记)⇒ **默认不刷新租约**",
+      lease(False, extra='some_future_novel_flag') is False,
+      "新增类别自动落安全侧(否定式实现会在此失守)", hits=1)
+# 抢占/回收优先序也须肯定式
+ay2 = NHS(); ay2.t_wall = 300.0
+for si, sy2 in enumerate(ay2.slots):
+    sy2.st = nhs.NotchSlot.HOLD; sy2.f = 400.0 + si*100
+    sy2.t_last_hit = 200.0 + si
+    sy2.has_affirmative_verdict = True
+ay2.slots[4].has_affirmative_verdict = False      # 唯一**无**肯定结论者
+ay2._allocate([dict(cls='PERSIST', f=9000.0, tr=None, lv=-20.0, b=0.0)], None, None)
+_pk2 = [si for si, sy2 in enumerate(ay2.slots) if abs(sy2.f - 9000.0) < 1.0]
+# ★★ Y(e):**默认值**必须落安全侧 —— 不显式设标记,直接用新建槽位的默认状态。
+#   前四条都**显式设**了标记 ⇒ 从未走过默认值这条路 ⇒ 默认值被翻成 True 也测不出来。
+#   本条专测「未来新增类别什么都不做时,落哪一侧」。
+ay3 = NHS(); ay3.t_wall = 500.0
+sy3 = ay3.slots[0]                       # ★ 全新槽位,**不碰** has_affirmative_verdict
+sy3.st = nhs.NotchSlot.HOLD; sy3.f = 2500.0
+sy3.target = Py.depth0; sy3.depth = Py.depth0; sy3.t_last_hit = 0.0
+for s2 in ay3.slots[1:]:
+    s2.st = nhs.NotchSlot.FREE
+ay3._allocate([dict(cls='PERSIST', f=2500.0, tr=None, lv=-20.0, b=0.0)], None, None)
+check("Y (e) ★★**默认值**测试:新建槽位不设任何标记 ⇒ **默认不刷新租约**(安全侧)",
+      sy3.t_last_hit == 0.0,
+      f"t_last_hit={sy3.t_last_hit}(期望 0.0 = 未刷新);"
+      f"默认 has_affirmative_verdict={nhs.NotchSlot().has_affirmative_verdict}", hits=1)
+check("Y (d) 抢占同样按肯定式:**无肯定结论**的占用优先被抢(不论它属哪一类)",
+      _pk2 == [4], f"被抢槽位={_pk2}(期望 [4])", hits=len(_pk2))
+
+print("\n" + "="*76)
+print(f"结果:{len(FAILS)} 个 FAIL" + (f" -> {FAILS}" if FAILS else " ✓ 全过"))
+print("="*76)
+sys.exit(1 if FAILS else 0)

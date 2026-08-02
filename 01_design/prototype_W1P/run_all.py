@@ -115,7 +115,7 @@ def lift_test(brk):
         if i == int(4.0*FS)//FRAME*FRAME: gf *= 10**(-25/20.0)   # 4s 后大幅降增益
         mic=src[i:i+FRAME]+fb; t=mic*lp.g_pre
         y=a.process_frame(t,{'out_lim_active':False,'out_lim_gr_db':0.0})
-        y=np.clip(y*gf*a.duck_gain(),-8,8)
+        y=np.clip(y*gf,-8,8)
         fb,zi=lfilter(h,[1.0],y,zi=zi)
     return a, sum(s.depth for s in a.slots)
 a_f6, dep_f = lift_test(None); a_b6, dep_b = lift_test(['B6'])
@@ -179,7 +179,7 @@ def f4_recur(brk):
     for i in range(0,n,FRAME):
         mic=src[i:i+FRAME]+fb
         y=a.process_frame(mic,{'out_lim_active':bool(lim.active),'out_lim_gr_db':float(lim.gr_db)})
-        y=np.clip(y*gf*a.duck_gain(),-8,8); y=lim.process(y)
+        y=np.clip(y*gf,-8,8); y=lim.process(y)
         fb,zi=lfilter(h,[1.0],y,zi=zi); out[i:i+FRAME]=y
     return a, metrics(out)
 a_f13, m_f13 = f4_recur(None); a_b13, m_b13 = f4_recur(['B13'])

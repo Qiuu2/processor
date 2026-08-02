@@ -1,2 +1,22 @@
-knowledge_base/adsp21569/bsp/
-00_input/vendor_pkg/
+# ══ 第三方受版权材料 / 大二进制:不入库,来源见 research/sources/MANIFEST.md ══
+# 理由:①版权 —— ITU/IEEE/AES/JASA 与厂家手册均不可再分发;
+#       ②工程 —— git 全量存储二进制,进了库就永远在历史里,每次 clone 都要拉。
+knowledge_base/adsp21569/bsp/**/*.pdf
+knowledge_base/adsp21569/bsp/reference_design/*.zip
+research/sources/papers/*.pdf
+00_input/vendor_pkg/*.zip
+
+# ══ 运行产物 / 临时件 ══
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# ══ 本地环境 ══
+.DS_Store
+Thumbs.db
+*.swp
+*~

@@ -104,7 +104,7 @@ class MultiLoop:
                       'dyn_gr_db': float(self.dyn[j].max_gr)}
                 y = algs[j].process_frame(tap, gr)          # 陷波器组(tap 在其入口)
                 y = self.dyn[j].process(y)                  # ★ 8段动态PEQ(tap 下游,C10 位5)
-                y = y * self.g_fwd[j] * algs[j].duck_gain()
+                y = y * self.g_fwd[j]
                 bus += y
                 tap_log[j][i:i+FRAME] = tap; ch_log[j][i:i+FRAME] = y
             bus = np.clip(bus, -8.0, 8.0)

@@ -1,0 +1,34 @@
+r32 · 闭环台架四条对照
+[L2/宿主仿真]  MSG = 二分 + 显式观察时长 T;**每个 MSG 必带 T**
+
+F(z):K=4 模态 [201, 539, 1521, 4021]Hz  Q=30  D=240 样本  **D_eff = D + frame = 304**
+
+【对照③ 退化】N_eff = 相位条件成立的临界频点数(**不是 |F| 极大值数**)
+   临界点总数 = 155(纯延迟使相位快旋 ⇒ 临界点密集)
+     N_eff(margin= 1dB) =    3
+     N_eff(margin= 3dB) =    4
+     N_eff(margin= 6dB) =    5
+     N_eff(margin=10dB) =    9
+   对照:|F| 极大值数 = 4  (= 设定 K = 4)
+   ⇒ 两者**不是同一个量**:|F| 极大值数 = K = 4;而 N_eff 随 margin 变化。
+   ⇒ **D 直接影响 N_eff**:D=240 时 N_eff(3dB)=1, D_eff=304 时 = 4
+
+【对照④ 解析一致性】(**纯信号链自检,零 NHS 参与**)
+   解析 MSG = −20log10(max{|F| : ∠F≡0}) = **8.28 dB**   (临界点上 max|F| = -8.28 dB)
+   对照:若错用 max|F|(不加相位条件)⇒ MSG = 0.01 dB  ← **会低估**
+/home/it1234/processor/01_design/prototype_W1P/clrig.py:131: RuntimeWarning: overflow encountered in scalar multiply
+  nb[j] = self._F_step(self.G * y[j])
+/home/it1234/processor/01_design/prototype_W1P/clrig.py:109: RuntimeWarning: invalid value encountered in scalar multiply
+  z[0] = b1 * x - a1 * out + z[1]
+/home/it1234/processor/01_design/prototype_W1P/howl_detect.py:21: RuntimeWarning: overflow encountered in square
+  return 20.0 * np.log10(np.sqrt(np.mean(np.square(x))) + 1e-30)
+   实测 MSG(NHS 关, T=2s) =     inf dB  (二分 0 次)  |差| = nan dB  ⇒ **不符 ⇒ 台架有 bug,先修台架**
+   实测 MSG(NHS 关, T=4s) =     inf dB  (二分 0 次)  |差| = nan dB  ⇒ **不符 ⇒ 台架有 bug,先修台架**
+
+【对照① 阴性】关 NHS,G 扫到上限前**必须起振**
+   G=  5.28dB ⇒ 发散=True  末段=   95.6dB 增长= 48.41dB
+   G= 11.28dB ⇒ 发散=True  末段= 1569.7dB 增长=417.76dB
+/home/it1234/.local/lib/python3.10/site-packages/numpy/_core/_methods.py:135: RuntimeWarning: overflow encountered in reduce
+  ret = umr_sum(arr, axis, dtype, out, keepdims, where=where)
+   G= 18.28dB ⇒ 发散=True  末段=    infdB 增长=   infdB
+   ⇒ **台架能造出啸叫 ✓**

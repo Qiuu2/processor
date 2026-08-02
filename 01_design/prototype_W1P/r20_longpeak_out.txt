@@ -1,0 +1,30 @@
+r20 ① · 8 槽 · 窗 600s · 钢琴 · N=5
+[L2/宿主仿真·合成料]  产品配置直接测,**无需外推**
+判据:到峰时间 < 窗长×0.7 = 420s 才算真峰;否则仍是上升沿取数
+
+  试次0: 峰值OCC=6  到峰=162s  峰值HELD=6  末值OCC=4  触及8=否
+  试次1: 峰值OCC=6  到峰=111s  峰值HELD=6  末值OCC=4  触及8=否
+  试次2: 峰值OCC=6  到峰=590s  峰值HELD=5  末值OCC=5  触及8=否
+  试次3: 峰值OCC=6  到峰=167s  峰值HELD=6  末值OCC=5  触及8=否
+  试次4: 峰值OCC=6  到峰=389s  峰值HELD=6  末值OCC=5  触及8=否
+
+  ── 均值曲线(N=5)──
+  峰值 OCC = **4.80**  到峰时间 = **504s**  (窗长×0.7 = 420s) ⇒ **仍在上升沿,需更长窗**
+  峰值 HELD = 4.60   末值 OCC = 4.60  ⇒ 峰后未明显回落
+  **单试次最大 OCC = 6 / 8**  ⇒ 未触及 8
+
+  曲线采样(均值 OCC):
+    t=     0s  OCC= 0.00  HELD= 0.00
+    t=    50s  OCC= 2.00  HELD= 2.00
+    t=   100s  OCC= 3.40  HELD= 3.20
+    t=   150s  OCC= 4.20  HELD= 3.60
+    t=   200s  OCC= 4.00  HELD= 3.60
+    t=   250s  OCC= 3.60  HELD= 3.20
+    t=   300s  OCC= 4.00  HELD= 3.40
+    t=   350s  OCC= 3.60  HELD= 3.40
+    t=   400s  OCC= 4.20  HELD= 4.00
+    t=   450s  OCC= 4.40  HELD= 3.40
+    t=   500s  OCC= 4.20  HELD= 3.60
+    t=   550s  OCC= 4.60  HELD= 4.20
+
+  计数合计:{'c8_abstain': 42, 'c8_bare_stop': 1, 'c8_ext': 81, 'c8_howl': 4, 'c8_probe_started': 127, 'c8_suppressed': 211, 'exhausted': 50, 'exhausted_rechecks': 751}

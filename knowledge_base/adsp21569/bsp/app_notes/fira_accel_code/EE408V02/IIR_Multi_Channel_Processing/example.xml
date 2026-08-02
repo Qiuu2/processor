@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<examples>
+  <example schema-version="1.1">
+    <name>IIR Multi Channel Processing</name>
+    <description>This example demonstrates how to use IIR Accelerator Driver in Legacy Mode and Auto Configuration Mode(ACM).</description>
+    <families>Sharc</families>
+    <processors>ADSP-21569</processors>
+    <platforms>EZ-Kit</platforms>
+    <languages>C</languages>
+    <keywords>IIR,eIirResult</keywords>
+    <copy-actions>
+      <copy dst="." src="."/>
+    </copy-actions>
+    <projects>
+      <project mainfile="./src/IIR_Multi_Channel_Processing.c" path=".">
+        <sqe build="yes" core="0" run="yes">
+          <configs>
+            <config binary="./Debug/IIR_Multi_Channel_Processing.dxe" type="Debug"/>
+            <config binary="./Release/IIR_Multi_Channel_Processing.dxe" type="Release"/>
+          </configs>
+          <result pass="All Done"/>
+        </sqe>
+      </project>
+    </projects>
+  </example>
+</examples>
