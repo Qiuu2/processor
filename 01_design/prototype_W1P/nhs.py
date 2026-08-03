@@ -107,6 +107,12 @@ class Params:
         self.inherit_credit = False   # F10:数值信用继承默认**关**(实测有害)
         # 陷波(§4)
         self.bw_oct, self.depth0, self.depth_step, self.max_depth = 1/5, -3.0, -3.0, -18.0
+        # ⭐ r78:`bw_oct` 身兼**两职**,改它是【一次动两个变量】(lead 2026-08-04 点名的陷阱):
+        #   职 A 滤波器形状  —— `set_coef(FS, P.bw_oct)`(`:698` / `:1039`)
+        #   职 B 分配匹配窗  —— `_bw_hz()`(`:725`)⇒ `_notch_covers` / 抢占 / 休止排除 / 探针配对
+        #   ⇒ 本参数把职 B 拆出来,**默认 None ⇒ 回落到 `bw_oct` ⇒ 行为逐位不变**
+        #   ⇒ 等价性由 `r78a_bitexact.py` 的**逐位实跑对照**证明(含阳性对照),不靠"读起来一样"。
+        self.bw_oct_match = None
         self.ramp_db_per_s = 3.0 / 0.050
         self.lift_after_s, self.lift_step_s, self.reclaim_s = 60.0, 5.0, 30.0
         # ── C8-②(IF-v1.8)事后甄别探针:**物理实验,非统计推断**(与 C11-① LIFT 探针同范式)
@@ -723,7 +729,10 @@ class NHS:
         self.ext_reg = [(f, e) for f, e in self.ext_reg if self.t_wall < e]
 
     def _bw_hz(self, f):
-        return max(f * self.P.bw_oct, 15.0)
+        # ⭐ r78:`bw_oct_match=None`(默认)⇒ 取 `bw_oct` ⇒ 与改前**逐位等价**;
+        #   置成别的值 ⇒ 只动【分配匹配窗】,不动【滤波器形状】(见 Params 处注释)。
+        bw = self.P.bw_oct if self.P.bw_oct_match is None else self.P.bw_oct_match
+        return max(f * bw, 15.0)
 
     def _notch_covers(self, f):
         """F4:该频点是否处在本层**已挂陷波**的覆盖内(含 LIFT/STANDBY)。
