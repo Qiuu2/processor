@@ -38,3 +38,15 @@ deps: clrig.py@8ad47ce8d260dd18 nhs.py@706b658842d84316 howl_detect.py@fd63e901f
 --- bw_oct = 0.2000  (总带宽 1.60 oct)
   0.2/0 代价-11.68 覆盖55.6% | ORACLE(上界)  6.00 | NHS自选  1.50 | FLAT(等代价baseline) 11.68 | Δwin_oracle -5.68 | Δwin_nhs -10.18
     注:NHS自选挂了 1 个陷波 @[2559.9], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
+  0.2/1 代价 -9.65 覆盖52.7% | ORACLE(上界)  6.00 | NHS自选  2.50 | FLAT(等代价baseline)  9.65 | Δwin_oracle -3.65 | Δwin_nhs -7.15
+    注:NHS自选挂了 3 个陷波 @[1033.4, 2517.2, 5504.2], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
+  0.2/2 代价-12.86 覆盖65.0% | ORACLE(上界)  7.50 | NHS自选  1.50 | FLAT(等代价baseline) 12.86 | Δwin_oracle -5.36 | Δwin_nhs -11.36
+    注:NHS自选挂了 1 个陷波 @[5377.3], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
+  0.5/0 代价 -9.31 覆盖51.4% | ORACLE(上界)  3.00 | NHS自选  2.50 | FLAT(等代价baseline)  9.31 | Δwin_oracle -6.31 | Δwin_nhs -6.81
+    注:NHS自选挂了 1 个陷波 @[4641.2], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波  ⚠ f_trig=52.0Hz <120 ⇒ [未按 F36 收敛],不进结论
+  0.5/1 代价-10.10 覆盖53.9% | ORACLE(上界)  6.50 | NHS自选  1.00 | FLAT(等代价baseline) 10.10 | Δwin_oracle -3.60 | Δwin_nhs -9.10
+    注:NHS自选挂了 1 个陷波 @[7578.9], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波  ⚠ f_trig=22.0Hz <120 ⇒ [未按 F36 收敛],不进结论
+  0.5/2 代价-12.44 覆盖63.5% | ORACLE(上界)  4.50 | NHS自选  2.00 | FLAT(等代价baseline) 12.44 | Δwin_oracle -7.94 | Δwin_nhs -10.44
+    注:NHS自选挂了 3 个陷波 @[717.0, 4377.2, 5377.0], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
+
+--- bw_oct = 0.1250  (总带宽 1.00 oct)
