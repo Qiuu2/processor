@@ -81,6 +81,15 @@ class Params:
         # PHPR(§3.2)
         self.T_harm, self.D_sub, self.D_harm = 10.0, 10.0, 20.0
         self.causal_min = 2          # ⛔ r12 作废:旧 causal 口径(轨龄 vs 否决起点),实测恒真
+        # ── ⭐ r66 判据组合开关(2026-08-03,lead 裁定"路 A";**默认 False = 现行行为**)
+        #   True  ⇒ GROWTH 入选式关掉 `rapid_onset` 那条 OR 旁路,退化为「必须 IMSD 命中」
+        #   缘由:JAES 2010 Table 2 的最优组合是三项【逻辑与】(PHPR∧PNPR∧IMSD,PD=95% 时 PFA=3%),
+        #        而我方 `:860` 用 `(imsd_hit ∨ rapid_onset)` 把 AND 拆成了 OR。
+        #   ⚠ **不得据此宣称"复现了原文最优组合"** —— 原文的 IMSD 是【谱距离,QM 帧/0.5dB】,
+        #     我方 `_imsd` 是【自研构型:PAPR 轨迹 LS 斜率,dB/s】,是两个不同的量(r66 §1)。
+        #   ⚠ 只改 `:860` 一处;`rapid_onset` 在 PHPR 否决豁免臂 2(`_phpr_veto` 内)另有用途,
+        #     全局置假会连带改动那一处 = 两处一起改。
+        self.growth_and_gate = False
         # ── r12 新判据(IF-v1.8):族成员到达时刻 vs 候选自身增长起点
         self.grow_onset_db = 3.0     # 候选自身"增长起点" = 电平较诞生电平上升 ≥ 此值
         self.fam_late_min = 2        # 族成员须**晚到** ≥ 此槽数,才算因果下游
@@ -857,7 +866,10 @@ class NHS:
             cls = None
             if tr.last_level >= P.T_panic and not tr.relaxed:
                 cls = 'PANIC'
-            elif (imsd_hit or tr.rapid_onset) and not tr.relaxed:
+            # ⭐ r66:`growth_and_gate=False`(默认)时,本式与改前**逐符号等价**;
+            #   等价性不靠"读起来一样"证明,靠 `r66a_bitexact.py` 的**逐位实跑对照**证明。
+            elif (imsd_hit or (tr.rapid_onset and not P.growth_and_gate)) \
+                    and not tr.relaxed:
                 if not self._phpr_veto(tr, M, df, imsd_hit, gr_ok, False):
                     cls = 'GROWTH'
             if cls is None:
