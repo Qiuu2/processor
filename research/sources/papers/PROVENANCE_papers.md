@@ -26,3 +26,28 @@
 | [28] | Osmanovic, Clarke, Velandia, "An in-flight low latency acoustic feedback cancellation algorithm", AES 123rd Conv. Preprint 7266, 2007 | 综述推荐的检出方法 | AES E-Library 付费 |
 | [161] | Spriet, Eneman, Moonen, Wouters, "Objective measures for real-time evaluation of AFC algorithms in hearing aids", EUSIPCO 2008 | 别人怎么定义 MSG 测法(对账我们的方法学) | 付费/RG 登录 |
 | [134] | Haneda, Makino, Kaneda, "Common acoustical pole and zero modeling of room transfer functions", IEEE TSAP 2(2), 1994 | 可能解释我们那个 4σ 过度分散 | IEEE 付费 |
+
+---
+
+## ⛔ 溯源更正(2026-08-03,由 `sd-tool` 核一手件时抓获,四处全部成立)
+
+**更正 1 · 文件名张冠李戴** —— `Eneman_etal_2009_*.pdf` → **`Spriet_Moonen_Wouters_2009_*`**。
+该 PDF 首页作者为 **Ann Spriet, Marc Moonen, Jan Wouters**(EUSIPCO 2009, Glasgow),**没有 Eneman**。
+
+**⛔⛔ 更正 2 · 该文【不含 SD】,也【不含 w_ERB 闭式】—— 它不是 SD 的来源**
+- 全文 `distortion` 命中 **0**;它定义的是 **FSR / TVC / PCR / ASG**。
+- 其 `I_ERB,i` 只有一句描述、**没有公式**,并指向教科书 **[7] B. Moore, *An Introduction to the Psychology of Hearing*, 5th ed., 2003**。
+- **SD 真正出处 = Spriet, Eneman, Moonen, Wouters, EUSIPCO 2008 Lausanne —— 【不在库内】。**
+  (Eneman 确为 2008 篇作者之一 ⇒ 推测是把 2008 Lausanne 与 2009 Glasgow 混成一篇。)
+> **⇒ lead 于 2026-08-03 报给 CTO 的「ANSI 那处偏离不必接受,库里已有闭式」——【整条撤回】。**
+> **⇒ 库内没有任何一手件给出 `w_ERB` 闭式;ANSI S3.5-1997 Table 2 仍不在库。**
+
+**⛔ 更正 3 ·「300–6500 vs Nyquist」不是同一个量的两种说法**
+`300–6500 Hz` 是 **FSR** 的加权带(另一篇的另一个测度;同篇 TVC/PCR 又用 500–6500)。
+**SD 原文两处(2011 式111 / 2010 式32)一致写 Nyquist interval,彼此不矛盾。**
+> **⇒ lead 据此立的「F32 在【文献内部】的实例」——【撤回】。那个不一致是我方把两个不同测度混为一谈造出来的。**
+
+**更正 4 · `w(f) ∝ 1/ERB(f)` 是【推导】不是【引文】**,须写成显式推导并标注,不得冒充原文。
+
+**⭐ 附带收获:更贴题的一手件就在库内**
+`vanWaterschoot_Moonen_2010_JAES_howling_detection_criteria.pdf` **式 (32),页 937**,上下文**正是 NHS**(非 HA AFC),`S_d` 写作 "howling-compensated signal"。**建议以它为 SD 主引。** 另给工作点:**mean SD averaged over 30 s ≤ t ≤ 60 s**。
