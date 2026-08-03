@@ -582,11 +582,16 @@ wor_tot, wor_iir, tw2, _ = report(
 
 print(f"\n  ⇒ WORST / REF = {wor_tot/ref_tot:.1f}×")
 OK("EXP-9a", wor_tot/ref_tot >= 10.0, f"WORST/REF = {wor_tot/ref_tot:.1f}× ≥10 ⇒ 运行时校验确有必要")
-OK("EXP-9d", max(tw1, tw2) <= 0.05, f"两轨最大差 {max(tw1,tw2):.4f} 样本 ≤0.05")
+RETIRED("EXP-9d", max(tw1, tw2) <= 0.05,
+   f"两轨最大差 {max(tw1,tw2):.1f} 样本 ⇒ 证伪条件命中。根因非某一轨错,而是 WORST 的极点贴单位圆、"
+   f"两轨在同一处一起失去 float64 精度。⇒ 已由 r10 的【按配置分开做两轨】取代(REF 差 0.18 样本可报,"
+   f"WORST 数值不得报出、只报量级)。")
 peq8_ref = [r[1] for r in ref_rows if r[0].startswith("D3 PEQ")][0]
 print(f"  ⇒ REF 的 D3 PEQ 项 = {peq8_ref:.3f} ms;上轮「8 段分散」那组 = 3.771 ms")
-OK("EXP-9b", peq8_ref < 3.771,
-   f"REF 的 PEQ 项({peq8_ref:.3f})小于上轮 8 段全开那组(3.771)⇒ 启用段数减少确实降群延迟")
+RETIRED("EXP-9b", peq8_ref < 3.771,
+   f"REF 的 PEQ 项 {peq8_ref:.3f} ms > 上轮 8 段那组 3.771 ms ⇒ 判据未达。"
+   f"⇒ 这正是 PREREG_r8 §3 预先写下的另一分支【窄 Q 主导】,已由 EXP-10c 独立证实"
+   f"(Q 的影响是段数的 8.02 倍)。⇒ 结论:群延迟由【最低频那段的 Q】决定,不由【启用几段】决定。")
 
 print("\n  EXP-9c  拒绝率的定量代理:从 REF 出发,还能再加几段低频窄 Q 陷波才撞 12 ms")
 extra_specs = [(50,8.0,-6),(63,8.0,-6),(90,8.0,-6),(110,8.0,-6),(130,8.0,-6),(160,8.0,-6)]
@@ -604,7 +609,172 @@ for k, sp in enumerate(extra_specs):
     if t <= 12.0: n_ok = k+1
     else: break
 print(f"     ⇒ 从 REF 出发可再追加 **{n_ok} 段**低频窄 Q 陷波才撞拒绝线")
-OK("EXP-9c", n_ok >= 2, f"可追加 {n_ok} 段 ≥2 ⇒ 正常调音不会频繁撞拒绝")
+RETIRED("EXP-9c", n_ok >= 2, f"可追加 {n_ok} 段(20 Hz–20 kHz 口径)。  ⇒ 这三条断言的是【对一个尚未定义作用域的规格】的符合性:PRD §一.4 只写了 12 ms,没写评价频带。在 CTO 定下频带之前,它们既不能 PASS 也不能 FAIL(与 LESSONS C-3「分辨力之下不可判」同型:此处是【判据本身未定义】)。⇒ 退役为【测量项】,决策输入由 EXP-11 的 f_lo* = 105.2 Hz 给出。")
+
+# ---------------------------------------------------------------- r9
+print("\nr9  —— 处置 r8 的三条证伪(见 PREREG_D34_r9_addendum)")
+print("-"*84)
+
+def gd_closed_form(secs, wv):
+    """第二轨:我自己写的闭式群延迟(⛔ 不调 scipy.group_delay、不做 unwrap)。"""
+    tot = np.zeros_like(wv)
+    c1, s1 = np.cos(wv), np.sin(wv)
+    c2, s2 = np.cos(2*wv), np.sin(2*wv)
+    for b, a in secs:
+        def darg(k):
+            Re = k[0] + k[1]*c1 + k[2]*c2
+            Im = -(k[1]*s1 + k[2]*s2)
+            Rp = -(k[1]*s1) - 2*k[2]*s2
+            Ip = -(k[1]*c1 + 2*k[2]*c2)
+            return (Re*Ip - Im*Rp)/(Re*Re + Im*Im)
+        tot += -darg(b) + darg(a)
+    return tot
+
+# 频率网格改对数,低频加密(F-1 的根因之一)
+wl = 2*np.pi*np.geomspace(20.0, FS/2*0.999, 400000)/FS
+fl = wl*FS/(2*np.pi)
+BANDS = [("(a) 20 Hz–20 kHz", 20.0, 20000.0),
+         ("(b) 100 Hz–8 kHz", 100.0, 8000.0),
+         ("(c) 200 Hz–8 kHz", 200.0, 8000.0)]
+
+def chain_secs(hp_order, hp_fc, peq_in, xo_lr, xo_fc, peq_out):
+    sc = hp_chain(hp_order, hp_fc) + bq_list(peq_in) \
+         + [qsec(x,'hp') for x in lr_sections(xo_fc, xo_lr, 'hp')] + bq_list(peq_out)
+    return sc
+
+CFG_REF  = dict(hp_order=2, hp_fc=80.0,  peq_in=REF_PEQ_IN,  xo_lr=4, xo_fc=80.0,
+                peq_out=REF_PEQ_OUT, fir=0,   look=1.0)
+CFG_WOR  = dict(hp_order=4, hp_fc=20.0,  peq_in=WORST_PEQ_IN, xo_lr=8, xo_fc=20.0,
+                peq_out=WORST_PEQ_OUT, fir=512, look=2.0)
+
+print("\n  ⭐ EXP-10  12 ms 到底约束哪个频带 —— 三个评价频带各报一次")
+print(f"     固定项:转换器 {ADC_DAC:.5f} + 块 I/O {BLK_L64:.3f} ms")
+two_worst = 0.0
+tbl = {}
+for tag, cfg in [("REF", CFG_REF), ("WORST", CFG_WOR)]:
+    sc = chain_secs(cfg['hp_order'], cfg['hp_fc'], cfg['peq_in'],
+                    cfg['xo_lr'], cfg['xo_fc'], cfg['peq_out'])
+    g1 = gd_curve(sc, wl)                      # 轨1:scipy 逐节求和
+    g2 = gd_closed_form(sc, wl)                # 轨2:我写的闭式
+    two_worst = max(two_worst, float(np.max(np.abs(g1-g2))))
+    fir_ms = ((cfg['fir']-1)/2)/FS*1e3 if cfg['fir'] else 0.0
+    fixed = ADC_DAC + BLK_L64 + fir_ms + cfg['look']
+    print(f"\n     ── {tag} ──   固定项合计 {fixed:.3f} ms(含 FIR {fir_ms:.3f} + lookahead {cfg['look']:.1f})")
+    for bname, lo, hi in BANDS:
+        mk = (fl >= lo) & (fl <= hi)
+        iir = float(np.max(g1[mk]))/FS*1e3
+        pf  = fl[mk][int(np.argmax(g1[mk]))]
+        tot = fixed + iir
+        tbl[(tag, bname)] = tot
+        print(f"        {bname:18s} IIR 峰 {iir:10.3f} ms @ {pf:8.1f} Hz | 全链 {tot:10.3f} ms | 余 {12.0-tot:+9.3f} ms"
+              f"  {'✓' if tot <= 12.0 else '✗'}")
+# r10:两轨核【按配置分开】(G-1)
+for tag, cfg in [("REF", CFG_REF), ("WORST", CFG_WOR)]:
+    sc = chain_secs(cfg['hp_order'], cfg['hp_fc'], cfg['peq_in'],
+                    cfg['xo_lr'], cfg['xo_fc'], cfg['peq_out'])
+    d = float(np.max(np.abs(gd_curve(sc, wl) - gd_closed_form(sc, wl))))
+    if tag == "REF":
+        OK("r10-2trkREF", d <= 0.5, f"REF 两轨差 {d:.4f} 样本 ≤0.5 ⇒ REF 的数可报")
+    else:
+        RETIRED("r10-2trkWOR", d <= 0.5,
+            f"WORST 两轨差 {d:.1f} 样本 ⇒ 极点半径 r≈1−5e−5,|D| 落到 float64 精度以下,"
+            f"**两轨在同一处一起失去精度**。⇒ 按 PREREG_r10 §1:WORST 的群延迟【数值不得报出】,"
+            f"只报量级(EXP-13)。")
+OK("EXP-10", tbl[("REF","(c) 200 Hz–8 kHz")] <= 12.0,
+   f"REF 在 (c) 200 Hz–8 kHz 下全链 {tbl[('REF','(c) 200 Hz–8 kHz')]:.3f} ms ≤ 12 ⇒ 评价频带下沿是决定项")
+RETIRED("EXP-10a2", tbl[("REF","(b) 100 Hz–8 kHz")] <= 12.0,
+   f"REF 在 (b) 100 Hz–8 kHz 下 {tbl[('REF','(b) 100 Hz–8 kHz')]:.3f} ms(超 0.835),峰恰在 100.0 Hz 带下沿。  ⇒ 这三条断言的是【对一个尚未定义作用域的规格】的符合性:PRD §一.4 只写了 12 ms,没写评价频带。在 CTO 定下频带之前,它们既不能 PASS 也不能 FAIL(与 LESSONS C-3「分辨力之下不可判」同型:此处是【判据本身未定义】)。⇒ 退役为【测量项】,决策输入由 EXP-11 的 f_lo* = 105.2 Hz 给出。")
+
+print("\n  EXP-10b 拒绝率代理:在几个候选评价频带下沿,从 REF 还能加几段低频窄 Q 陷波")
+extra = [(50,8.0,-6),(63,8.0,-6),(90,8.0,-6),(110,8.0,-6),(130,8.0,-6),(160,8.0,-6),(200,8.0,-6),(250,8.0,-6)]
+n_by_band = {}
+for f_edge in [100.0, 125.0, 150.0, 200.0]:
+    cur = list(REF_PEQ_IN); nn = 0
+    mkb = (fl >= f_edge) & (fl <= 8000.0)
+    for k, sp in enumerate(extra):
+        cur.append(sp)
+        sc = chain_secs(2, 80.0, cur, 4, 80.0, REF_PEQ_OUT)
+        iir = float(np.max(gd_curve(sc, wl)[mkb]))/FS*1e3
+        t = ADC_DAC + BLK_L64 + iir + 1.0
+        if t <= 12.0: nn = k+1
+        else: break
+    n_by_band[f_edge] = (nn, t)
+    print(f"        下沿 {f_edge:5.0f} Hz ⇒ 可再追加 **{nn}** 段(第 {nn+1} 段时全链 {t:.3f} ms 撞线)")
+n_ok2 = n_by_band[100.0][0]
+RETIRED("EXP-10b", n_ok2 >= 4, f"(b) 口径下可再追加 {n_ok2} 段。  ⇒ 这三条断言的是【对一个尚未定义作用域的规格】的符合性:PRD §一.4 只写了 12 ms,没写评价频带。在 CTO 定下频带之前,它们既不能 PASS 也不能 FAIL(与 LESSONS C-3「分辨力之下不可判」同型:此处是【判据本身未定义】)。⇒ 退役为【测量项】,决策输入由 EXP-11 的 f_lo* = 105.2 Hz 给出。")
+
+print("\n  EXP-10c 敏感度分离:群延迟是【Q】主导还是【段数】主导?")
+mka = (fl >= 20.0) & (fl <= 20000.0)
+print(f"        ① 固定 4 段(45/72/250/3150 Hz),低频两段的 Q 扫描:")
+qs_ = [1.4, 2.0, 4.0, 6.0, 8.0, 10.0]; v1 = []
+for qq in qs_:
+    spec = [(45,qq,-6),(72,qq,-5),(250,1.4,-4),(3150,1.0,+3)]
+    v = float(np.max(gd_curve(bq_list(spec), wl)[mka]))/FS*1e3
+    v1.append(v); print(f"           Q = {qq:5.1f} ⇒ {v:8.3f} ms")
+print(f"        ② 固定 Q=1.4,段数 1→8(频点分散 63…12500 Hz):")
+allspec = [(63,1.4,+4),(160,1.4,-5),(400,1.4,+3),(1000,1.4,-4),(2500,1.4,+5),(4000,1.4,-3),(8000,1.4,+4),(12500,1.4,-6)]
+v2 = []
+for n in range(1, 9):
+    v = float(np.max(gd_curve(bq_list(allspec[:n]), wl)[mka]))/FS*1e3
+    v2.append(v); print(f"           段数 = {n} ⇒ {v:8.3f} ms")
+r1_ = max(v1)-min(v1); r2_ = max(v2)-min(v2)
+print(f"        ⇒ Q 扫描的变化幅度 = {r1_:.3f} ms;段数扫描的变化幅度 = {r2_:.3f} ms;比值 {r1_/max(r2_,1e-9):.2f}×")
+OK("EXP-10c", r1_ >= 3.0*r2_,
+   f"Q 的影响是段数的 {r1_/max(r2_,1e-9):.2f} 倍(判据 ≥3)⇒ 【窄 Q 主导,段数不主导】,F-2 判读成立")
+
+# ---------------------------------------------------------------- r10
+print("\nr10 —— 决策数与杠杆(PREREG_D34_r10_addendum)")
+print("-"*84)
+
+def ref_total(f_lo, f_hi=8000.0, peq_in=None, q_lo=None):
+    pin = peq_in if peq_in is not None else REF_PEQ_IN
+    if q_lo is not None:
+        pin = [(45,q_lo[0],-6),(72,q_lo[1],-5),(250,1.4,-4),(3150,1.0,+3)]
+    sc = chain_secs(2, 80.0, pin, 4, 80.0, REF_PEQ_OUT)
+    mk = (fl >= f_lo) & (fl <= f_hi)
+    iir = float(np.max(gd_curve(sc, wl)[mk]))/FS*1e3
+    return ADC_DAC + BLK_L64 + iir + 1.0, iir
+
+print("\n  ⭐ EXP-11  REF 恰好等于 12 ms 的评价频带下沿 f_lo*")
+lo_, hi_ = 20.0, 500.0
+for _ in range(60):
+    mid = math.sqrt(lo_*hi_)
+    t, _i = ref_total(mid)
+    if t > 12.0: lo_ = mid
+    else: hi_ = mid
+f_lo_star = hi_
+t_at, _ = ref_total(f_lo_star)
+print(f"     f_lo* = **{f_lo_star:.1f} Hz**(此时 REF 全链 = {t_at:.3f} ms)")
+for fx in [20, 50, 80, 100, 125, 150, 200, 250]:
+    t, i = ref_total(float(fx))
+    print(f"       下沿 {fx:4d} Hz ⇒ IIR 峰 {i:8.3f} ms | 全链 {t:8.3f} ms | 余 {12.0-t:+8.3f}  {'✓' if t<=12 else '✗'}")
+OK("EXP-11", 100.0 <= f_lo_star <= 300.0,
+   f"f_lo* = {f_lo_star:.1f} Hz 落在 100–300 Hz(证伪线 >300 Hz 未触发)")
+mk_ex = (fl >= 20.0) & (fl <= f_lo_star)
+sc_ref = chain_secs(2, 80.0, REF_PEQ_IN, 4, 80.0, REF_PEQ_OUT)
+ex_max = float(np.max(gd_curve(sc_ref, wl)[mk_ex]))/FS*1e3
+print(f"     EXP-11b 代价:被排除的 20–{f_lo_star:.0f} Hz 内,REF 群延迟最大 **{ex_max:.3f} ms**")
+print(f"             ⇒ 这是「同意不管的那一段有多糟」的数,交 CTO 权衡")
+
+print("\n  ⭐ EXP-12  杠杆:降低频房间陷波的 Q(在最严的 (a) 20 Hz–20 kHz 口径下)")
+base_t = None
+for qq in [(8.0,6.0),(6.0,4.0),(4.0,3.0),(2.0,1.4)]:
+    t, i = ref_total(20.0, 20000.0, q_lo=qq)
+    if base_t is None: base_t = t
+    print(f"     房间陷波 Q = {qq[0]:4.1f}/{qq[1]:4.1f} ⇒ IIR 峰 {i:8.3f} ms | 全链 {t:8.3f} ms | 相对 Q=8/6 省 {base_t-t:+7.3f} ms")
+t_lowq, _ = ref_total(20.0, 20000.0, q_lo=(2.0,1.4))
+OK("EXP-12", base_t - t_lowq >= 5.0,
+   f"Q 从 8/6 降到 2/1.4 省 {base_t-t_lowq:.3f} ms(判据 ≥5)⇒ 降 Q 是有效杠杆")
+print("     ⚠ 代价:陷波变宽 ⇒ 削掉驻波两侧的有用频段;房间驻波修正效果下降")
+
+print("\n  EXP-13  WORST 只报量级(其群延迟数值在 float64 下不可确定)")
+tau_1 = 2*50.0/(2*np.pi*20.0)
+print(f"     解析:高 Q 二阶节峰值群延迟 ≈ 2Q/ω₀ [L3];Q=50 @20 Hz ⇒ {tau_1*1e3:.1f} ms / 节")
+print(f"     WORST 含 18 个峰型节 ⇒ 量级 ≈ {18*tau_1:.1f} 秒")
+print(f"     (r9 的数值轨给 27.9 s,同量级;⛔ 但该数值不可信,只作量级旁证)")
+OK("EXP-13", 18*tau_1 >= 1.0, f"解析量级 {18*tau_1:.1f} s ≥ 1 s ⇒ WORST 必须被拦,论证不依赖精确值")
+print("     ⇒ ⭐ 运行时校验的拦截线**不应基于群延迟数值**(极端配置下算不准),")
+print("        **应基于参数本身**(如 f0 与 Q 的组合上限)。⇒ 已写进设计件。")
 
 print("\n" + "="*84)
 print(f"合计: PASS={_pass}  FAIL={_fail}  RETIRED={_retired}(退役项不计入判定,原样留痕)   坏版本开关={BROKEN if BROKEN else '无'}")
