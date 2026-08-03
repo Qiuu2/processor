@@ -1,4 +1,13 @@
-/*****************************************************************************
+/* NOTE (measured on target, 2026-08-03):
+ * Do NOT hand-write prototypes here. The real declarations live in
+ *   <services/pwr/adi_pwr_2156x.h>  (pulled in by <services/pwr/adi_pwr.h>)
+ * and the FIRST parameter is `const uint8_t dev`, not uint32_t.
+ * A hand-written prototype with the wrong type gives
+ *   cc0147 "declaration is incompatible with ... (declared at line 653 of adi_pwr_2156x.h)".
+ * Lesson: the earlier cc0223 "declared implicitly" was about a DIFFERENT symbol
+ * (adi_pwr_GetCoreFreq); adding prototypes for BOTH was over-correction.
+ * If adi_pwr_GetCoreFreq is still reported implicit, it does not exist under that
+ * name in the 2156x API -> see the #if block below. *//*****************************************************************************
  * mem_sizeof_check.c
  * DEC-0014 ⑤ / W1-B §8.2 内存对账 —— 第三轨:SHARC 编译器现场 sizeof
  *
@@ -186,8 +195,8 @@ void w1c_clk_readback_run(FILE *fcsv)
 
     /* 若板级启动代码已 adi_pwr_Init 过,这里直接读回;未初始化则返回错误码,
      * 我们如实打印错误码,不做任何补救性猜测。 */
-    r_core = adi_pwr_GetCoreFreq(0u, &fcclk);
-    r_sys  = adi_pwr_GetSystemFreq(0u, &fsysclk, &fsclk0, &fsclk1);
+    r_core = adi_pwr_GetCoreFreq((uint8_t)0, &fcclk);
+    r_sys  = adi_pwr_GetSystemFreq((uint8_t)0, &fsysclk, &fsclk0, &fsclk1);
 
     printf("CLK_READBACK,core_rc=%d,sys_rc=%d,CCLK_Hz=%lu,SYSCLK_Hz=%lu,"
            "SCLK0_Hz=%lu,SCLK1_Hz=%lu\n",
