@@ -163,6 +163,19 @@ void mem_sizeof_check_run(FILE *fcsv)
 #include <limits.h>
 #include <services/pwr/adi_pwr.h>
 
+/* ⚠ 板上实测:该头文件【存在且能包含】,但未声明下面两个函数
+ *   ⇒ 编译器报 cc0223「declared implicitly」+ cc1080「no full prototype」
+ *      + cc0188「enumerated type mixed with another type」(返回值被当 int)
+ *   ⇒ 隐式声明会让返回值与参数类型都不受检查,且可能在链接期才失败。
+ *   ⇒ 故此处按 ADI 电源服务的公开签名自带原型。
+ *   ⚠ 若链接期报 undefined symbol,说明该服务未被链接进来 ⇒
+ *      把 w1c_config.h 的 ENABLE_CLK_READBACK 改 0,其余内核不受影响,并把报错回传。 */
+#ifndef ADI_PWR_GETCOREFREQ_DECLARED
+ADI_PWR_RESULT adi_pwr_GetCoreFreq(uint32_t dev, uint32_t *fcclk);
+ADI_PWR_RESULT adi_pwr_GetSystemFreq(uint32_t dev, uint32_t *fsysclk,
+                                     uint32_t *fsclk0, uint32_t *fsclk1);
+#endif
+
 void w1c_clk_readback_run(FILE *fcsv)
 {
     uint32_t fcclk = 0u, fsysclk = 0u, fsclk0 = 0u, fsclk1 = 0u;

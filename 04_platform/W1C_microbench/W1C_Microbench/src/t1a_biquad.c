@@ -71,8 +71,14 @@ static void t1a_init_input(float *buf, int n)
 }
 
 static void t1a_run_one(FILE *fcsv, uint32_t window, uint32_t biquads,
-                         float *in, float *out, float *coef, float *st,
+                         float *in, float *out, const float pm *coef, float *st,
                          const char *mem_tag)
+/* ⚠ `coef` 必须带 `pm` 限定符:<filter.h> 的 biquad() 原型是
+ *   biquad(const float dm *in, float dm *out, const float pm *coeffs, float dm *state, int, int)
+ * 系数放 PM 总线是 SHARC 单周期双 MAC 的【硬件前提】(DEC-0009)。
+ * t1a_coeffs 在 :49 声明时带了 pm,但形参此前写成裸 `float *` ⇒ 限定符在传参处丢失
+ * ⇒ 板上编译报 cc0223「argument of type "float *" is incompatible with
+ *    parameter of type "const pm float *"」。桌面自测查不出:桌面无 PM/DM 之分。 */
 {
     volatile clock_t t0, t1, cyc;
     uint32_t j;

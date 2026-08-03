@@ -1,0 +1,20 @@
+未经 critic 评审 —— r65b 的【机制注解件】(一版一文件,不原地改 r65b_out)  [L2/宿主仿真]
+deps: nhs.py@706b658842d84316 clrig.py@8ad47ce8d260dd18
+
+问题:r65b 里臂 O 的槽从 8 掉到 2-7,是【哪条代码路径】把槽置成 FREE 的?
+机械排除:nhs.py 全文只有两处 s.st = NotchSlot.FREE ——
+  :1013 STANDBY 满 reclaim_s(30s)后回收  ⇒ T_OBS=6s 下**不可达**
+  :680  C8-② 事后甄别探针判「外部源」⇒ **真撤陷**(depth/target 归零 + set_coef 回恒等)
+⇒ 唯一可达路径 = :680。下面直接观测 c8_* 计数器坐实,不停在推断上(LESSONS B-2)。
+
+  T60  sd     Δ | probe_start    c8_ext  c8_howl  abstain |     挂陷 频点==picks
+  0.2   1  12.0 |          7         7        0        0 |      4 False
+  0.2   1  14.0 |          6         6        0        0 |      5 False
+  0.5   0  12.0 |          1         1        0        0 |      7 False
+  0.5   0  14.0 |         11        11        0        0 |      2 False
+  0.5   1  12.0 |          3         3        0        0 |      5 False
+  0.5   1  14.0 |          2         2        0        0 |      6 False
+  0.2   0  12.0 |          0         0        0        0 |      8 True
+  0.2   0  14.0 |          0         0        0        0 |      8 True
+
+⛔ 未经 critic 评审;判读由人写,本件只给机械事实。
