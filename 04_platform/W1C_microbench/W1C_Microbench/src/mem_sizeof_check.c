@@ -172,21 +172,16 @@ void mem_sizeof_check_run(FILE *fcsv)
 #include <limits.h>
 #include <services/pwr/adi_pwr.h>
 
-/* NOTE (measured on target, 2026-08-03): this header EXISTS and includes fine,
- * but does NOT declare the two functions below.
- *   -> cc0223 "declared implicitly" + cc1080 "no full prototype"
- *      + cc0188 "enumerated type mixed with another type" (return treated as int)
- *   -> Implicit declaration disables ALL type checking on args and return value,
- *      and may only fail at link time.
- *   -> Hence we supply the prototypes ourselves, per ADI's published signatures.
- *   -> If the LINKER reports "undefined symbol", the power service is not linked in:
- *      set ENABLE_CLK_READBACK = 0 in w1c_config.h (other kernels unaffected)
- *      and send the error text back. */
-#ifndef ADI_PWR_GETCOREFREQ_DECLARED
-ADI_PWR_RESULT adi_pwr_GetCoreFreq(uint32_t dev, uint32_t *fcclk);
-ADI_PWR_RESULT adi_pwr_GetSystemFreq(uint32_t dev, uint32_t *fsysclk,
-                                     uint32_t *fsclk0, uint32_t *fsclk1);
-#endif
+/* NOTE (measured on target, 2026-08-03) -- do NOT hand-write prototypes here.
+ * The real declarations live in <services/pwr/adi_pwr_2156x.h> (pulled in by adi_pwr.h)
+ * and the FIRST parameter is `const uint8_t dev`, NOT uint32_t.
+ * A hand-written prototype with the wrong type gives cc0147
+ *   "declaration is incompatible with ... (declared at line 653 of adi_pwr_2156x.h)".
+ * Lesson: the earlier cc0223 "declared implicitly" concerned ONE symbol
+ * (adi_pwr_GetCoreFreq). Adding prototypes for BOTH was over-correction, and the
+ * second one collided with the real declaration on the very next build.
+ * If adi_pwr_GetCoreFreq is STILL reported implicit, it does not exist under that
+ * name in the 2156x API -- report the message and we will look up the real name. */
 
 void w1c_clk_readback_run(FILE *fcsv)
 {
