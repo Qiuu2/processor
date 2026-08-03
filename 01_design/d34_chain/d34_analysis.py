@@ -383,6 +383,148 @@ OK("EXP-6a", best <= A2 + 1e-6, f"数值扫描 {best:.4f} 不超过解析上界 
 OK("EXP-6b", best < 11.2148, f"PEQ 在竞品 Q 口径下仍小于架式的 11.2148 ⇒ 全族最大值不变,C2 可从红降黄")
 OK("EXP-6c", best < 16.0, "PEQ 在竞品 Q 口径下不突破 Q4.27 ⇒ 系数格式裁决不被推翻")
 
+# ---------------------------------------------------------------- EXP-7
+print("\nEXP-7  系数界:经验扫描界 → 【解析界】(架构侧意见,r4)")
+print("-"*84)
+print("    解析界(推导见 PREREG_D34_r4_addendum §1):")
+print("      峰型   max|b| <= max(2, A^2)          A = 10^(G/40)   —— 与 Q、与频率无关")
+print("      架式   max|b| <= 2*A^2                                —— 与 S、与频率无关")
+print("      HPF/LPF max|b| <= 2                                   —— 与 Q、与频率无关")
+print("      a 系数 稳定三角 |a1|<2, |a2|<1                        —— 构造上不可超越")
+print("      ⇒ 全族 max|b| <= 2 * 10^(G_max/20),【只依赖 G_max】")
+def rbj_lowshelf(f0, S, gdb):
+    A = 10**(gdb/40); w0 = 2*np.pi*f0/FS
+    al = np.sin(w0)/2*np.sqrt((A+1/A)*(1/S-1)+2); c = np.cos(w0); t = 2*np.sqrt(A)*al
+    a0 = (A+1)+(A-1)*c+t
+    return (np.array([A*((A+1)-(A-1)*c+t), 2*A*((A-1)-(A+1)*c), A*((A+1)-(A-1)*c-t)])/a0,
+            np.array([1.0, -2*((A-1)+(A+1)*c)/a0, ((A+1)+(A-1)*c-t)/a0]))
+def rbj_highshelf(f0, S, gdb):
+    A = 10**(gdb/40); w0 = 2*np.pi*f0/FS
+    al = np.sin(w0)/2*np.sqrt((A+1/A)*(1/S-1)+2); c = np.cos(w0); t = 2*np.sqrt(A)*al
+    a0 = (A+1)-(A-1)*c+t
+    return (np.array([A*((A+1)+(A-1)*c+t), -2*A*((A-1)+(A+1)*c), A*((A+1)+(A-1)*c-t)])/a0,
+            np.array([1.0, 2*((A-1)-(A+1)*c)/a0, ((A+1)-(A-1)*c-t)/a0]))
+fg7 = np.geomspace(20.0, 20000.0, 250)
+qg7 = np.geomspace(0.02, 50.0, 40)
+sg7 = np.array([0.3, 0.5, 0.7071, 0.85, 1.0, 1.5, 2.0])
+viol, tight_bad = 0, 0
+print(f"\n    {'G_max':>6s} {'解析界 2*A^2':>13s} {'峰型扫描':>10s} {'架式扫描':>10s} {'HPF/LPF扫描':>12s} {'紧度(架式/界)':>14s}")
+for G in [6.0, 12.0, 15.0, 18.0]:
+    A2 = 10**(G/20.0)
+    an_all = 2*A2
+    mp = max(float(np.max(np.abs(rbj_peaking(f, q, g)[0])))
+             for f in fg7 for q in qg7 for g in (G, -G))
+    ms = max(float(np.max(np.abs(mk(f, sv, g)[0])))
+             for f in fg7 for sv in sg7 for g in (G, -G) for mk in (rbj_lowshelf, rbj_highshelf))
+    mh = max(float(np.max(np.abs(bw_hp(f, q)[0]))) for f in fg7 for q in qg7)
+    mh = max(mh, max(float(np.max(np.abs(bw_lp(f, q)[0]))) for f in fg7 for q in qg7))
+    if mp > max(2.0, A2) + 1e-9: viol += 1
+    if ms > an_all + 1e-9: viol += 1
+    if mh > 2.0 + 1e-9: viol += 1
+    tight = ms/an_all
+    if tight < 0.99: tight_bad += 1
+    print(f"    {G:6.1f} {an_all:13.4f} {mp:10.4f} {ms:10.4f} {mh:12.4f} {tight:14.4f}")
+OK("EXP-7a", viol == 0, f"全部数值扫描均不越解析界({viol} 处越界)")
+OK("EXP-7b", tight_bad == 0, "架式扫描值/解析界 >= 0.99 ⇒ 界是紧的,可替代扫描")
+Ghard = 20*math.log10(8.0)
+print(f"\n    ⇒ Q4.27 的【解析硬包络】: 2*10^(G/20) < 16 ⇒ G_max < 20*log10(8) = {Ghard:.4f} dB")
+print(f"      (r3 的扫描包络为 18.089 dB;解析值略严,因扫描取不到 c=±1 与 alpha=0 的极限)")
+OK("EXP-7c", Ghard < 18.089, "解析硬包络严于扫描包络 ⇒ 用解析界是保守方向")
+
+# ---------------------------------------------------------------- EXP-8
+print("\nEXP-8  延迟逐项表(我这一侧)+ 逐频相加 vs 各自最大值相加")
+print("-"*84)
+def gd_curve(secs, wv):
+    g = np.zeros_like(wv)
+    for b, a in secs:
+        _, gg = signal.group_delay((b, a), w=wv); g += gg
+    return g
+w8 = np.linspace(2*np.pi*20/FS, np.pi-1e-6, 200000); f8 = w8*FS/(2*np.pi)
+m8 = (f8 >= 20) & (f8 <= 20000)
+# 我这一侧的典型配置
+items = []
+items.append(("D3 HPF  BW12 @80Hz", [qsec(bw_hp(80.0, 0.7071), 'hp')]))
+peq8 = [qsec(rbj_peaking(f0, q, g)) for f0, q, g in
+        [(63,1.4,+4),(160,1.4,-5),(400,2.0,+3),(1000,1.0,-4),
+         (2500,1.4,+5),(4000,2.0,-3),(8000,1.0,+4),(12500,0.7,-6)]]
+items.append(("D3 PEQ x8(典型设置)", peq8))
+items.append(("D4 分频 LR8 HP @80Hz", [qsec(s,'hp') for s in lr_sections(80.0, 8, 'hp')]))
+peq10 = peq8 + [qsec(rbj_peaking(f0, q, g)) for f0, q, g in [(315,1.4,+3),(6300,1.4,-4)]]
+items.append(("D4 PEQ x10(典型设置)", peq10))
+tot = np.zeros_like(w8); sum_of_max = 0.0
+print(f"    {'模块':26s} {'最大群延迟(ms)':>15s} {'峰值频率(Hz)':>13s}")
+for nm, secs in items:
+    g = gd_curve(secs, w8)
+    tot += g
+    i = int(np.argmax(g[m8])); pk = g[m8][i]/FS*1e3
+    sum_of_max += pk
+    print(f"    {nm:26s} {pk:15.3f} {f8[m8][i]:13.1f}")
+i = int(np.argmax(tot[m8])); aligned = tot[m8][i]/FS*1e3
+print(f"    {'——':26s}")
+print(f"    (a) 各项最大值【相加】       = {sum_of_max:8.3f} ms   ← 各峰在【不同频率】")
+print(f"    (b) 逐频相加后的最大值       = {aligned:8.3f} ms   @ {f8[m8][i]:.1f} Hz  ← 真实最坏频点")
+print(f"    ⇒ (a) 高估了 {sum_of_max-aligned:.3f} ms")
+RETIRED("EXP-8a", sum_of_max - aligned >= 1.0,
+   f"原判据「高估 >=1 ms」实测 {sum_of_max-aligned:.3f} ms ⇒ 未达判据(证伪条件 <0.1 ms 未触发)。"
+   f"根因:我选的四个模块峰值频率全部落在 51.5-71.1 Hz —— 低频滤波器的群延迟峰天然都在低频,"
+   f"本来就对齐。⇒ 由 EXP-8b 用【峰分散】的配置作独立再观测。")
+
+# ---- EXP-8b(r5):峰是否聚集,决定能不能简单相加 ----
+print("\nEXP-8b 峰是否聚集 ⇒ 能不能简单相加(r5 独立再观测)")
+for tag, xo_fc in [("配置① 分频 LR8 @80Hz(与低频 PEQ 同处低频)", 80.0),
+                   ("配置② 分频 LR8 @2kHz(峰与低频 PEQ 分开)", 2000.0)]:
+    it2 = [("D3 HPF BW12 @80Hz", [qsec(bw_hp(80.0, 0.7071), 'hp')]),
+           ("D3 PEQ x8", peq8),
+           (f"D4 分频 LR8 @{xo_fc:.0f}Hz", [qsec(s,'hp') for s in lr_sections(xo_fc, 8, 'hp')]),
+           ("D4 PEQ x10", peq10)]
+    tt = np.zeros_like(w8); som = 0.0; pks = []
+    for nm2, sc in it2:
+        g = gd_curve(sc, w8); tt += g
+        j = int(np.argmax(g[m8])); som += g[m8][j]/FS*1e3; pks.append(f8[m8][j])
+    j = int(np.argmax(tt[m8])); al = tt[m8][j]/FS*1e3
+    print(f"    {tag}")
+    print(f"      各峰频率 = {[round(v,1) for v in pks]} Hz")
+    print(f"      (a) 各自最大值相加 = {som:7.3f} ms | (b) 逐频相加最大 = {al:7.3f} ms @ {f8[m8][j]:6.1f} Hz | 高估 {som-al:6.3f} ms")
+    if xo_fc == 80.0:
+        _c1 = som-al
+    else:
+        _c2 = som-al
+RETIRED("EXP-8b", _c1 < 1.0 and _c2 > 2.0,
+   f"预注册的【证伪条件命中】:峰分散配置的高估 {_c2:.3f} ms < 1.0 ms(甚至小于峰聚集时的 {_c1:.3f})。"
+   f"⇒ 「峰是否聚集决定能否简单相加」这条假设【不成立】。"
+   f"根因:被移开的那一项(分频 @2kHz)本身贡献就小(0.627 ms),移开它不产生大缺口。"
+   f"⇒ 按 PREREG_D34_r5_addendum §2 预先写死的分支,执行【撤回 r4 的那条更正】。")
+
+print("\n    ⇒ ⭐【给架构侧的一句可执行结论】(按预注册分支执行)")
+print(f"      **撤回我在 r4 提的「各自最大值相加会系统性高估」那条更正。**")
+print(f"      实测两种配置下高估分别只有 {_c1:.3f} ms 与 {_c2:.3f} ms")
+print(f"      ⇒ **简单相加可用,保守量 <0.8 ms;⛔ 不要指望峰错开带来抵消。**")
+print(f"      ⇒ 配平表按简单相加做即可,不必逐频卷积。")
+OK("EXP-8c", max(_c1, _c2) < 1.0,
+   f"两种配置的高估均 <1.0 ms(实测 {_c1:.3f} / {_c2:.3f})⇒ 简单相加是可用的保守近似")
+
+print(f"\n    可降档位(我这一侧):")
+rows = []
+for lr in [8, 4, 2]:
+    for fc in [80.0, 120.0, 200.0]:
+        g = gd_curve([qsec(s,'hp') for s in lr_sections(fc, lr, 'hp')], w8)
+        rows.append((f"分频 LR{lr} @{fc:.0f}Hz", float(np.max(g[m8]))/FS*1e3))
+base = rows[0][1]
+for nm, v in rows:
+    print(f"      {nm:22s} {v:8.3f} ms   省 {base-v:+8.3f} ms(相对 LR8@80Hz)")
+print()
+_fir_base = (512-1)/2          # 基准 = 512 tap 的群延迟 255.5 样本
+for Nt in [1024, 512, 256, 128, 0]:
+    gd = (Nt-1)/2 if Nt > 0 else 0
+    tag = f"{Nt} tap" if Nt else "关闭"
+    print(f"      FIR {tag:>9}        {gd/FS*1e3:8.3f} ms   省 {(_fir_base-gd)/FS*1e3:+8.3f} ms(相对 512 tap)")
+print()
+for L in [64, 32]:
+    print(f"      块 I/O L={L:3d}(2L 乒乓)  {2*L/FS*1e3:8.3f} ms   省 {(128-2*L)/FS*1e3:+8.3f} ms(相对 L=64)")
+print(f"      块 I/O L= 64(单缓冲)     {64/FS*1e3:8.3f} ms   省 {64/FS*1e3:+8.3f} ms  ⚠ 口径归 platform-fw")
+print(f"      lim_lookahead 1→0 ms      0.000 ms   省 {1.0:+8.3f} ms  ⚠ 代价:限幅改反馈式,过冲不受控")
+print(f"      转换器 ADC+DAC            {0.99967:8.5f} ms   ⛔ 不可降(器件固有)")
+
 print("\n" + "="*84)
 print(f"合计: PASS={_pass}  FAIL={_fail}  RETIRED={_retired}(退役项不计入判定,原样留痕)   坏版本开关={BROKEN if BROKEN else '无'}")
 print("="*84)
