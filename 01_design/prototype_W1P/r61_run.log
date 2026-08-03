@@ -54,3 +54,5 @@ deps: clrig.py@8ad47ce8d260dd18 nhs.py@706b658842d84316 howl_detect.py@fd63e901f
     注:NHS自选挂了 1 个陷波 @[2559.9], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
   0.2/1 代价 -6.57 覆盖39.3% | ORACLE(上界)  3.50 | NHS自选  2.50 | FLAT(等代价baseline)  6.57 | Δwin_oracle -3.07 | Δwin_nhs -4.07
     注:NHS自选挂了 3 个陷波 @[1033.5, 2517.3, 5504.2], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
+  0.2/2 代价-12.34 覆盖53.8% | ORACLE(上界)  5.00 | NHS自选  1.50 | FLAT(等代价baseline) 12.34 | Δwin_oracle -7.34 | Δwin_nhs -10.84
+    注:NHS自选挂了 1 个陷波 @[5377.3], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
