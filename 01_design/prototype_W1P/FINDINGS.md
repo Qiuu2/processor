@@ -1199,8 +1199,12 @@ f_cut=8k 时,**挂陷【后】**的全带最高临界点落在 —— `0.5/seed0
 ```
 r57_bandlimit.py:51-61   picks ← clrig.critical_points(he)      = 解析神谕,不是 NHS 检测输出
 r57_bandlimit.py:64-76   槽直接写 st=HOLD/depth=max_depth,随后 a.P.T_low = 999.
-nhs.py:386→402           gate = T_low(999)或 T_low_gr(=999−20=979);lv < gate 即 continue
-                         ⇒ 信号上限 0 dBFS ⇒ 两条门都不可能过 ⇒ 新分配恒不发生
+nhs.py:386→402           首次获取门 gate = T_low = 999;lv < gate 即 continue
+                         ⇒ 信号上限 0 dBFS ⇒ 不可能过 ⇒ 新分配恒不发生
+⚠ 勘正(2026-08-03)      本条原写"另一门 =999−20=979"是错的:T_low_gr 在 Params.__init__
+                         (nhs.py:73)已算死为 −65.0,构造后改 T_low 不重算
+                         ⇒ 已覆盖 bin 的【维持】路径仍通(门 −65 dBFS),关掉的只有"首次获取"
+                         ⇒ 数值影响 0(预挂槽已在 max_depth),但描述必须准确
 nhs.py:94                lift_after_s = 60 > T_OBS = 6 ⇒ 预挂槽整轮不释放
 同构复用                 r51:57-68 / r53:45-55 / r59(直接 import mk_alg)
 ```

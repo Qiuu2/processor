@@ -5,6 +5,8 @@
 ---
 ## 当前状态(覆盖式,2026-08-03 · v0.51 轮 · P-5 撤回补落地)
 
+> **⛔⛔⛔ 全局撤回指针(2026-08-03,P-5;适用于本文件【全部】版本记录与正文)**:**`ITU-T P.341 §5.1.3.2` 在【本地扩声环路 / C-8b / C-8f / NHS / MSG / `f_cut`】语境下一律 `[L4/不适用—错环路]`,无需重新论证即判违规。** 版本记录中 **v0.11 的「L 标由 [L4/惯例] 升 [L1/标准强制]」、v0.15 的「C-8b-stat 门值 = 标准强制值」均在撤回范围内**(v0.17 已撤回、08-03 P-5 补落地);**历史原文按 D-N 保留不改。其在【Rin→Sout / TCLw / AEC / 送远端支】语境下的引用不受影响。**
+
 - **身份**:`system-architect-2`(Opus 5,DEC-0015)。**严禁**向 `system-architect` / `adaptive-dsp` / `adaptive-dsp-2` / `critic-w1` 发消息(均已退役,发消息 = 复活 = 重演 DEC-0011 裂脑)。**与算法侧(`adaptive-dsp-3`)一律经 lead 转。不 commit。**
 - **主交付**:`01_design/W1A_AFC_architecture_budget.md` **v0.51**(195 表,列数机械校验 0 mismatch)。
 - **合同**:`01_design/contracts/W1_system-architect_adaptive-dsp_interface_v1.8.md`(整合版,已就地七次增补;**待接收方回执**)。56 表,0 mismatch。
