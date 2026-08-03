@@ -19,7 +19,7 @@ from scipy.signal import freqz
 FS = 48000.0
 
 
-def make_F(T60=0.5, delay_ms=8.0, seed=0, fs=FS, dur_mult=2.0):
+def make_F(T60=0.5, prop_delay_ms=8.0, seed=0, fs=FS, dur_mult=2.0, delay_ms=None):
     """⭐ 噪声 RIR(架构侧裁定,取代模态合成):
         h(t) = n(t)·exp(−t/τ),  n ~ 白高斯,  τ = T60 / 6.908
     ⚠ **为什么不用模态合成**:Weyl 公式 dN/df = 4πVf²/c³,V=100m³ ⇒ 1kHz 处 31.1 模态/Hz
@@ -29,10 +29,27 @@ def make_F(T60=0.5, delay_ms=8.0, seed=0, fs=FS, dur_mult=2.0):
       —— 正是架构侧那张表 MC 所用的统计模型 ⇒ **不是"假设成立",是"构造保证"**。
       多径自带,不用另建。
     ⇒ **可扫的轴是 T60,不是 K**。换算 N_eff ≈ 1975·T60。
-    返回 (h, D) —— h 已含直达延迟。"""
+    返回 (h, D) —— h 已含直达延迟。
+
+    ⚠⚠ `prop_delay_ms`(旧名 `delay_ms`,2026-08-04 改名,lead 要求)——
+    **改名理由不是可读性,是【防两个不同物理量被当成同一个】**:
+      本参数     = **声传播延迟**(8.0 ms ⇒ 2.74 m 话筒-音箱间距),属**环路几何**
+      AEC 线的 8.0 ms = **块处理延迟**,属**信号链**
+    **两者数值恰好相同,且【必须相加,不是相等】**(台架实际用的是 D_det = 8.0 + 1.33 = 9.33 ms)。
+    ⇒ 台架当前算法是对的,但那是**巧合式的正确** —— 数值相同 ⇒ **任何数值校验都分不开,
+      只有语义(名字)能分开**。⇒ 故改名。
+    ⚠ 旧名 `delay_ms` **仍接受**(≈20 处归档脚本靠它复现,不得静默破坏),
+      但每次使用都会向 stderr 打一条醒目提示 —— 让误用无法被忽略,而不是无法被执行。"""
+    if delay_ms is not None:
+        import sys as _s
+        print("⚠⚠ clrig.make_F:`delay_ms` 是旧名,已改为 `prop_delay_ms`(2026-08-04)。"
+              "本参数 = **声传播延迟**(环路几何),与 AEC 线的 8.0 ms **块处理延迟** "
+              "是不同物理量、数值恰好相同、**必须相加不是相等**。请改用 `prop_delay_ms`。",
+              file=_s.stderr)
+        prop_delay_ms = delay_ms
     rng = np.random.default_rng(seed)
     tau = T60 / 6.908
-    D = int(round(delay_ms * 1e-3 * fs))
+    D = int(round(prop_delay_ms * 1e-3 * fs))
     n = int(dur_mult * T60 * fs)
     t = np.arange(n) / fs
     h = rng.standard_normal(n) * np.exp(-t / tau)

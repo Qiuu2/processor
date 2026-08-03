@@ -41,26 +41,6 @@
         picks :[716.5, 1030.5, 1800.1, 2402.3, 3114.9, 4179.0, 5378.5, 7062.2]
         lp_rms@m: m0=-38.77 N=+16.42 Na=-13.55 O=-39.72 dBFS  | m: m0=-13.08 N=-4.08 Na=-8.08 O=-5.58 dB
         f_trig: m0=5379.0 N=6207.0 Na=3037.0 O=503.0 Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'ok'}
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:359: RuntimeWarning: overflow encountered in scalar multiply
-  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:359: RuntimeWarning: overflow encountered in scalar power
-  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:359: RuntimeWarning: invalid value encountered in scalar divide
-  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:361: RuntimeWarning: overflow encountered in scalar multiply
-  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:361: RuntimeWarning: overflow encountered in scalar power
-  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:361: RuntimeWarning: invalid value encountered in scalar divide
-  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:361: RuntimeWarning: invalid value encountered in scalar add
-  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:359: RuntimeWarning: invalid value encountered in scalar add
-  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/.local/lib/python3.10/site-packages/numpy/_core/_methods.py:135: RuntimeWarning: overflow encountered in reduce
-  ret = umr_sum(arr, axis, dtype, out, keepdims, where=where)
-/home/it1234/processor/01_design/prototype_W1P/howl_detect.py:21: RuntimeWarning: overflow encountered in square
-  return 20.0 * np.log10(np.sqrt(np.mean(np.square(x))) + 1e-30)
   0.2   2     12  -13.08             9.00            5.00            7.50   28.73%     5  False   0.80   0.50     84       13.41        OK     OK
         不变量 N:OK/N2_lvl=3447,挂陷=5 | Na:OK/N2_lvl=3257,挂陷=4 | O:OK/挂陷=8/8,频点==picks:True(诊断 N2_lvl=5485,非判据)
         计数 N: N1_cand=12000 N2_lvl=3447 N4_born=17 N5_howl=102 preempt=0 g_duck最深=-6.00 dB
