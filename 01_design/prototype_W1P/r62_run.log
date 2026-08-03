@@ -11,3 +11,5 @@ deps: clrig.py@8ad47ce8d260dd18 nhs.py@706b658842d84316 howl_detect.py@fd63e901f
         N: 3陷波 g_duck最深-6.00 N2_lvl=228 | N-ablate: 4陷波 g_duck最深-6.00 | O: N2_lvl=0
   0.2   2 |  -12.86  -13.00   -9.31 |     1.50       1.50       0.00 | N:OK/O:OK
         N: 1陷波 g_duck最深-6.00 N2_lvl=96 | N-ablate: 1陷波 g_duck最深-6.00 | O: N2_lvl=0
+  0.5   0 |   -9.31  -10.37   -7.80 |     2.50       0.50       2.00 | N:OK/O:OK
+        N: 1陷波 g_duck最深-6.00 N2_lvl=198 | N-ablate: 2陷波 g_duck最深-6.00 | O: N2_lvl=0
