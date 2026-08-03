@@ -525,6 +525,87 @@ print(f"      块 I/O L= 64(单缓冲)     {64/FS*1e3:8.3f} ms   省 {64/FS*1e3:
 print(f"      lim_lookahead 1→0 ms      0.000 ms   省 {1.0:+8.3f} ms  ⚠ 代价:限幅改反馈式,过冲不受控")
 print(f"      转换器 ADC+DAC            {0.99967:8.5f} ms   ⛔ 不可降(器件固有)")
 
+# ---------------------------------------------------------------- EXP-9
+print("\nEXP-9  参考配置(REF) vs 最坏可配置(WORST) —— 急件,定义与理由见 PREREG_r8 §1/§2")
+print("-"*84)
+ADC_DAC = (22.9844 + 25.0)/FS*1e3
+BLK_L64 = 2*64/FS*1e3
+
+def bq_list(spec):
+    return [qsec(rbj_peaking(f0, q, g)) for f0, q, g in spec]
+def hp_chain(order, fc):
+    if order == 2: return [qsec(bw_hp(fc, 0.7071), 'hp')]
+    return [qsec(bw_hp(fc, q), 'hp') for q in butter_qs(order)]
+
+REF_PEQ_IN = [(45,8.0,-6),(72,6.0,-5),(250,1.4,-4),(3150,1.0,+3)]
+REF_PEQ_OUT= REF_PEQ_IN + [(8000,0.7,-3)]
+WORST_PEQ_IN  = [(20.0,50.0,+15)]*8
+WORST_PEQ_OUT = [(20.0,50.0,+15)]*10
+
+def report(tag, hpf_secs, peq_in, peq_out, xo_secs, fir_taps, look_ms):
+    rows=[]; tot=np.zeros_like(w8); two=0.0
+    def add(nm, secs):
+        nonlocal tot, two
+        g = gd_curve(secs, w8)
+        # 两轨核
+        z=np.exp(-1j*w8); H=np.ones_like(z)
+        for b,a in secs: H*=(b[0]+b[1]*z+b[2]*z*z)/(a[0]+a[1]*z+a[2]*z*z)
+        g2=-np.gradient(np.unwrap(np.angle(H)), w8)
+        two=max(two, float(np.max(np.abs(g[m8]-g2[m8]))))
+        tot+=g
+        i=int(np.argmax(g[m8])); rows.append((nm, g[m8][i]/FS*1e3, f8[m8][i]))
+    add("D3 HPF", hpf_secs)
+    if peq_in:  add(f"D3 PEQ(启用 {len(peq_in)} 段)", bq_list(peq_in))
+    add("D4 分频", xo_secs)
+    if peq_out: add(f"D4 PEQ(启用 {len(peq_out)} 段)", bq_list(peq_out))
+    fir_ms = ((fir_taps-1)/2)/FS*1e3 if fir_taps else 0.0
+    iir_sum = sum(r[1] for r in rows)
+    total = ADC_DAC + BLK_L64 + iir_sum + fir_ms + look_ms
+    print(f"\n  ── {tag} ──")
+    for nm, v, fp in rows:
+        print(f"     {nm:24s} {v:9.3f} ms   峰 @ {fp:8.1f} Hz")
+    print(f"     {'转换器 ADC+DAC':24s} {ADC_DAC:9.5f} ms")
+    print(f"     {'块 I/O (L=64, 2L)':24s} {BLK_L64:9.3f} ms")
+    print(f"     {'线性相位 FIR':24s} {fir_ms:9.3f} ms   ({fir_taps if fir_taps else '关'} tap)")
+    print(f"     {'lim_lookahead':24s} {look_ms:9.3f} ms")
+    print(f"     {'——— 求和(lead 已裁定口径)':24s} {total:9.3f} ms   余 {12.0-total:+8.3f} ms")
+    return total, iir_sum, two, rows
+
+ref_tot, ref_iir, tw1, ref_rows = report(
+    "REF 参考配置(会议室典型部署;依据 PREREG_r8 §1)",
+    hp_chain(2, 80.0), REF_PEQ_IN, REF_PEQ_OUT,
+    [qsec(x,'hp') for x in lr_sections(80.0, 4, 'hp')], 0, 1.0)
+wor_tot, wor_iir, tw2, _ = report(
+    "WORST 最坏可配置(参数量程内;⛔ 只用于定运行时拦截线)",
+    hp_chain(4, 20.0), WORST_PEQ_IN, WORST_PEQ_OUT,
+    [qsec(x,'hp') for x in lr_sections(20.0, 8, 'hp')], 512, 2.0)
+
+print(f"\n  ⇒ WORST / REF = {wor_tot/ref_tot:.1f}×")
+OK("EXP-9a", wor_tot/ref_tot >= 10.0, f"WORST/REF = {wor_tot/ref_tot:.1f}× ≥10 ⇒ 运行时校验确有必要")
+OK("EXP-9d", max(tw1, tw2) <= 0.05, f"两轨最大差 {max(tw1,tw2):.4f} 样本 ≤0.05")
+peq8_ref = [r[1] for r in ref_rows if r[0].startswith("D3 PEQ")][0]
+print(f"  ⇒ REF 的 D3 PEQ 项 = {peq8_ref:.3f} ms;上轮「8 段分散」那组 = 3.771 ms")
+OK("EXP-9b", peq8_ref < 3.771,
+   f"REF 的 PEQ 项({peq8_ref:.3f})小于上轮 8 段全开那组(3.771)⇒ 启用段数减少确实降群延迟")
+
+print("\n  EXP-9c  拒绝率的定量代理:从 REF 出发,还能再加几段低频窄 Q 陷波才撞 12 ms")
+extra_specs = [(50,8.0,-6),(63,8.0,-6),(90,8.0,-6),(110,8.0,-6),(130,8.0,-6),(160,8.0,-6)]
+cur_in = list(REF_PEQ_IN); n_ok = 0
+for k, sp in enumerate(extra_specs):
+    cur_in.append(sp)
+    g_hpf = gd_curve(hp_chain(2, 80.0), w8)
+    g_in  = gd_curve(bq_list(cur_in), w8)
+    g_xo  = gd_curve([qsec(x,'hp') for x in lr_sections(80.0, 4, 'hp')], w8)
+    g_out = gd_curve(bq_list(REF_PEQ_OUT), w8)
+    iir = sum(float(np.max(g[m8]))/FS*1e3 for g in (g_hpf, g_in, g_xo, g_out))
+    t = ADC_DAC + BLK_L64 + iir + 0.0 + 1.0
+    status = "✓ 通过" if t <= 12.0 else "✗ 被拒"
+    print(f"     +{k+1} 段({sp[0]} Hz Q={sp[1]} {sp[2]:+} dB) ⇒ 合计 {t:7.3f} ms  余 {12.0-t:+7.3f}  {status}")
+    if t <= 12.0: n_ok = k+1
+    else: break
+print(f"     ⇒ 从 REF 出发可再追加 **{n_ok} 段**低频窄 Q 陷波才撞拒绝线")
+OK("EXP-9c", n_ok >= 2, f"可追加 {n_ok} 段 ≥2 ⇒ 正常调音不会频繁撞拒绝")
+
 print("\n" + "="*84)
 print(f"合计: PASS={_pass}  FAIL={_fail}  RETIRED={_retired}(退役项不计入判定,原样留痕)   坏版本开关={BROKEN if BROKEN else '无'}")
 print("="*84)
