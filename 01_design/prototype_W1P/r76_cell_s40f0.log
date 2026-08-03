@@ -1,0 +1,101 @@
+未经 critic 评审 —— r76 单格 tag=s40f0  [L2/宿主仿真]  预注册 = PREREG_r76.txt
+格定义:src_rms_dbfs=-40 / prefer_unnotched=False(**非提交修法**) / T_low=-45 / 臂O=跑
+工作点:cal_offset_db=0.0(nhs.py:236 默认,从未被用过) / fs=48k / frame=64 / f_cut=8000 / STEP=0.5 / bw_oct=1/5 / depth=-18.0(臂O) / 8槽全空(臂N,Na) / T_OBS∈[6.0, 12.0] / nfft=2^18 / T_low_gr=-65(构造后不随 T_low 重算)
+臂:m0=无 proc(标度不变性对照) / O=神谕选点 T_low=999(**上界**,⛔禁称 NHS 实测) / N=自选+有duck / Na=自选+duck消融(**兜底消融列**)
+
+  T60  sd  T_OBS      m0    ΔMSG_自选@有duck      ΔMSG_自选@消融      ΔMSG_上界@神谕      过门率    挂陷   top1    hit    cov  PANIC  lp_rms@m_N     INV_N  INV_O
+  0.2   0      6  -11.85             5.00            5.00            6.00   33.73%     5   True   1.00   0.62     35      -10.86        OK     OK
+        不变量 N:OK/N2_lvl=2024,挂陷=5 | Na:OK/N2_lvl=2878,挂陷=8 | O:OK/挂陷=8/8,频点==picks:True(诊断 N2_lvl=2951,非判据)
+        计数 N: N1_cand=6000 N2_lvl=2024 N4_born=12 N5_howl=44 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[590.7, 1864.0, 2559.7, 4641.2, 6198.4]
+        picks :[590.3, 1082.1, 1556.2, 2041.6, 2558.6, 3279.8, 4641.7, 6194.6]
+        lp_rms@m: m0=-39.30 N=-10.86 Na=-9.75 O=-39.21 dBFS  | m: m0=-11.85 N=-6.85 Na=-6.85 O=-5.85 dB
+        f_trig: m0=2559.0 N=1861.0 Na=2563.0 O=186.0 Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'ok'}
+  0.2   0     12  -11.85             3.50            5.00            6.00   39.12%     6   True   1.00   0.75      0      -30.18        OK     OK
+        不变量 N:OK/N2_lvl=4695,挂陷=6 | Na:OK/N2_lvl=5550,挂陷=8 | O:OK/挂陷=8/8,频点==picks:True(诊断 N2_lvl=5994,非判据)
+        计数 N: N1_cand=12000 N2_lvl=4695 N4_born=10 N5_howl=33 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[590.6, 1079.6, 1862.9, 2559.9, 4641.4, 6192.3]
+        picks :[590.3, 1082.1, 1556.2, 2041.6, 2558.6, 3279.8, 4641.7, 6194.6]
+        lp_rms@m: m0=-39.14 N=-30.18 Na=-12.76 O=-39.09 dBFS  | m: m0=-11.85 N=-8.35 Na=-6.85 O=-5.85 dB
+        f_trig: m0=2559.0 N=4642.0 Na=2563.0 O=186.0 Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'ok'}
+
+  0.2   1      6  -12.93             2.50            3.00            6.00   23.27%     4   True   1.00   0.50      0      -36.29        OK     OK
+        不变量 N:OK/N2_lvl=1396,挂陷=4 | Na:OK/N2_lvl=1104,挂陷=4 | O:OK/挂陷=8/8,频点==picks:True(诊断 N2_lvl=2173,非判据)
+        计数 N: N1_cand=6000 N2_lvl=1396 N4_born=4 N5_howl=26 preempt=0 g_duck最深=-5.00 dB
+        频点 N:[1033.3, 2517.3, 5504.1, 7580.9]
+        picks :[108.9, 531.1, 1035.3, 1399.3, 2518.7, 3824.1, 5506.7, 7579.7]
+        lp_rms@m: m0=-38.65 N=-36.29 Na=-32.76 O=-39.66 dBFS  | m: m0=-12.93 N=-10.43 Na=-9.93 O=-6.93 dB
+        f_trig: m0=5507.0 N=1034.0 Na=1034.0 O=365.0 Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'ok'}
+  0.2   1     12  -12.93             2.50            3.00            6.00   20.28%     4   True   1.00   0.50      0      -37.68        OK     OK
+        不变量 N:OK/N2_lvl=2434,挂陷=4 | Na:OK/N2_lvl=2081,挂陷=4 | O:OK/挂陷=8/8,频点==picks:True(诊断 N2_lvl=4303,非判据)
+        计数 N: N1_cand=12000 N2_lvl=2434 N4_born=4 N5_howl=26 preempt=0 g_duck最深=-5.00 dB
+        频点 N:[1033.3, 2517.3, 5504.1, 7580.9]
+        picks :[108.9, 531.1, 1035.3, 1399.3, 2518.7, 3824.1, 5506.7, 7579.7]
+        lp_rms@m: m0=-38.09 N=-37.68 Na=-34.96 O=-39.39 dBFS  | m: m0=-12.93 N=-10.43 Na=-9.93 O=-6.93 dB
+        f_trig: m0=5507.0 N=1034.0 Na=1034.0 O=365.0 Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'ok'}
+
+  0.2   2      6  -13.08             9.00            5.00            7.50   29.15%     4  False   0.75   0.38     84       16.42        OK     OK
+        不变量 N:OK/N2_lvl=1749,挂陷=4 | Na:OK/N2_lvl=1900,挂陷=4 | O:OK/挂陷=8/8,频点==picks:True(诊断 N2_lvl=2725,非判据)
+        计数 N: N1_cand=6000 N2_lvl=1749 N4_born=13 N5_howl=68 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[1795.6, 3044.1, 3892.6, 6201.8]
+        picks :[716.5, 1030.5, 1800.1, 2402.3, 3114.9, 4179.0, 5378.5, 7062.2]
+        lp_rms@m: m0=-38.77 N=+16.42 Na=-13.55 O=-39.72 dBFS  | m: m0=-13.08 N=-4.08 Na=-8.08 O=-5.58 dB
+        f_trig: m0=5379.0 N=6207.0 Na=3037.0 O=503.0 Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'ok'}
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:359: RuntimeWarning: overflow encountered in scalar multiply
+  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:359: RuntimeWarning: overflow encountered in scalar power
+  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:359: RuntimeWarning: invalid value encountered in scalar divide
+  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:361: RuntimeWarning: overflow encountered in scalar multiply
+  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:361: RuntimeWarning: overflow encountered in scalar power
+  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:361: RuntimeWarning: invalid value encountered in scalar divide
+  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:361: RuntimeWarning: invalid value encountered in scalar add
+  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:359: RuntimeWarning: invalid value encountered in scalar add
+  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/.local/lib/python3.10/site-packages/numpy/_core/_methods.py:135: RuntimeWarning: overflow encountered in reduce
+  ret = umr_sum(arr, axis, dtype, out, keepdims, where=where)
+/home/it1234/processor/01_design/prototype_W1P/howl_detect.py:21: RuntimeWarning: overflow encountered in square
+  return 20.0 * np.log10(np.sqrt(np.mean(np.square(x))) + 1e-30)
+  0.2   2     12  -13.08             9.00            5.00            7.50   28.73%     5  False   0.80   0.50     84       13.41        OK     OK
+        不变量 N:OK/N2_lvl=3447,挂陷=5 | Na:OK/N2_lvl=3257,挂陷=4 | O:OK/挂陷=8/8,频点==picks:True(诊断 N2_lvl=5485,非判据)
+        计数 N: N1_cand=12000 N2_lvl=3447 N4_born=17 N5_howl=102 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[1028.5, 1795.6, 3044.1, 3892.6, 6201.8]
+        picks :[716.5, 1030.5, 1800.1, 2402.3, 3114.9, 4179.0, 5378.5, 7062.2]
+        lp_rms@m: m0=-38.12 N=+13.41 Na=-16.55 O=-39.72 dBFS  | m: m0=-13.08 N=-4.08 Na=-8.08 O=-5.58 dB
+        f_trig: m0=5379.0 N=6206.0 Na=3037.0 O=503.0 Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'ok'}
+
+  0.5   0      6  -12.49             3.00            2.00            3.50   20.18%     2  False   1.00   0.25      0      -28.18        OK     OK
+        不变量 N:OK/N2_lvl=1211,挂陷=2 | Na:OK/N2_lvl=665,挂陷=2 | O:OK/挂陷=8/8,频点==picks:True(诊断 N2_lvl=2290,非判据)
+        计数 N: N1_cand=6000 N2_lvl=1211 N4_born=7 N5_howl=34 preempt=0 g_duck最深=-5.00 dB
+        频点 N:[2793.2, 4641.2]
+        picks :[188.7, 590.1, 1303.9, 1635.6, 2258.9, 2791.0, 4641.4, 6892.3]
+        lp_rms@m: m0=-39.33 N=-28.18 Na=-35.69 O=-37.83 dBFS  | m: m0=-12.49 N=-9.49 Na=-10.49 O=-8.99 dB
+        f_trig: m0=2259.0 N=4641.0 Na=2694.0 O=52.0 Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'ok'}
+  0.5   0     12  -12.49             2.50            2.00            3.00   22.56%     3  False   1.00   0.38      0      -35.13        OK     OK
+        不变量 N:OK/N2_lvl=2707,挂陷=3 | Na:OK/N2_lvl=1446,挂陷=3 | O:OK/挂陷=8/8,频点==picks:True(诊断 N2_lvl=4808,非判据)
+        计数 N: N1_cand=12000 N2_lvl=2707 N4_born=9 N5_howl=45 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[2691.8, 4641.2, 6265.2]
+        picks :[188.7, 590.1, 1303.9, 1635.6, 2258.9, 2791.0, 4641.4, 6892.3]
+        lp_rms@m: m0=-39.26 N=-35.13 Na=-37.12 O=-39.86 dBFS  | m: m0=-12.49 N=-9.99 Na=-10.49 O=-9.49 dB
+        f_trig: m0=2259.0 N=6894.0 Na=2694.0 O=52.0 Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'ok'}
+
+  0.5   1      6  -13.75             3.00            1.50            6.50    5.15%     1  False   1.00   0.12      0      -23.07        OK     OK
+        不变量 N:OK/N2_lvl=309,挂陷=1 | Na:OK/N2_lvl=193,挂陷=2 | O:OK/挂陷=8/8,频点==picks:True(诊断 N2_lvl=2065,非判据)
+        计数 N: N1_cand=6000 N2_lvl=309 N4_born=5 N5_howl=35 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[1033.8]
+        picks :[368.4, 529.0, 1035.2, 1399.7, 2518.2, 4054.9, 5506.0, 7579.4]
+        lp_rms@m: m0=-39.65 N=-23.07 Na=-34.69 O=-39.40 dBFS  | m: m0=-13.75 N=-10.75 Na=-12.25 O=-7.25 dB
+        f_trig: m0=7579.0 N=7580.0 Na=7580.0 O=213.0 Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'ok'}
+  0.5   1     12  -13.75             2.00            1.50            6.50    3.59%     3   True   1.00   0.38      0      -35.70        OK     OK
+        不变量 N:OK/N2_lvl=431,挂陷=3 | Na:OK/N2_lvl=307,挂陷=2 | O:OK/挂陷=8/8,频点==picks:True(诊断 N2_lvl=4058,非判据)
+        计数 N: N1_cand=12000 N2_lvl=431 N4_born=4 N5_howl=35 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[1033.7, 4051.7, 7578.9]
+        picks :[368.4, 529.0, 1035.2, 1399.7, 2518.2, 4054.9, 5506.0, 7579.4]
+        lp_rms@m: m0=-39.63 N=-35.70 Na=-36.51 O=-37.09 dBFS  | m: m0=-13.75 N=-11.75 Na=-12.25 O=-7.25 dB
+        f_trig: m0=7579.0 N=7580.0 Na=7580.0 O=22.0 Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'ok'}
+

@@ -1,0 +1,97 @@
+未经 critic 评审 —— r76 单格 tag=s40f1  [L2/宿主仿真]  预注册 = PREREG_r76.txt
+格定义:src_rms_dbfs=-40 / prefer_unnotched=True(**非提交修法**) / T_low=-45 / 臂O=不跑
+工作点:cal_offset_db=0.0(nhs.py:236 默认,从未被用过) / fs=48k / frame=64 / f_cut=8000 / STEP=0.5 / bw_oct=1/5 / depth=-18.0(臂O) / 8槽全空(臂N,Na) / T_OBS∈[6.0, 12.0] / nfft=2^18 / T_low_gr=-65(构造后不随 T_low 重算)
+臂:m0=无 proc(标度不变性对照) / O=神谕选点 T_low=999(**上界**,⛔禁称 NHS 实测) / N=自选+有duck / Na=自选+duck消融(**兜底消融列**)
+
+  T60  sd  T_OBS      m0    ΔMSG_自选@有duck      ΔMSG_自选@消融      ΔMSG_上界@神谕      过门率    挂陷   top1    hit    cov  PANIC  lp_rms@m_N     INV_N  INV_O
+  0.2   0      6  -11.85             3.50            3.00             nan   27.50%     6   True   1.00   0.75      0      -32.24        OK      —
+        不变量 N:OK/N2_lvl=1650,挂陷=6 | Na:OK/N2_lvl=2541,挂陷=7 | O:—/未跑
+        计数 N: N1_cand=6000 N2_lvl=1650 N4_born=13 N5_howl=35 preempt=0 g_duck最深=-3.00 dB
+        频点 N:[590.7, 1080.2, 1550.8, 1863.9, 2559.9, 4641.4]
+        picks :[590.3, 1082.1, 1556.2, 2041.6, 2558.6, 3279.8, 4641.7, 6194.6]
+        lp_rms@m: m0=-39.30 N=-32.24 Na=-34.32 O=+nan dBFS  | m: m0=-11.85 N=-8.35 Na=-8.85 O=+nan dB
+        f_trig: m0=2559.0 N=6197.0 Na=5843.0 O=nan Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'skipped'}
+  0.2   0     12  -11.85             3.00            3.00             nan   42.35%     7   True   1.00   0.88      0      -36.25        OK      —
+        不变量 N:OK/N2_lvl=5082,挂陷=7 | Na:OK/N2_lvl=5082,挂陷=7 | O:—/未跑
+        计数 N: N1_cand=12000 N2_lvl=5082 N4_born=15 N5_howl=29 preempt=0 g_duck最深=+0.00 dB
+        频点 N:[590.2, 1079.8, 1550.3, 1862.8, 2559.9, 4641.5, 6192.3]
+        picks :[590.3, 1082.1, 1556.2, 2041.6, 2558.6, 3279.8, 4641.7, 6194.6]
+        lp_rms@m: m0=-39.14 N=-36.25 Na=-36.25 O=+nan dBFS  | m: m0=-11.85 N=-8.85 Na=-8.85 O=+nan dB
+        f_trig: m0=2559.0 N=5843.0 Na=5843.0 O=nan Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'skipped'}
+
+  0.2   1      6  -12.93             2.00            2.00             nan   24.35%     3   True   1.00   0.38      0      -38.35        OK      —
+        不变量 N:OK/N2_lvl=1461,挂陷=3 | Na:OK/N2_lvl=1213,挂陷=3 | O:—/未跑
+        计数 N: N1_cand=6000 N2_lvl=1461 N4_born=3 N5_howl=18 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[1033.6, 2517.2, 5504.1]
+        picks :[108.9, 531.1, 1035.3, 1399.3, 2518.7, 3824.1, 5506.7, 7579.7]
+        lp_rms@m: m0=-38.65 N=-38.35 Na=-37.85 O=+nan dBFS  | m: m0=-12.93 N=-10.93 Na=-10.93 O=+nan dB
+        f_trig: m0=5507.0 N=1035.0 Na=1035.0 O=nan Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'skipped'}
+  0.2   1     12  -12.93             2.00            2.00             nan   22.37%     3   True   1.00   0.38      0      -38.94        OK      —
+        不变量 N:OK/N2_lvl=2684,挂陷=3 | Na:OK/N2_lvl=2415,挂陷=3 | O:—/未跑
+        计数 N: N1_cand=12000 N2_lvl=2684 N4_born=3 N5_howl=18 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[1033.6, 2517.2, 5504.1]
+        picks :[108.9, 531.1, 1035.3, 1399.3, 2518.7, 3824.1, 5506.7, 7579.7]
+        lp_rms@m: m0=-38.09 N=-38.94 Na=-38.63 O=+nan dBFS  | m: m0=-12.93 N=-10.93 Na=-10.93 O=+nan dB
+        f_trig: m0=5507.0 N=1035.0 Na=1035.0 O=nan Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'skipped'}
+
+  0.2   2      6  -13.08             6.00            4.50             nan   26.67%     4   True   0.75   0.38     32       -4.83        OK      —
+        不变量 N:OK/N2_lvl=1600,挂陷=4 | Na:OK/N2_lvl=1620,挂陷=5 | O:—/未跑
+        计数 N: N1_cand=6000 N2_lvl=1600 N4_born=11 N5_howl=28 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[3112.8, 5377.4, 6202.2, 7063.8]
+        picks :[716.5, 1030.5, 1800.1, 2402.3, 3114.9, 4179.0, 5378.5, 7062.2]
+        lp_rms@m: m0=-38.77 N=-4.83 Na=-17.84 O=+nan dBFS  | m: m0=-13.08 N=-7.08 Na=-8.58 O=+nan dB
+        f_trig: m0=5379.0 N=3113.0 Na=5376.0 O=nan Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'skipped'}
+  0.2   2     12  -13.08             6.00            4.50             nan   25.36%     6   True   0.83   0.62     32       -7.84        OK      —
+        不变量 N:OK/N2_lvl=3043,挂陷=6 | Na:OK/N2_lvl=2949,挂陷=5 | O:—/未跑
+        计数 N: N1_cand=12000 N2_lvl=3043 N4_born=12 N5_howl=48 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[1028.6, 1795.9, 3112.8, 5377.4, 6202.2, 7063.8]
+        picks :[716.5, 1030.5, 1800.1, 2402.3, 3114.9, 4179.0, 5378.5, 7062.2]
+        lp_rms@m: m0=-38.12 N=-7.84 Na=-20.82 O=+nan dBFS  | m: m0=-13.08 N=-7.08 Na=-8.58 O=+nan dB
+        f_trig: m0=5379.0 N=3113.0 Na=5376.0 O=nan Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'skipped'}
+
+  0.5   0      6  -12.49             2.50            1.50             nan   19.45%     2  False   1.00   0.25      0      -33.39        OK      —
+        不变量 N:OK/N2_lvl=1167,挂陷=2 | Na:OK/N2_lvl=687,挂陷=2 | O:—/未跑
+        计数 N: N1_cand=6000 N2_lvl=1167 N4_born=7 N5_howl=27 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[4641.2, 6265.1]
+        picks :[188.7, 590.1, 1303.9, 1635.6, 2258.9, 2791.0, 4641.4, 6892.3]
+        lp_rms@m: m0=-39.33 N=-33.39 Na=-37.91 O=+nan dBFS  | m: m0=-12.49 N=-9.99 Na=-10.99 O=+nan dB
+        f_trig: m0=2259.0 N=4642.0 Na=2258.0 O=nan Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'skipped'}
+  0.5   0     12  -12.49             2.50            1.50             nan   20.02%     2  False   1.00   0.25     14      -20.29        OK      —
+        不变量 N:OK/N2_lvl=2402,挂陷=2 | Na:OK/N2_lvl=1483,挂陷=2 | O:—/未跑
+        计数 N: N1_cand=12000 N2_lvl=2402 N4_born=10 N5_howl=154 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[4641.2, 6265.1]
+        picks :[188.7, 590.1, 1303.9, 1635.6, 2258.9, 2791.0, 4641.4, 6892.3]
+        lp_rms@m: m0=-39.26 N=-20.29 Na=-38.70 O=+nan dBFS  | m: m0=-12.49 N=-9.99 Na=-10.99 O=+nan dB
+        f_trig: m0=2259.0 N=4642.0 Na=2694.0 O=nan Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'skipped'}
+
+  0.5   1      6  -13.75             3.00            1.50             nan    5.15%     1  False   1.00   0.12      0      -23.07        OK      —
+        不变量 N:OK/N2_lvl=309,挂陷=1 | Na:OK/N2_lvl=193,挂陷=2 | O:—/未跑
+        计数 N: N1_cand=6000 N2_lvl=309 N4_born=5 N5_howl=35 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[1033.8]
+        picks :[368.4, 529.0, 1035.2, 1399.7, 2518.2, 4054.9, 5506.0, 7579.4]
+        lp_rms@m: m0=-39.65 N=-23.07 Na=-34.69 O=+nan dBFS  | m: m0=-13.75 N=-10.75 Na=-12.25 O=+nan dB
+        f_trig: m0=7579.0 N=7580.0 Na=7580.0 O=nan Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'skipped'}
+  0.5   1     12  -13.75             2.00            1.50             nan    3.59%     3   True   1.00   0.38      0      -35.70        OK      —
+        不变量 N:OK/N2_lvl=431,挂陷=3 | Na:OK/N2_lvl=307,挂陷=2 | O:—/未跑
+        计数 N: N1_cand=12000 N2_lvl=431 N4_born=4 N5_howl=35 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[1033.7, 4051.7, 7578.9]
+        picks :[368.4, 529.0, 1035.2, 1399.7, 2518.2, 4054.9, 5506.0, 7579.4]
+        lp_rms@m: m0=-39.63 N=-35.70 Na=-36.51 O=+nan dBFS  | m: m0=-13.75 N=-11.75 Na=-12.25 O=+nan dB
+        f_trig: m0=7579.0 N=7580.0 Na=7580.0 O=nan Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'skipped'}
+
+  0.5   2      6  -12.52             2.50            1.50             nan   15.90%     1  False   1.00   0.12     12      -16.80        OK      —
+        不变量 N:OK/N2_lvl=954,挂陷=1 | Na:OK/N2_lvl=1810,挂陷=5 | O:—/未跑
+        计数 N: N1_cand=6000 N2_lvl=954 N4_born=10 N5_howl=105 preempt=0 g_duck最深=-4.00 dB
+        频点 N:[5377.1]
+        picks :[506.4, 716.2, 1518.5, 2403.0, 3114.8, 4379.2, 5378.1, 7061.7]
+        lp_rms@m: m0=-39.38 N=-16.80 Na=-36.14 O=+nan dBFS  | m: m0=-12.52 N=-10.02 Na=-11.02 O=+nan dB
+        f_trig: m0=7062.0 N=716.0 Na=3114.0 O=nan Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'skipped'}
+  0.5   2     12  -12.52             1.50            1.50             nan   23.03%     4  False   1.00   0.50      0      -37.82        OK      —
+        不变量 N:OK/N2_lvl=2764,挂陷=4 | Na:OK/N2_lvl=4023,挂陷=5 | O:—/未跑
+        计数 N: N1_cand=12000 N2_lvl=2764 N4_born=5 N5_howl=29 preempt=0 g_duck最深=-6.00 dB
+        频点 N:[717.0, 3112.2, 5376.9, 7062.8]
+        picks :[506.4, 716.2, 1518.5, 2403.0, 3114.8, 4379.2, 5378.1, 7061.7]
+        lp_rms@m: m0=-39.31 N=-37.82 Na=-37.62 O=+nan dBFS  | m: m0=-12.52 N=-11.02 Na=-11.02 O=+nan dB
+        f_trig: m0=7062.0 N=3114.0 Na=3114.0 O=nan Hz  status={'m0': 'ok', 'N': 'ok', 'Na': 'ok', 'O': 'skipped'}
+
+总耗时 2924 s。⛔ 未经 critic 评审;本文件不含结论性判读。
