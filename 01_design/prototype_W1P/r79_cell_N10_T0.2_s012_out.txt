@@ -18,26 +18,6 @@
         ⭐占用: N0_locmax/槽=135.3 N1_cand/槽=48.00(n_cand=48) **table_full=750/750** n_track峰值=7/12 g_duck最深=-6.00
         频点 N=[108.5, 364.6, 765.2, 1033.4, 1401.8, 2517.4, 3483.4, 3827.0, 5504.0, 7581.0]
 
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:365: RuntimeWarning: overflow encountered in scalar multiply
-  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:365: RuntimeWarning: overflow encountered in scalar power
-  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:365: RuntimeWarning: invalid value encountered in scalar divide
-  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:367: RuntimeWarning: overflow encountered in scalar power
-  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:367: RuntimeWarning: overflow encountered in scalar multiply
-  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:367: RuntimeWarning: invalid value encountered in scalar divide
-  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:365: RuntimeWarning: invalid value encountered in scalar add
-  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:367: RuntimeWarning: invalid value encountered in scalar add
-  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/.local/lib/python3.10/site-packages/numpy/_core/_methods.py:135: RuntimeWarning: overflow encountered in reduce
-  ret = umr_sum(arr, axis, dtype, out, keepdims, where=where)
-/home/it1234/processor/01_design/prototype_W1P/howl_detect.py:21: RuntimeWarning: overflow encountered in square
-  return 20.0 * np.log10(np.sqrt(np.mean(np.square(x))) + 1e-30)
   0.2   2  -13.08           4.00             8.50       5.00   1.00    10   10   True   0.70   0.70     0.0
         INV-O(挂陷==10 ∧ 频点==picks):OK(臂O挂陷=10/10)
         ⭐占用: N0_locmax/槽=133.9 N1_cand/槽=48.00(n_cand=48) **table_full=749/750** n_track峰值=8/12 g_duck最深=-6.00
