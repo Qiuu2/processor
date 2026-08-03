@@ -15,7 +15,10 @@
 > 每个数字带"来源身份证"(L 标),决策权重按来源等级卡死;撤回必须全库传播;产出先过独立 critic 再交人。
 
 三条不可动摇:
-1. **独立 critic verdict 前不 commit/不 release/不冻结**;in-context 自审不算门;修正稿同等过门。
+1. **独立 critic verdict 前不 release/不冻结/不下游引用/不对外承诺**;in-context 自审不算门;修正稿同等过门。
+   **⚠ commit ≠ 放行**(2026-08-01 CTO 裁定,F-20 修复,细则见 `.claude/team_config.md` §Commit discipline):
+   **允许归档性 commit**,条件两条都要 ——①**文件头写明门禁状态** ②**commit message 前缀 `[未过门]`**;
+   **禁止(强度不变)**:PASS 前的 release / 冻结 / **下游引用** / 对外承诺 / 作为其他工件的依据。
 2. **不可逆动作(见治理 §2 十一项)前须 L1(或 L2+签字)+ 人审**;可逆性不得自我降档。
 3. **假绿纪律**:测试必须真依赖被测物 + 对 broken 版能 FAIL;bypass 恒等/同实现自比/纯正弦自证都不算验证。
 
@@ -47,7 +50,7 @@ D1 全链路信号流程图(**含 AEC 参考路径**)｜D2 全算法参数阈值
 ## 5. 工作方式
 - 架构/协议/状态机/DAG:见根 `SKILL.md`。
 - 每个 teammate 读自己的 `agents/<role>/{profile,soul,skill,memory}.md` 上岗;memory 从空累积,**任何进 memory/log 的数字挂 L 标,不确定就标 [L4/待验证],别编**。
-- 派单 prompt 必须显式包含:交付物定义+验收判据、硬顺序(实现→自验→SendMessage critic→**收独立 verdict**→PASS 才 commit)、相关 DEC/假设引用。
+- 派单 prompt 必须显式包含:交付物定义+验收判据、硬顺序(实现→自验→SendMessage critic→**收独立 verdict**→PASS 才**放行**;归档 commit 可先行,须 `[未过门]` + 文件头门禁状态)、相关 DEC/假设引用。
 - 决策记 `decisions_log.md`(6 字段:依据数字/来源等级/数据出处/可逆性/验证状态/风险声明)。
 - 元教训(出生先验):`ee-agent-team-starter/00_governance/LESSONS_SEED.md`。
 
