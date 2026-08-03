@@ -72,3 +72,60 @@ deps: clrig.py@8ad47ce8d260dd18 nhs.py@706b658842d84316 howl_detect.py@fd63e901f
     注:NHS自选挂了 1 个陷波 @[5377.3], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
   0.5/0 代价 -6.08 覆盖34.9% | ORACLE(上界)  2.50 | NHS自选  1.50 | FLAT(等代价baseline)  6.08 | Δwin_oracle -3.58 | Δwin_nhs -4.58
     注:NHS自选挂了 1 个陷波 @[4641.1], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
+  0.5/1 代价 -3.29 覆盖26.1% | ORACLE(上界)  4.50 | NHS自选  1.00 | FLAT(等代价baseline)  3.29 | Δwin_oracle +1.21 | Δwin_nhs -2.29
+    注:NHS自选挂了 1 个陷波 @[7578.9], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
+  0.5/2 代价 -6.19 覆盖33.4% | ORACLE(上界)  3.00 | NHS自选  2.00 | FLAT(等代价baseline)  6.19 | Δwin_oracle -3.19 | Δwin_nhs -4.19
+    注:NHS自选挂了 3 个陷波 @[3112.3, 5377.0, 7062.2], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
+
+########## T_OBS = 30 s ##########
+--- bw_oct = 0.2000  (总带宽 1.60 oct)
+  0.2/0 代价-11.68 覆盖55.6% | ORACLE(上界)  6.00 | NHS自选  1.50 | FLAT(等代价baseline) 11.68 | Δwin_oracle -5.68 | Δwin_nhs -10.18
+    注:NHS自选挂了 1 个陷波 @[2559.9], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波  ⚠ f_trig=52.0Hz <120 ⇒ [未按 F36 收敛],不进结论
+  0.2/1 代价 -9.65 覆盖52.7% | ORACLE(上界)  6.00 | NHS自选  2.50 | FLAT(等代价baseline)  9.65 | Δwin_oracle -3.65 | Δwin_nhs -7.15
+    注:NHS自选挂了 3 个陷波 @[1033.4, 2517.2, 5504.2], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波  ⚠ f_trig=22.0Hz <120 ⇒ [未按 F36 收敛],不进结论
+  0.2/2 代价-12.86 覆盖65.0% | ORACLE(上界)  7.50 | NHS自选  7.00 | FLAT(等代价baseline) 12.86 | Δwin_oracle -5.36 | Δwin_nhs -5.86
+    注:NHS自选挂了 8 个陷波 @[170.1, 503.1, 716.3, 1796.6, 2403.3, 2970.5], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波  ⚠ f_trig=74.0Hz <120 ⇒ [未按 F36 收敛],不进结论
+  0.5/0 代价 -9.31 覆盖51.4% | ORACLE(上界)  3.00 | NHS自选  0.50 | FLAT(等代价baseline)  9.31 | Δwin_oracle -6.31 | Δwin_nhs -8.81
+    注:NHS自选挂了 2 个陷波 @[2261.4, 4641.2], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波  ⚠ f_trig=52.0Hz <120 ⇒ [未按 F36 收敛],不进结论
+  0.5/1 代价-10.10 覆盖53.9% | ORACLE(上界)  6.00 | NHS自选  2.50 | FLAT(等代价baseline) 10.10 | Δwin_oracle -4.10 | Δwin_nhs -7.60
+    注:NHS自选挂了 6 个陷波 @[1033.8, 1406.0, 2230.5, 2893.3, 4705.0, 7579.1], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波  ⚠ f_trig=22.0Hz <120 ⇒ [未按 F36 收敛],不进结论  ⚠ f_trig=22.0Hz <120 ⇒ [未按 F36 收敛],不进结论
+  0.5/2 代价-12.44 覆盖63.5% | ORACLE(上界)  4.50 | NHS自选  2.50 | FLAT(等代价baseline) 12.44 | Δwin_oracle -7.94 | Δwin_nhs -9.94
+    注:NHS自选挂了 8 个陷波 @[309.9, 378.2, 452.4, 671.7, 940.0, 2530.0], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
+
+--- bw_oct = 0.1250  (总带宽 1.00 oct)
+  0.2/0 代价 -5.74 覆盖34.0% | ORACLE(上界)  5.00 | NHS自选  1.50 | FLAT(等代价baseline)  5.74 | Δwin_oracle -0.74 | Δwin_nhs -4.24
+    注:NHS自选挂了 1 个陷波 @[2559.9], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波  ⚠ f_trig=52.0Hz <120 ⇒ [未按 F36 收敛],不进结论
+  0.2/1 代价 -6.57 覆盖39.3% | ORACLE(上界)  3.50 | NHS自选  2.50 | FLAT(等代价baseline)  6.57 | Δwin_oracle -3.07 | Δwin_nhs -4.07
+    注:NHS自选挂了 4 个陷波 @[1033.5, 2517.3, 5504.2, 7580.4], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:342: RuntimeWarning: overflow encountered in scalar multiply
+  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:342: RuntimeWarning: overflow encountered in scalar power
+  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:342: RuntimeWarning: invalid value encountered in scalar divide
+  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:344: RuntimeWarning: overflow encountered in scalar power
+  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:344: RuntimeWarning: overflow encountered in scalar multiply
+  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:344: RuntimeWarning: invalid value encountered in scalar divide
+  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:342: RuntimeWarning: invalid value encountered in scalar add
+  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:344: RuntimeWarning: invalid value encountered in scalar add
+  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:600: RuntimeWarning: overflow encountered in square
+  seg = M[max(2, klo):khi].astype(float) ** 2
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:652: RuntimeWarning: invalid value encountered in scalar subtract
+  dR = pr['R0'] - self._rest_level(M, df, pr['f'])    # ★ 共模(剔除 f 邻域)
+/home/it1234/.local/lib/python3.10/site-packages/numpy/_core/_methods.py:52: RuntimeWarning: overflow encountered in reduce
+  return umr_sum(a, axis, dtype, out, keepdims, initial, where)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:342: RuntimeWarning: overflow encountered in scalar add
+  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/processor/01_design/prototype_W1P/nhs.py:344: RuntimeWarning: overflow encountered in scalar add
+  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
+/home/it1234/.local/lib/python3.10/site-packages/numpy/_core/_methods.py:135: RuntimeWarning: overflow encountered in reduce
+  ret = umr_sum(arr, axis, dtype, out, keepdims, where=where)
+/home/it1234/processor/01_design/prototype_W1P/howl_detect.py:21: RuntimeWarning: overflow encountered in square
+  return 20.0 * np.log10(np.sqrt(np.mean(np.square(x))) + 1e-30)
+  0.2/2 代价-12.34 覆盖53.8% | ORACLE(上界)  5.00 | NHS自选  6.00 | FLAT(等代价baseline) 12.34 | Δwin_oracle -7.34 | Δwin_nhs -6.34
+    注:NHS自选挂了 7 个陷波 @[1029.3, 1797.2, 2403.0, 3112.2, 3891.6, 5377.4], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
