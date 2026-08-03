@@ -1,0 +1,42 @@
+未经 critic 评审 —— 0.2/sd2 负相关的【分配时序】直测(lead 点名)  [L2/宿主仿真]
+问:R_RISE 18→3 时,入选式 6→12 上升,而轨峰 3→2、分类 23→12、挂陷 3→1 全部下降。
+    是不是【早期一次错误分配】改变了谱,把后面该挂的轨毁掉了?
+
+神谕 picks(按 |F| 降序,首个=top1):[5378.5, 7062.2, 3114.9, 4179.0, 2402.3, 1800.1, 716.5, 1030.5]
+
+--- R_RISE=18.0  最终挂陷 3 个 @[3112.4, 5377.4, 7063.4]
+    事件流(前 14 条):
+      seq=22   ('engage-GROWTH', 5377.4)
+      seq=23   ('deepen', 5377.4)
+      seq=24   ('deepen', 5377.4)
+      seq=38   ('c8-howl', 5377.4)
+      seq=41   ('engage-GROWTH', 3112.4)
+      seq=42   ('deepen', 3112.4)
+      seq=43   ('deepen', 3112.4)
+      seq=57   ('c8-howl', 3112.4)
+      seq=118  ('engage-PERSIST', 7063.4)
+      seq=119  ('deepen', 7063.4)
+      seq=120  ('deepen', 7063.4)
+      seq=121  ('deepen', 7063.4)
+      seq=122  ('deepen', 7063.4)
+      seq=123  ('deepen', 7063.4)
+    计数:N4_born=4 n_carried=3 preempt=0 N5_howl=23
+--- R_RISE=3.0  最终挂陷 1 个 @[5377.4]
+    事件流(前 14 条):
+      seq=19   ('engage-GROWTH', 5377.4)
+      seq=20   ('deepen', 5377.4)
+      seq=21   ('deepen', 5377.4)
+      seq=22   ('deepen', 5377.3)
+      seq=23   ('deepen', 5377.3)
+      seq=24   ('deepen', 5377.3)
+      seq=25   ('DEPTH_EXHAUSTED', 5377.2)
+      seq=25   ('duck-depth', -1.0)
+      seq=25   ('deepen', 5377.2)
+      seq=26   ('duck-depth', -2.0)
+      seq=26   ('deepen', 5377.2)
+      seq=27   ('duck-depth', -3.0)
+      seq=27   ('deepen', 5377.2)
+      seq=28   ('duck-depth', -4.0)
+    计数:N4_born=2 n_carried=1 preempt=0 N5_howl=12
+
+⛔ 未经 critic 评审;判读由人在看到数之后写。

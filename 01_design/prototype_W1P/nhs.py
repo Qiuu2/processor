@@ -90,6 +90,14 @@ class Params:
         #   ⚠ 只改 `:860` 一处;`rapid_onset` 在 PHPR 否决豁免臂 2(`_phpr_veto` 内)另有用途,
         #     全局置假会连带改动那一处 = 两处一起改。
         self.growth_and_gate = False
+        # ── ⭐ r75 分配名额优先级开关(2026-08-03,lead 裁定;**默认 False = 现行行为**)
+        #   True ⇒ `_classify` 截断前的排序键插入「是否已挂陷」布尔秩
+        #          ⇒ 每槽唯一的 howl 名额优先给【尚未被挂】的峰
+        #   缘由:`nhs.py:891` `return out[:1]...` 是硬截断 ⇒ 供给恒为 1 howl/槽;
+        #        而排序键 `(不是PANIC, −b)` 里**没有"是否已挂陷"项**
+        #        ⇒ 已挂峰的复检只要斜率高就能挤掉未挂的新峰 ⇒ 饿死(F52/F55)。
+        #   ⚠ 不引入任何新阈值:`_notch_covers` 是既有谓词(`:711`),只是上提到排序键。
+        self.prefer_unnotched = False
         # ── r12 新判据(IF-v1.8):族成员到达时刻 vs 候选自身增长起点
         self.grow_onset_db = 3.0     # 候选自身"增长起点" = 电平较诞生电平上升 ≥ 此值
         self.fam_late_min = 2        # 族成员须**晚到** ≥ 此槽数,才算因果下游
@@ -887,7 +895,11 @@ class NHS:
             if cls:
                 out.append(dict(cls=cls, f=float(np.median(tr.fmed)), tr=tr,
                                 lv=tr.last_level, b=b))
-        out.sort(key=lambda h: (h['cls'] != 'PANIC', -h['b']))
+        # ⭐ r75:`prefer_unnotched=False`(默认)时第二键恒为 False ⇒ 常量分量不影响排序
+        #   ⇒ 与改前**逐符号等价**;等价性由 r75a 的逐位实跑对照证明,不靠"读起来一样"。
+        out.sort(key=lambda h: (h['cls'] != 'PANIC',
+                                self._notch_covers(h['f']) if P.prefer_unnotched else False,
+                                -h['b']))
         return out[:1] if out and out[0]['cls'] != 'PANIC' else out[:2]
 
     # ---------------- 状态机 / 分配 ----------------
