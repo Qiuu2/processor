@@ -50,3 +50,7 @@ deps: clrig.py@8ad47ce8d260dd18 nhs.py@706b658842d84316 howl_detect.py@fd63e901f
     注:NHS自选挂了 3 个陷波 @[717.0, 4377.2, 5377.0], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
 
 --- bw_oct = 0.1250  (总带宽 1.00 oct)
+  0.2/0 代价 -5.74 覆盖34.0% | ORACLE(上界)  5.50 | NHS自选  1.50 | FLAT(等代价baseline)  5.74 | Δwin_oracle -0.24 | Δwin_nhs -4.24
+    注:NHS自选挂了 1 个陷波 @[2559.9], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
+  0.2/1 代价 -6.57 覆盖39.3% | ORACLE(上界)  3.50 | NHS自选  2.50 | FLAT(等代价baseline)  6.57 | Δwin_oracle -3.07 | Δwin_nhs -4.07
+    注:NHS自选挂了 3 个陷波 @[1033.5, 2517.3, 5504.2], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
