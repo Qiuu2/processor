@@ -163,13 +163,16 @@ void mem_sizeof_check_run(FILE *fcsv)
 #include <limits.h>
 #include <services/pwr/adi_pwr.h>
 
-/* ⚠ 板上实测:该头文件【存在且能包含】,但未声明下面两个函数
- *   ⇒ 编译器报 cc0223「declared implicitly」+ cc1080「no full prototype」
- *      + cc0188「enumerated type mixed with another type」(返回值被当 int)
- *   ⇒ 隐式声明会让返回值与参数类型都不受检查,且可能在链接期才失败。
- *   ⇒ 故此处按 ADI 电源服务的公开签名自带原型。
- *   ⚠ 若链接期报 undefined symbol,说明该服务未被链接进来 ⇒
- *      把 w1c_config.h 的 ENABLE_CLK_READBACK 改 0,其余内核不受影响,并把报错回传。 */
+/* NOTE (measured on target, 2026-08-03): this header EXISTS and includes fine,
+ * but does NOT declare the two functions below.
+ *   -> cc0223 "declared implicitly" + cc1080 "no full prototype"
+ *      + cc0188 "enumerated type mixed with another type" (return treated as int)
+ *   -> Implicit declaration disables ALL type checking on args and return value,
+ *      and may only fail at link time.
+ *   -> Hence we supply the prototypes ourselves, per ADI's published signatures.
+ *   -> If the LINKER reports "undefined symbol", the power service is not linked in:
+ *      set ENABLE_CLK_READBACK = 0 in w1c_config.h (other kernels unaffected)
+ *      and send the error text back. */
 #ifndef ADI_PWR_GETCOREFREQ_DECLARED
 ADI_PWR_RESULT adi_pwr_GetCoreFreq(uint32_t dev, uint32_t *fcclk);
 ADI_PWR_RESULT adi_pwr_GetSystemFreq(uint32_t dev, uint32_t *fsysclk,

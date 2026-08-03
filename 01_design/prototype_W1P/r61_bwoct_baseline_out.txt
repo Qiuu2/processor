@@ -97,36 +97,6 @@ deps: clrig.py@8ad47ce8d260dd18 nhs.py@706b658842d84316 howl_detect.py@fd63e901f
     注:NHS自选挂了 1 个陷波 @[2559.9], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波  ⚠ f_trig=52.0Hz <120 ⇒ [未按 F36 收敛],不进结论
   0.2/1 代价 -6.57 覆盖39.3% | ORACLE(上界)  3.50 | NHS自选  2.50 | FLAT(等代价baseline)  6.57 | Δwin_oracle -3.07 | Δwin_nhs -4.07
     注:NHS自选挂了 4 个陷波 @[1033.5, 2517.3, 5504.2, 7580.4], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:342: RuntimeWarning: overflow encountered in scalar multiply
-  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:342: RuntimeWarning: overflow encountered in scalar power
-  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:342: RuntimeWarning: invalid value encountered in scalar divide
-  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:344: RuntimeWarning: overflow encountered in scalar power
-  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:344: RuntimeWarning: overflow encountered in scalar multiply
-  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:344: RuntimeWarning: invalid value encountered in scalar divide
-  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:342: RuntimeWarning: invalid value encountered in scalar add
-  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:344: RuntimeWarning: invalid value encountered in scalar add
-  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:600: RuntimeWarning: overflow encountered in square
-  seg = M[max(2, klo):khi].astype(float) ** 2
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:652: RuntimeWarning: invalid value encountered in scalar subtract
-  dR = pr['R0'] - self._rest_level(M, df, pr['f'])    # ★ 共模(剔除 f 邻域)
-/home/it1234/.local/lib/python3.10/site-packages/numpy/_core/_methods.py:52: RuntimeWarning: overflow encountered in reduce
-  return umr_sum(a, axis, dtype, out, keepdims, initial, where)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:342: RuntimeWarning: overflow encountered in scalar add
-  ap = (X[k+1].real*X[k].real + X[k+1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/processor/01_design/prototype_W1P/nhs.py:344: RuntimeWarning: overflow encountered in scalar add
-  am = (X[k-1].real*X[k].real + X[k-1].imag*X[k].imag) / (abs(X[k])**2)
-/home/it1234/.local/lib/python3.10/site-packages/numpy/_core/_methods.py:135: RuntimeWarning: overflow encountered in reduce
-  ret = umr_sum(arr, axis, dtype, out, keepdims, where=where)
-/home/it1234/processor/01_design/prototype_W1P/howl_detect.py:21: RuntimeWarning: overflow encountered in square
-  return 20.0 * np.log10(np.sqrt(np.mean(np.square(x))) + 1e-30)
   0.2/2 代价-12.34 覆盖53.8% | ORACLE(上界)  5.00 | NHS自选  6.00 | FLAT(等代价baseline) 12.34 | Δwin_oracle -7.34 | Δwin_nhs -6.34
     注:NHS自选挂了 7 个陷波 @[1029.3, 1797.2, 2403.0, 3112.2, 3891.6, 5377.4], g_duck最深 -6.00 dB  ⚠ duck 参与 ⇒ 该列非纯陷波
   0.5/0 代价 -9.21 覆盖44.2% | ORACLE(上界)  2.00 | NHS自选  2.50 | FLAT(等代价baseline)  9.21 | Δwin_oracle -7.21 | Δwin_nhs -6.71
