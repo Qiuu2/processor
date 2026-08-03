@@ -222,14 +222,80 @@ def check_K():
     r = measure(SRC * 0.5)
     need = ["fs", "M", "hop", "overlap", "window", "band_in", "band_full",
             "floor_db", "gate_db", "erb_formula", "cite_sd", "deviation",
-            "ansi_table2_variant"]
+            "ansi_table2_variant", "t_window", "t_window_lit",
+            "t_window_lit_binding", "frame_time_def", "weighting_law",
+            "normalize", "psd_est", "integration", "report", "time_align",
+            "provenance"]
     miss = [k for k in need if k not in r.workpoint]
     ok = not miss and r.workpoint["deviation"] is not None  # 48 kHz 必须自报偏离
-    return ok, [f"  缺失键: {miss or '无'}",
+    return ok, [f"  {len(need)} 个必备键,缺失: {miss or '无'}",
                 f"  M={r.workpoint['M']} hop={r.workpoint['hop']} "
                 f"win={r.workpoint['window']} overlap={r.workpoint['overlap']}",
                 f"  自报偏离: {r.workpoint['deviation']}",
                 f"  ANSI 变体: {r.workpoint['ansi_table2_variant']}"]
+
+
+def check_L():
+    """L · 平均时间窗:分段已知答案。
+
+    信号前半衰减 6 dB、后半衰减 20 dB。取窗使窗内帧**整帧**落在同一段
+    ⇒ SD 必须精确回读该段的衰减值(而不是两段的混合)。
+    同时验证:**原文的 30–60 s 窗不会被自动套用**,且套错时是"响的"(N/A + 原因)。"""
+    rng = np.random.default_rng(SEED + 1)
+    n = int(FS * 12.0)
+    src = rng.standard_normal(n)
+    g = np.where(np.arange(n) < n // 2, 10.0 ** (-6.0 / 20.0), 10.0 ** (-20.0 / 20.0))
+    proc = src * g
+
+    def m(tw):
+        return sd.sd_measure(processed=proc, source=src, fs=FS, t_window=tw)
+
+    r1, r2, rall = m((0.5, 5.5)), m((6.5, 11.5)), m(None)
+    ok = (abs(r1.band_in.mean_db - 6.0) < 1e-9 and abs(r2.band_in.mean_db - 20.0) < 1e-9
+          and 6.0 < rall.band_in.mean_db < 20.0
+          and r1.n_frames_used < rall.n_frames_used)
+
+    # 原文窗 (30,60) 套到 12 s 台架上 ⇒ 必须报 N/A + 原因,**不得静默给个数**
+    rlit = m(sd.T_WINDOW_JAES2010)
+    ok &= np.isnan(rlit.band_in.mean_db) and rlit.n_frames_used == 0 and bool(rlit.note)
+
+    return ok, [
+        f"  窗 0.5–5.5 s (前半, 衰减 6 dB) : SD_in={r1.band_in.mean_db:.9f} "
+        f"帧 {r1.n_frames_used}/{r1.n_frames}   判据 |SD−6|<1e-9",
+        f"  窗 6.5–11.5 s(后半, 衰减 20 dB): SD_in={r2.band_in.mean_db:.9f} "
+        f"帧 {r2.n_frames_used}/{r2.n_frames}  判据 |SD−20|<1e-9",
+        f"  全时长(默认 None)             : SD_in={rall.band_in.mean_db:.4f} "
+        f"帧 {rall.n_frames_used}/{rall.n_frames}  判据 6<SD<20(两段混合)",
+        f"  原文窗 {sd.T_WINDOW_JAES2010} 套到 12 s 台架: SD_in={rlit.band_in.mean_db} "
+        f"帧 {rlit.n_frames_used}/{rlit.n_frames}",
+        f"    note={rlit.note!r}",
+        f"    ⇒ 原文窗**未被自动套用**;误套时报 N/A + 原因,不静默出数。",
+    ]
+
+
+def check_N():
+    """N · 工作点的**来源身份证**:原文规定的 vs 我们选的,必须分得开。"""
+    wp = measure(SRC * 0.5).workpoint
+    prov = wp["provenance"]
+    tags = ("原文·偏离", "原文·同", "原文", "我方选择", "我方推导")
+    bad = [k for k, v in prov.items() if not v.startswith(tags)]
+    ok = (not bad
+          and wp["t_window"] is None                                # 默认不套原文窗
+          and tuple(wp["t_window_lit"]) == (30.0, 60.0)             # 原文值已留痕
+          and prov["t_window_lit"].startswith("原文")
+          and prov["t_window"].startswith("我方选择")
+          and bool(wp["t_window_lit_binding"]))
+    counts = {}
+    for v in prov.values():
+        t = next(x for x in tags if v.startswith(x))
+        counts[t] = counts.get(t, 0) + 1
+    return ok, [
+        f"  {len(prov)} 项工作点全部带来源标签,标签外的项: {bad or '无'}",
+        f"  分布: " + "  ".join(f"{k}={v}" for k, v in sorted(counts.items())),
+        f"  原文窗 t_window_lit={tuple(wp['t_window_lit'])} s ← {prov['t_window_lit']}",
+        f"  本次实际 t_window={wp['t_window']} ← {prov['t_window']}",
+        f"  绑定条件: {wp['t_window_lit_binding']}",
+    ]
 
 
 NORMAL = [
@@ -242,6 +308,8 @@ NORMAL = [
     ("I", "静音源 ⇒ N/A 而非 0", check_I),
     ("J", "接口:无单值出口", check_J),
     ("K", "工作点向量完整", check_K),
+    ("L", "平均时间窗(含原文 30–60 s 不自动套用)", check_L),
+    ("N", "工作点来源身份证:原文 vs 我方", check_N),
 ]
 
 
@@ -270,6 +338,8 @@ MUTANTS = [
      lambda w: w, "B"),
     ("M7", "加权函数 → 正比 ERB(方向反转)", "_erb_weights_raw",
      lambda f: erb_ref(f), "E"),
+    ("M9", "平均时间窗被忽略(恒全选帧)", "_time_mask",
+     lambda times, tw: np.ones(len(times), dtype=bool), "L"),
 ]
 
 CHECK_BY_ID = {cid: fn for cid, _, fn in NORMAL}
@@ -292,8 +362,13 @@ def main():
     w = L.append
 
     w("§0 被测件 / 台架")
-    w(f"  被测件 : sd_meter.py  (SD = van Waterschoot & Moonen 2010 JAES 式(32) p.937")
-    w(f"                          = 2011 Proc.IEEE 式(111) p.319)")
+    w("  被测件 : sd_meter.py")
+    w("  SD 主引: van Waterschoot & Moonen, J. Audio Eng. Soc. 58(11), 2010, **式(32) 页 937**")
+    w("           —— 取它作主引是因为**它的语境正是 NHS**(S_d 原文写作 "
+      "howling-compensated signal)")
+    w("  SD 旁证: 同式见 Proc. IEEE 99(2), Feb 2011, 式(111) 页 319(语境为 HA-AFC),")
+    w("           谱估计口径(|短时 DFT|²、50% 重叠、M 档位、mean+max 都报)由该处补齐")
+    w("  ⚠ 原始出处 Spriet, Eneman, Moonen, Wouters, EUSIPCO 2008 (Lausanne) **不在库**")
     w(f"  台架   : 白噪源 seed={SEED}, fs={FS:.0f} Hz, {DUR:.0f} s, M=4096, Hann, 50% 重叠")
     w(f"  参照   : analytic_sd() —— 对定义式做连续网格积分(freqz,**不走 STFT**),")
     w(f"           ERB 公式在本脚本内**独立重写**,故变异 sd_meter 时参照不会跟着错。")

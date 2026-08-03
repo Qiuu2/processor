@@ -94,8 +94,17 @@
     X dB ⇒ SD = X"不成立。⇒ 归一化是被**自测 B**钉死的定义性选择。
   - **谱地板 / 帧门限**:原文未写。见 `sd_measure` docstring。
 
-D6(工作点向量):每个 SD 数附
-  `{fs, M, hop, overlap, window, band, erb_formula, floor_db, gate_db, cites}`。
+  - **平均时间窗 t_window 默认 None(全时长)= 我方选择**。**原文自己用的是
+    30 s ≤ t ≤ 60 s**(JAES 2010 p.937,原文工作点,见 `T_WINDOW_JAES2010`),但那
+    绑定在原文的仿真时序上(60 s / 四等长阶段各 15 s / t=45 s 路径突变)⇒
+    **本模块不自动套用**。区别已在工作点向量里留痕(`t_window` vs `t_window_lit`)。
+
+D6(工作点向量):每个 SD 数附完整工作点 + **每一项的来源身份证**
+  (`workpoint['provenance']`:原文 / 原文·偏离 / 我方选择 / 我方推导),
+  含 `{fs, M, hop, overlap, window, band_in, band_full, weighting_law, normalize,
+      psd_est, integration, report, floor_db, gate_db, frame_time_def,
+      t_window, t_window_lit, t_window_lit_binding, time_align, erb_formula, cite_sd,
+      deviation, ansi_table2_variant}`。
 [L2/综述原文 + L3/教科书闭式 + L1/无(未上板)]
 """
 from __future__ import annotations
@@ -126,6 +135,59 @@ CITE_SD = ("van Waterschoot & Moonen 2010 JAES 58(11) 式(32) p.937 "
            "原始出处 Spriet et al. EUSIPCO 2008 Lausanne (不在本库)")
 CITE_ERB = ("Glasberg & Moore 1990 ERB_N 闭式,经 B. Moore 教科书 [L3]; "
             "**非** ANSI S3.5-1997 Table 2(标准原件不在库,该变体未实现)")
+
+# ─────────────────────────────────────────────────────────────────────────
+# 原文的平均时间窗 —— **这是原文的工作点,不是我们的选择**(留痕用)
+# ─────────────────────────────────────────────────────────────────────────
+# JAES 2010 p.937 原文:"We will evaluate the **mean SD, averaged over the time
+#   interval 30 s ≤ t ≤ 60 s**, which corresponds to the preferential mode of
+#   operation of the sound reinforcement system (because it allows for a high
+#   electroacoustic forward path gain)."
+T_WINDOW_JAES2010 = (30.0, 60.0)
+
+# ⚠⚠ 该区间**绑定在原文自己的仿真时序上,不是可移植常数**。
+# 原文仿真(JAES 2010 p.936 / Proc.IEEE 2011 p.318)= 60 s,**四个等长阶段各 15 s**:
+#     0–15 s   增益 K1(若不做反馈控制则留 3 dB 增益裕度),让算法先部分收敛
+#    15–30 s   增益 20log₁₀K(t) 线性升至 K2 = K1 + ΔK(**越过失稳点**)
+#    30–45 s   增益固定在 K2
+#    t = 45 s  反馈路径突变(话筒移位 1 m)
+#    45–60 s   增益仍固定在 K2,新路径
+# ⇒ **30–60 s = 第 3+4 阶段 = 增益已固定在抬高后的 K2 的那两段**,且跨过路径突变。
+# ⇒ **台架时序不同,该区间就没有意义。故本模块【不自动套用】**:`t_window` 默认 None
+#   (全时长),要用原文口径必须由调用方显式传入,且须先确认自家台架时序可比。
+T_WINDOW_JAES2010_BINDING = (
+    "绑定原文仿真时序:总长 60 s / 四等长阶段各 15 s / 增益于 15–30 s 线性升至 K2 越过失稳点 / "
+    "t=45 s 反馈路径突变 ⇒ 30–60 s = 增益固定在 K2 的第 3+4 阶段。台架时序不同则不可套用。"
+)
+
+# ─────────────────────────────────────────────────────────────────────────
+# 工作点每一项的**来源身份证**(治理铁律:每个数字带 L 标 / 分清原文与我方)
+#   「原文」   = 两篇综述明文规定
+#   「原文·偏离」= 原文有规定但我们改了(必须能说出为什么)
+#   「我方选择」 = 原文没写,我们定的
+#   「我方推导」 = 原文给了要求但没给公式,由我们推出来的
+# ─────────────────────────────────────────────────────────────────────────
+WORKPOINT_PROVENANCE = {
+    "fs":             "我方选择(台架采样率)",
+    "M":              "原文·偏离(原文只给 16k→2048 / 44.1k→4096;48k 不在档位)",
+    "hop":            "原文(50% 重叠)",
+    "overlap":        "原文(50% 重叠)",
+    "window":         "我方选择(原文只写 data windows,**未指定窗型**)",
+    "band_full":      "原文(Nyquist interval)",
+    "band_in":        "我方选择(带宽借自 Spriet/Moonen/Wouters 2009 的 FSR,**非** SD 原文口径)",
+    "erb_formula":    "原文·偏离(原文依 ANSI S3.5-1997 Table 2;我们用 Glasberg–Moore 闭式,**不声称等价**)",
+    "weighting_law":  "我方推导(原文只说「每个临界带等权」;w ∝ 1/ERB 是我们推的)",
+    "normalize":      "我方选择(原文未写;取 Σp=1,由自测 B 钉死)",
+    "psd_est":        "原文(|短时 DFT|²)",
+    "integration":    "原文(对 DFT bin 求和近似积分)",
+    "report":         "原文(**mean 与 max 都要报**)",
+    "floor_db":       "我方选择(原文未规定)",
+    "gate_db":        "我方选择(原文未规定)",
+    "frame_time_def": "我方选择(原文未规定帧时间戳如何定义)",
+    "t_window":       "我方选择(默认 None=全时长)—— 原文自己用的是 30–60 s,见 t_window_lit",
+    "t_window_lit":   "原文(JAES 2010 p.937)—— 但绑定原文仿真时序,见 t_window_lit_binding",
+    "time_align":     "原文·同(原文亦不做时间对齐)",
+}
 
 
 def erb_hz(f):
@@ -179,6 +241,17 @@ def _reduce(p, dev_db):
     return float(np.sqrt(np.sum(p * dev_db * dev_db)))
 
 
+def _time_mask(frame_times, t_window):
+    """按平均时间窗选帧;t_window=None ⇒ 全选。
+
+    ⚠ 原文(JAES 2010 p.937)自己用的是 30 s ≤ t ≤ 60 s,但**那绑定在它自己的仿真
+      时序上**(见 `T_WINDOW_JAES2010_BINDING`)⇒ 本模块**不自动套用**,须调用方显式给。"""
+    if t_window is None:
+        return np.ones(len(frame_times), dtype=bool)
+    t0, t1 = float(t_window[0]), float(t_window[1])
+    return (frame_times >= t0) & (frame_times <= t1)
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # 返回类型:**结构上不可能拿到"一个 SD"**
 # ─────────────────────────────────────────────────────────────────────────
@@ -227,9 +300,14 @@ class SDResult:
                f"overlap={wp['overlap']:.0%} win={wp['window']} "
                f"frames={self.n_frames_used}/{self.n_frames} "
                f"floor={wp['floor_db']:.0f}dB gate={wp['gate_db']:.0f}dB")
+        tw = ("全时长(我方选择)" if wp['t_window'] is None
+              else f"{wp['t_window'][0]:g}–{wp['t_window'][1]:g} s(调用方显式给)")
+        wpt = (f"    平均时间窗: {tw} | 原文自己用的是 "
+               f"{wp['t_window_lit'][0]:g}–{wp['t_window_lit'][1]:g} s [原文·JAES2010 p.937],"
+               f"**未自动套用** —— {wp['t_window_lit_binding']}")
         wpc = f"    ERB: {wp['erb_formula']}"
         wps = f"    SD : {wp['cite_sd']}"
-        out = [head, wpx, wpc, wps]
+        out = [head, wpx, wpt, wpc, wps]
         if wp.get('deviation'):
             out.append(f"    ⚠ 偏离: {wp['deviation']}")
         if self.note:
@@ -262,7 +340,7 @@ def _floor_per_frame(S, floor_db):
 
 def sd_measure(*, processed, source, fs=FS_DEFAULT, M=None, overlap=0.5,
                window="hann", band_in=BAND_FSR, band_full=None,
-               floor_db=-120.0, gate_db=-80.0):
+               floor_db=-120.0, gate_db=-80.0, t_window=None):
     """测 SD(式 32 / 式 111)。**恒返回两列 × (mean, max)**。
 
     ⚠ **keyword-only**:SD 对入参顺序写反完全盲(混淆面 2),故从签名上堵死。
@@ -279,6 +357,10 @@ def sd_measure(*, processed, source, fs=FS_DEFAULT, M=None, overlap=0.5,
     band_full : `full` 列频带,None ⇒ (0, fs/2) = **SD 原文口径**
     floor_db  : 谱地板(dB,相对各信号每帧峰值)。原文未写;防 log(0)。
     gate_db   : 帧门限(dB,相对源信号最大帧能量)。原文未写;剔静音帧。
+    t_window  : 平均时间窗 (t0, t1) 秒,按**帧中心**时刻选帧;None ⇒ 全时长。
+                ⚠ **原文自己用的是 (30, 60) = `T_WINDOW_JAES2010`**,但那绑定在原文
+                  的仿真时序上(60 s / 四等长阶段 / t=45 s 路径突变)⇒ **本函数不自动
+                  套用**。要用原文口径须显式传入,且先确认自家台架时序可比。
 
     ⚠ 不做时间对齐(原文亦不做)⇒ 群延时会被读成谱失真,SD 偏高。见混淆面 3。
     """
@@ -322,9 +404,22 @@ def sd_measure(*, processed, source, fs=FS_DEFAULT, M=None, overlap=0.5,
         if not keep.any():
             note = "所有帧低于帧门限 ⇒ SD 报 N/A(nan)"
 
-    Sd_f = _floor_per_frame(Sd, floor_db)
-    Sv_f = _floor_per_frame(Sv, floor_db)
-    dev = _ratio_db(Sd_f, Sv_f)              # (n_frames, n_bins) dB
+    # ── 平均时间窗:按**帧中心**时刻选帧(帧时间戳定义 = 我方选择,原文未规定)
+    frame_times = (np.arange(n_frames) * hop + M / 2.0) / fs
+    keep = keep & _time_mask(frame_times, t_window)
+    if not keep.any() and not note:
+        note = (f"时间窗 {t_window} 与帧门限筛后无可用帧(信号 {len(d) / fs:.3f} s,"
+                f"帧中心 {frame_times[0]:.3f}–{frame_times[-1]:.3f} s)⇒ SD 报 N/A(nan)")
+
+    # ⚠ 只在**选中的帧**上算比值:被剔掉的帧可能是全零(0/0 → nan)。若先全算再筛,
+    #   numpy 会抛 RuntimeWarning,把一个**本该无害**的情形变成噪声,日后真出问题时
+    #   反而看不见。⇒ 先筛后算,顺带省掉无用计算。
+    idx_keep = np.where(keep)[0]
+    if len(idx_keep):
+        dev = _ratio_db(_floor_per_frame(Sd[idx_keep], floor_db),
+                        _floor_per_frame(Sv[idx_keep], floor_db))
+    else:
+        dev = np.zeros((0, Sd.shape[1]))
 
     if band_full is None:
         band_full = (0.0, fs / 2.0)
@@ -336,8 +431,8 @@ def sd_measure(*, processed, source, fs=FS_DEFAULT, M=None, overlap=0.5,
         if nb == 0:
             raise ValueError(f"频带 {name}=({lo},{hi}) 内没有 DFT bin(M={M} 太短?)")
         p = _normalize_weights(_erb_weights_raw(freqs[mask]))
-        if keep.any():
-            per = np.array([_reduce(p, dev[i, mask]) for i in np.where(keep)[0]])
+        if len(idx_keep):
+            per = np.array([_reduce(p, dev[j, mask]) for j in range(dev.shape[0])])
             mean_db, max_db = float(per.mean()), float(per.max())
         else:
             per = np.zeros(0)
@@ -349,8 +444,19 @@ def sd_measure(*, processed, source, fs=FS_DEFAULT, M=None, overlap=0.5,
               band_in=tuple(float(x) for x in band_in),
               band_full=tuple(float(x) for x in band_full),
               floor_db=float(floor_db), gate_db=float(gate_db),
+              t_window=(None if t_window is None
+                        else (float(t_window[0]), float(t_window[1]))),
+              t_window_lit=T_WINDOW_JAES2010,
+              t_window_lit_binding=T_WINDOW_JAES2010_BINDING,
+              frame_time_def="帧中心 t_i = (i·hop + M/2)/fs",
+              weighting_law="w(f) ∝ 1/ERB(f)(我方推导自「每个临界带等权」)",
+              normalize="Σp = 1",
+              psd_est="|短时 DFT|²(原文原话)", integration="对 DFT bin 求和",
+              report="mean 与 max 都报(原文要求)",
+              time_align="不补偿(原文亦不做)",
               erb_formula=CITE_ERB, cite_sd=CITE_SD, deviation=deviation,
-              ansi_table2_variant="N/A —— ANSI S3.5-1997 原件不在库,未实现,未拟合")
+              ansi_table2_variant="N/A —— ANSI S3.5-1997 原件不在库,未实现,未拟合",
+              provenance=WORKPOINT_PROVENANCE)
 
     return SDResult(band_in=bands[0], band_full=bands[1], n_frames=n_frames,
                     n_frames_used=int(keep.sum()), workpoint=wp, note=note)
