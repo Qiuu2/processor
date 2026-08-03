@@ -208,6 +208,96 @@ def default_M(fs):
     )
 
 
+# ═════════════════════════════════════════════════════════════════════════
+# 窗平滑偏置闸门 —— **用 SD 做跨 bw_oct 比较前必须过这道闸**
+# ═════════════════════════════════════════════════════════════════════════
+# 由来:短时 DFT 的谱分辨率有限,陷波带宽逼近窗主瓣宽时 STFT 把陷波「抹平」
+#       ⇒ **SD 系统性低估失真,且方向恒偏向更窄的档**(窄档白得一份不存在的音质优势)。
+# 标定:r69_smear_grid_out.txt,30 格实测(bw_oct{1/5,1/8,1/12} × f0{200,500,1k,2k,5k}
+#       × M{4096,8192},深度 −20 dB),与定义式解析积分逐格对拍。[L2/宿主仿真]
+#
+# ⚠ 闸门只管**能不能比**,**不做偏置修正** —— 实测偏置不是 ratio 的单值函数
+#   (同 BW 不同 Q 可差 2 pp;同一格换深度 −6→−30 dB 再摆最多 6.8 pp)⇒ 不可回归成公式。
+MAINLOBE_BINS_HANN = 4.0        # Hann 窗主瓣宽 = 4 个 DFT bin
+
+# 闸门阈值(r69 实测标定,取各 ratio 段内**观测到的最大 |偏置|** 定档)
+SMEAR_GATE_OK = 3.0             # ratio ≥ 3   ⇒ 实测 |偏置| ≤ 0.6%
+SMEAR_GATE_CAUTION = 1.0        # 1 ≤ ratio<3 ⇒ 实测 |偏置| ≤ 2.3%
+#                                 ratio < 1   ⇒ 实测 |偏置| 4.8% – 15.8%
+
+
+def bw_oct_to_hz(f0, bw_oct):
+    """倍频程带宽 → 绝对带宽 Hz:BW = f0·(2^N − 1)/2^(N/2)。
+
+    ⚠ `bw_oct` 是**常 Q**:同一个 bw_oct 在不同中心频率上的绝对带宽差一个数量级
+      (1/12 oct 在 200 Hz 是 11.6 Hz,在 5 kHz 是 288.9 Hz)⇒ 窗平滑偏置也随之差一个量级。"""
+    n = float(bw_oct)
+    return float(f0) * (2.0 ** n - 1.0) / 2.0 ** (n / 2.0)
+
+
+def mainlobe_hz(fs=FS_DEFAULT, M=None, window="hann"):
+    """分析窗主瓣宽(Hz)。"""
+    if window != "hann":
+        raise ValueError(f"主瓣宽只对 hann 标定过;window={window!r} 未标定,不外推")
+    if M is None:
+        M, _ = default_M(fs)
+    return MAINLOBE_BINS_HANN * float(fs) / float(M)
+
+
+def smear_ratio(f0, bw_oct, fs=FS_DEFAULT, M=None, window="hann"):
+    """陷波带宽 / 窗主瓣宽。**这是判可比性的自变量。**"""
+    return bw_oct_to_hz(f0, bw_oct) / mainlobe_hz(fs, M, window)
+
+
+def smear_verdict(ratio):
+    """单格判定 → (tag, 说明)。tag ∈ {OK, CAUTION, NOT-COMPARABLE}。"""
+    if ratio >= SMEAR_GATE_OK:
+        return "OK", "实测 |偏置| ≤ 0.6%"
+    if ratio >= SMEAR_GATE_CAUTION:
+        return "CAUTION", "实测 |偏置| ≤ 2.3%,且随陷波深度再摆最多 ~1.6 pp"
+    return "NOT-COMPARABLE", "实测 |偏置| 4.8%–15.8%,且随深度再摆最多 ~6.8 pp"
+
+
+def cross_bw_comparable(cells, fs=FS_DEFAULT, M=None, window="hann", depths=None):
+    """**跨 bw_oct 档比较 SD 之前调这个。**
+
+    cells  : [(f0_Hz, bw_oct), ...] —— 打算放在同一张比较表里的全部格子
+    depths : 各格的陷波深度 dB(可选)。深度不同会**再**引入偏置差 ⇒ 必须同档。
+
+    返回 dict(ok, min_ratio, verdict, reason, per_cell)。
+
+    判据(r69 实测标定 [L2/宿主仿真]):
+      · 全部 ratio ≥ 3            ⇒ **可比**(档间偏置差 ≤ 0.6 pp)
+      · 最小 ratio ∈ [1, 3)       ⇒ **有条件**:要分辨的 SD 差异须 > 3 × 档间偏置差(可达 2 pp)
+      · 最小 ratio < 1            ⇒ **不可比**(档间偏置差 6–10 pp,**方向恒偏向窄档**)
+      · 深度不同档                ⇒ **不可比**(同一格换深度即摆最多 6.8 pp)
+
+    ⚠ 偏置方向是**恒定的**:窄档被低估得更多 ⇒ 不过闸就比,会**系统性选中更窄的 bw_oct**,
+      而那份优势是测量假象。这不是随机误差,多跑几次不会平掉。"""
+    per, ratios = [], []
+    for f0, bw_oct in cells:
+        r = smear_ratio(f0, bw_oct, fs, M, window)
+        tag, why = smear_verdict(r)
+        per.append(dict(f0=float(f0), bw_oct=float(bw_oct),
+                        bw_hz=bw_oct_to_hz(f0, bw_oct), ratio=r, tag=tag, why=why))
+        ratios.append(r)
+    if not ratios:
+        raise ValueError("cells 为空")
+    mn = min(ratios)
+
+    if depths is not None and len(set(round(float(x), 6) for x in depths)) > 1:
+        return dict(ok=False, min_ratio=mn, verdict="NOT-COMPARABLE",
+                    reason=f"陷波深度不同档 {sorted(set(depths))} —— 深度本身即引入最多 6.8 pp 偏置差",
+                    per_cell=per)
+
+    tag, why = smear_verdict(mn)
+    return dict(ok=(tag == "OK"), min_ratio=mn, verdict=tag,
+                reason=(f"最窄格 ratio={mn:.2f} ⇒ {tag}({why});"
+                        + ("可直接跨档比较" if tag == "OK" else
+                           "档间偏置差恒偏向窄档,不得直接跨档比较")),
+                per_cell=per)
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # 四个注入点(seam)。**自测的变异测试替换它们**,以证明本度量对 broken 版会 FAIL。
 # 它们同时也是这段计算的自然分解点,不是为测试硬塞的开关。
