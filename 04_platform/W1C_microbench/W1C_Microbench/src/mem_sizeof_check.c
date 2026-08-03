@@ -190,7 +190,15 @@ void w1c_clk_readback_run(FILE *fcsv)
 
     /* 若板级启动代码已 adi_pwr_Init 过,这里直接读回;未初始化则返回错误码,
      * 我们如实打印错误码,不做任何补救性猜测。 */
-    r_core = adi_pwr_GetCoreFreq((uint8_t)0, &fcclk);
+    /* adi_pwr_GetCoreFreq does NOT exist in the 2156x power service:
+     *   compile -> cc0223 "declared implicitly"
+     *   link    -> li1021 "symbol could not be resolved"
+     * (adi_pwr_GetSystemFreq DOES exist -- declared in adi_pwr_2156x.h:653.)
+     * Rather than guess another name, CCLK is left unread this round; the
+     * SYSCLK/SCLK numbers below are still the ones we came for.
+     * TODO: obtain the real core-frequency accessor name, then restore. */
+    r_core = (ADI_PWR_RESULT)(-1);   /* not attempted */
+    fcclk  = 0u;
     r_sys  = adi_pwr_GetSystemFreq((uint8_t)0, &fsysclk, &fsclk0, &fsclk1);
 
     printf("CLK_READBACK,core_rc=%d,sys_rc=%d,CCLK_Hz=%lu,SYSCLK_Hz=%lu,"
@@ -201,6 +209,9 @@ void w1c_clk_readback_run(FILE *fcsv)
 
     /* ★ 承重结论:SYSCLK/CCLK 的实际比值。我方 t1b 罚周期估算假设它 = 0.5。 */
     if ((r_core == ADI_PWR_SUCCESS) && (r_sys == ADI_PWR_SUCCESS) && (fsysclk != 0u)) {
+        /* NOTE: with CCLK unread this branch cannot be taken this round.
+         * That is intentional -- reporting a ratio without a measured CCLK
+         * would be exactly the "made-up number" pattern this whole run exists to avoid. */
         printf("CLK_RATIO,CCLK_over_SYSCLK=%.4f,assumed_by_t1b=2.0000,%s\n",
                (double)fcclk / (double)fsysclk,
                (((double)fcclk / (double)fsysclk) > 1.99 &&
