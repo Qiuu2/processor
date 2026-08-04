@@ -10,6 +10,7 @@
 >
 > **③ 各线断点(按线读,⛔ 不必全读):**
 > ```
+> ⭐ orchestrator(路由/裁定/CTO 挂账)→ 01_design/ORCHESTRATOR_HANDOFF.md   ← 新增 2026-08-05
 > W1-P / NHS 收口   → 01_design/W1P_CLOSEOUT/  (r5 = PASS-w-c 0B/0M/3m,verdict 在 verdicts/)
 > W1-C / 微基准      → 01_design/W1C_*.md 全族 + W1C_SOFTSPOT_REGISTER.md(17 开口 + 4 已闭)
 > D3/D4 设计 + C 实现 → 01_design/D3D4_CHANNEL_CHAIN_v0.1.md + 02_impl/(见 CHANNEL_DSP_HANDOFF.md)

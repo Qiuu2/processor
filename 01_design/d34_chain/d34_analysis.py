@@ -390,10 +390,19 @@ for lr in [2, 4, 8]:
         for b, a in secs:
             _, g = signal.group_delay((b, a), w=wg)
             gdA += g
-        z = np.exp(-1j*wg); H = np.ones_like(z)
+        # ⛔⛔ Y10 的副作用,当场修掉(⚠ 它是我这次改网格【造成】的,不是原有缺陷):
+        #   网格改成"以频带为端点"后,20 Hz 变成了数组的**第一个元素**
+        #   ⇒ np.gradient 在端点用**单边差分**(内部用中心差分)⇒ 第二轨在带下沿精度掉一档
+        #   ⇒ 实测两轨最大差由 0.0007 → **0.0373** 样本(判据 ≤0.05 ⇒ 仍 PASS,而余量由 70× 掉到 1.3×)
+        #   ⇒ ⛔ 那是一次【被我自己的修法削掉的余量】,⛔ 不能因为"还 PASS"就留着。
+        # ⇒ 修法:**只给求导那一轨**在两端各补一个网格点,求完导再切回带内
+        #   ⇒ 带内每一点(含两个端点)都恢复中心差分,而**评价频带一点没变**。
+        _dw = wg[1] - wg[0]
+        _wp = np.concatenate(([wg[0]-_dw], wg, [wg[-1]+_dw]))
+        z = np.exp(-1j*_wp); H = np.ones_like(z)
         for b, a in secs:
             H *= (b[0]+b[1]*z+b[2]*z*z)/(a[0]+a[1]*z+a[2]*z*z)
-        gdB = -np.gradient(np.unwrap(np.angle(H)), wg)
+        gdB = (-np.gradient(np.unwrap(np.angle(H)), _wp))[1:-1]
         d2 = float(np.max(np.abs(gdA[mg]-gdB[mg])))
         i = int(np.argmax(gdA[mg])); pk = gdA[mg][i]; pf = fg[mg][i]
         two_track_worst = max(two_track_worst, d2)
