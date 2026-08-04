@@ -189,6 +189,7 @@ declare -A ALSO=(
   [CHDSP_BROKEN_GATE_ENUM]="P_GATE_NEGATIVE P_NO_HYST"
   [CHDSP_BROKEN_SMOOTH_FIXED]="P_DET_ONEDIR P_LIM_NOLOOK P_COMP_HARDKNEE"
   [CHDSP_BROKEN_WRAP]="P_NO_SATTEL"
+  [CHDSP_BROKEN_BESSEL_FREEQ]="P_BESSEL_SCALE"
 )
 declare -A ALSO_WHY=(
   [CHDSP_BROKEN_TRUNC]="舍入模式**就是量化器的一部分**,而 P_NOEF 测的正是量化误差功率 ⇒ 同一处改动的第二个观测面,不是第二个缺陷"
@@ -197,6 +198,7 @@ declare -A ALSO_WHY=(
   [CHDSP_BROKEN_BESSEL_RBJ]="两条探针都读 Bessel 系数(一条 a1 之和、一条 max|b|)⇒ 同一族系数的两个观测面"
   [CHDSP_BROKEN_BESSEL_SCALE]="同上,方向相反"
   [CHDSP_BROKEN_SMOOTH_FIXED]="chdsp_smooth_from_ms 是**全部检测器共用**的平滑系数函数 ⇒ 冻住它,门/压限/限幅的时间常数一起变。这是改动点本身的作用域,不是三个缺陷"
+  [CHDSP_BROKEN_BESSEL_FREEQ]="换量化路径必然让系数动 ≤1 LSB,而 P_BESSEL_SCALE 读的正是 max|b| 的 raw ⇒ 同一族系数的第二个观测面,不是第二个缺陷"
   [CHDSP_BROKEN_WRAP]="把饱和换成回绕 ⇒ **根本不再发生饱和** ⇒ chdsp_sat_tripped 永不为真 ⇒ 链内饱和计数必然归零。⇒ 是同一处改动的必然后果,不是第二个缺陷"
   [CHDSP_BROKEN_GATE_ENUM]="⚠ 这一条要说清:门的**行为完全没变**,变的是状态的【数值编码】(CLOSED 从 0 变 1)。P_GATE_NEGATIVE / P_NO_HYST 读的正是 (int)g.state ⇒ 它们的读数必然跟着编码走。⇒ 是**表示**的连带,不是第二个缺陷"
 )
