@@ -216,7 +216,8 @@ void chdsp_out_ch_process(chdsp_out_ch_t *ch, const chdsp_smp_q4_27_t *in,
 #if !CHDSP_BROKEN_CHAIN_ORDER
     /* ④ PEQ —— 在分频之后:阻带大信号先被衰减,链内不饱和。
      * ⛔ 依据不是「省 31.14 dB」(那是两臂之差值,不是余量,critic D3D4 MAJOR-2);
-     *    依据 = 最坏合法配置下 PEQ 在前 +30.00 dBFS 越 Q4.27 余量 24.08,分频在前 −8.28 不越。*/
+     *    依据 = **首个越界的合法配置**下 PEQ 在前 +30.00 dBFS 越 Q4.27 余量 24.08,分频在前 −8.28 不越。
+     *    ⛔ 刻意不写「最坏」:3 段 ⇒ +45.00,8 段更高 —— 论证要的是【越界门槛】不是【量程最坏点】。*/
     chdsp_bq_chain_process(&ch->peq, tmp, tmp, m, &ch->sat);
 #endif
     /* ⑤ FIR → ⑥ 延时 → ⑦ 输出限幅 → ⑧ 音箱保护 → ⑨ 斜坡静音 */
