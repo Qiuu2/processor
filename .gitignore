@@ -25,3 +25,7 @@ Thumbs.db
 02_impl/build_kill/
 02_impl/build/
 *.o
+02_impl/build_r3/
+02_impl/build_mv/
+01_design/fixedpoint/build_r3/
+01_design/fixedpoint/build_mv/

@@ -103,8 +103,14 @@ ensure_green(){ local key="$1" desc="$2" cmd="$3"
     fail=$((fail+1)); fi }
 
 # 闸门必须【因为它自己的失败特征】而变红
-expect_red(){ local tag="$1" desc="$2" cmd="$3" w="$4" want="$5"
+expect_red(){ local tag="$1" desc="$2" cmd="$3" w="$4" want="${5:-}"
   local out rc
+  # ⭐ 器械自检(照抄 phase_a_flip 的形状):没有失败特征串 ⇒ 判据退化回「任何非 0」
+  #   ⇒ 那正是本次 BLOCKER 的病 ⇒ **本条闸门无意义,判 FAIL,⛔ 不得当作通过**。
+  if [ -z "$want" ]; then
+    echo "  [FAIL] $tag  ⛔ 本闸门没有声明失败特征串(want)⇒ 判据退化成「任何非 0」"
+    echo "         ⇒ 器械失效 ⇒ 本条元检查无意义(⛔ 不得当作通过)"
+    fail=$((fail+1)); return; fi
   out=$( ( cd "$w/02_impl" && eval "$cmd" ) 2>&1 ); rc=$?
   if [ $rc -eq 0 ]; then
     echo "  [FAIL] $tag  $desc ⇒ ⛔ 闸门**没有响**"; fail=$((fail+1)); return; fi
