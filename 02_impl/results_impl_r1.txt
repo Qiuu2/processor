@@ -17,3 +17,247 @@ deps: chdsp_biquad.h@d811ee896fcfacdf chdsp_chain.h@8a1cb5f3dd191b6d chdsp_confi
   [PASS] G3b  让 apply_gain 改收 dB(真的打开量纲缺口,符号仍在)⇒ 负编译应拦住 ⇒ 闸门确实变红
   [PASS] G4  把一条断言改成错的 ⇒ 模块自验应变红并非 0 退出 ⇒ 闸门确实变红
   [PASS] G5  把 LR 极性规则改坏 ⇒ 杀伤矩阵的【阴性对照】应变红 ⇒ 闸门确实变红
+  [PASS] G6  注入一个必然存活的变异(被测物零消费者)⇒ 杀伤矩阵应报存活并变红 ⇒ 闸门确实变红
+  [PASS] G7pre  未变异时第二轨对表 ⇒ 未变异时确实是绿的 ⇒ 上一条的红可归因于变异
+  [PASS] G7  只扰动 C 轨的 biquad 输出(+1 LSB)⇒ 第二轨对表应变红 ⇒ 闸门确实变红
+  [PASS] G8pre  未变异时 STRICT=1 与 =0 逐位相同 ⇒ 未变异时确实是绿的 ⇒ 上一条的红可归因于变异
+  [PASS] G8  注入只在 STRICT=0 下生效的扰动 ⇒ 强类型中立性应变红 ⇒ 闸门确实变红
+  [PASS] G10  把 HPF_AFTER_DYN 改回前任的错误形态(挪了但仍在动态之前)⇒ 变异自证应变红 ⇒ 闸门确实变红
+  [PASS] G9  弄坏一条模块自验断言 ⇒ **run_all.sh 整体**应非 0 退出(聚合不吞错) ⇒ 闸门确实变红
+
+  合计: PASS=13  FAIL=0
+  ⇒ 全部闸门(含总聚合)确实会响 ⇒ PASS
+  ⇒ 元检查通过 ⇒ 下面各环的绿是有意义的
+
+### 1. 严格编译(-Werror,强类型)
+  全部模块 -Werror 通过 ✓
+
+### 2. 魔数扫描(硬闸门)
+魔数扫描(硬闸门)
+  无魔数 ⇒ PASS
+
+### 3. 模块自验(硬闸门)
+================================================================
+check_modules  —  D3/D4 各模块自验(**全部硬闸门**)
+  config: fs=48000 L=64 IN_PEQ=8 OUT_PEQ=10 NOTCH=8 FIR=256 XO_SEC=4
+================================================================
+
+biquad
+      +15dB peak=0(期 0) +24dB 架式=-3(期 -3) f0=30k=-1(期 -1) Q=0=-2(期 -2) 非法类型=-5(期 -5)
+  [PASS] CHK-B1    ⭐ 五种情形各自返回【它自己那条】错误码(⛔ 不是「非 0 即算过」)
+      S=2.0@+15dB=0  S=1.0@+15dB=0  |  G=+18.1dB=-3  G=+17.9dB=0
+  [PASS] CHK-B1b   ⭐ S>1 不触发拦截(它几乎不影响界);增益跨 18.0618 dB 才触发 ⇒ 机械守住『界的唯一驱动量是增益』(chdsp_fixed.h §12 已于 2026-08-04 按 critic MAJOR-4 改正;本条是它的可执行形式,⛔ 不许再退回按 S 守)
+      fc 扫 400 点: HPF@DC 非零 0 处;LPF@Nyq 非零 0 处
+  [PASS] CHK-B2    结构约束量化使 DC/Nyquist 零点在量化后恒精确(0 处破坏)
+      LR2=1 LR4=0 LR6=1 LR8=0 (1=须反相)
+  [PASS] CHK-B3    阶数 mod 4 == 2 ⇒ 须反相;== 0 ⇒ 同相
+      斜坡 480 步:越出稳定三角 0 次;输出最大逐样本跳变 4.9078e-03
+  [PASS] CHK-B4    稳定三角是凸集 ⇒ 线性插值恒稳定;且无输出跳变(防爆音)
+
+detector
+      对称 atk=rel=100ms,−20…−100 dBFS:最大偏离均值功率 = 0.013 dB
+  [PASS] CHK-D1    对称时读数精确等于均值功率(≤0.05 dB)
+      −120 dBFS ⇒ 状态 raw = 6444,读数 -124.46 dB(功率底 −125.74,余量 2.7 dB)
+  [PASS] CHK-D2a   ⭐ 功率状态用 Q8.54 ⇒ −120 dBFS **不塌到 0**(⛔ Q4.27 会塌 —— 这是本条真正测的事)
+      −100 dBFS(距底 22.7 dB)⇒ 读数 -103.02 dB(期望 −103.01)
+  [PASS] CHK-D2b   离功率底 ≥20 dB 处精度 ≤0.2 dB
+      功率底: release 50ms ⇒ -128.75 dB;3000ms ⇒ -110.97 dB
+  [PASS] CHK-D3    功率底随 release 变化,最长 release 下 ≈ −111 dB(比门限量程下沿低 31 dB)
+
+dynamics
+      memset 全 0 的门对象:state = 0(0 = CLOSED)
+  [PASS] CHK-Y1a   ⭐ 什么都不设的对象默认落【关门】侧(D6-k:显式设值的测试验不了默认值)
+      −80 dBFS 噪声下门增益 = -60.00 dB,state = 0
+  [PASS] CHK-Y1b   远低于门限时门保持关闭且确实衰减(肯定式条件生效)
+      门限 ±1 dB 摆动 1 秒:状态切换 1 次(迟滞 3 dB ⇒ 应很少)
+  [PASS] CHK-Y2    迟滞抑制了门限附近的颤振
+      阶跃后输出峰值 = 0.5054(阈值 −6 dBFS = 0.5012)
+  [PASS] CHK-Y3    前视使阶跃过冲 ≤15%(⛔ 无前视的反馈式会明显过冲)
+      输入每升 0.25 dB,增益最大跳变 = 0.188 dB(软拐点 12 dB)
+  [PASS] CHK-Y4    软拐点使增益曲线连续(硬拐点会在阈值处跳)
+
+FIR
+      设计返回 0;非对称抽头对数 = 0;群延迟 = 127 样本(期望 127)
+  [PASS] CHK-F1    抽头严格对称 ⇒ 线性相位;群延迟 = (N−1)/2
+      关闭状态 5000 样本:不等 0 处
+  [PASS] CHK-F2    FIR 关闭 = 逐位透传(⛔ 不得偷偷改动样本)
+
+chain
+      40 Hz 阻带激励(−20 dBFS):分频在前的链内峰 0.00122;PEQ 在前 0.39811 ⇒ 差 50.28 dB
+  [PASS] CHK-C1    分频在前使阻带链内电平低 ≥20 dB(设计件 §2③ 的实测 31.14 dB)
+      LR2 ⇒ flip=1;直流 0.1 输入的输出和 = -1.6000(应为负 ⇒ 极性已翻)
+  [PASS] CHK-C2    LR2 的极性翻转规则确实作用在链上(⛔ 不只是个返回值)
+      init=0;钩子调用次数 AEC=1 ANC=1 AGC=1 AFC=1
+  [PASS] CHK-C4    ⭐ 四个 ✳ 插入点每帧各被调用一次 ⇒ 它们真的在链上,不是文档里的箭头
+
+补充检查(杀伤矩阵抓出 10 个变异存活后新增)
+      斜坡前 8 个样本内 a1 出现的不同取值数 = 8(斜坡应逐步变 ⇒ >2)
+  [PASS] CHK-B4b   ⭐ 直接测斜坡机制:a1 在斜坡内逐样本取到多个中间值(⛔ 跳变版只有 1 个)
+      atk=10ms rel=100ms @−20 dBFS ⇒ 读数 -20.89 dB(均值 −23.01,峰值 −20.00)
+  [PASS] CHK-D1b   ⭐ 非对称时读数严格介于均值与峰值之间(⛔ 不分方向的版本会贴到峰值)
+      独立探针读数 L = -46.50 dB(迟滞带 −48…−45);门 state = 0
+  [PASS] CHK-Y1c0  ⭐ 前提自检:检测器读数确实落在迟滞带内 ⇒ 本检查有分辨力
+  [PASS] CHK-Y1c   ⭐ 肯定式:迟滞带内不开门(⛔ 否定式豁免版会开)
+      升到 thr+0.5 ⇒ state=1;再降到 thr−1.5(仍在迟滞带内)⇒ state=1
+  [PASS] CHK-Y2b0  前提自检:thr+0.5 确实把门打开了
+  [PASS] CHK-Y2b   ⭐ 迟滞带内不关门(⛔ 无迟滞版在 thr−1.5 就会关)
+      L = thr 处增益 = -1.102 dB(软拐点解析 -1.125;硬拐点应为 0.000)
+  [PASS] CHK-Y4b   ⭐ 拐点中心的增益等于软拐点解析值(⛔ 硬拐点版在此处为 0)
+      经真链函数,40 Hz@−0.9dBFS + 输出增益 +20dB:饱和粘滞 = 0,计数 = 0
+  [PASS] CHK-C1b   ⭐ 分频在前 ⇒ 阻带大信号先被衰减 ⇒ 链内不饱和(⛔ PEQ 在前会饱和)
+      侧链读数:无 HPF = -23.02 dB;过 HPF = -33.27 dB;门限取其中点 -28.14
+  [PASS] CHK-C3a   ⭐ 前提自检:两种链序的侧链读数相差 >6 dB ⇒ 门限有落点 ⇒ 本检查有分辨力
+      45 Hz 隆隆 −20 dBFS 经真链:输出功率 = -93.43 dB
+  [PASS] CHK-C3    ⭐ HPF 在动态之前 ⇒ 隆隆不顶开门 ⇒ 输出被压(⛔ HPF 在后会顶开门)
+
+分频补全(C 第二批 r8:奇数阶 + Bessel)
+      Bessel 1..8 阶 × LP/HP:设计失败 0 次;max|b| = 1.950593(Q4.27 上限 16)
+  [PASS] CHK-X1    ⭐ Y7 闭合:Bessel 全族 max|b| ≤ 2 ⇒ 装得进 Q4.27(EXP-9 解析预测兑现)
+      Bessel4 @fc=1k,5 个频点 × LP/HP:与 python 轨 max|Δ| = 0.000406 dB
+  [PASS] CHK-X2    ⭐ 两轨:C 的 Bessel 与独立 python 轨(已与 scipy 逐点核过)一致 ≤0.02 dB
+      BW3(奇数阶,含一阶节)LP:节数 2,与 python 轨 max|Δ| = 0.000001 dB
+  [PASS] CHK-X3    ⭐ 奇数阶 BW 正确(守的是 butter_q 用 sin;cos 式在此处会翻红)
+      偶数阶 BW 2/4/6/8 × LP/HP:sin 式 vs cos 式系数集合不匹配 0 处
+  [PASS] CHK-X4    ⭐ F-4 回归:butter_q 改 sin **没有动偶数阶**(逐位同集合)
+      LR3=-6(期 -6) LR4=0(期 0) Bessel9=-6(期 -6)
+  [PASS] CHK-X5    各自返回【它自己那条】错误码(⛔ 不是「非 0 即算过」)
+      一阶节 300 个 fc × LP/HP:失败 0;max|b| raw = 134042267(1.0 = 134217728)
+  [PASS] CHK-X6    一阶节 max|b| ≤ 1 ⇒ Q4.27 装得下,不需额外包络检查
+
+================================================================
+合计: PASS=35  FAIL=0
+退出码 = 0  ⇒ **本文件的每条检查都是硬闸门**
+================================================================
+
+### 3b. 负编译检查(硬闸门,已按 critic BLOCKER 重做)
+负编译检查(硬闸门)
+  --- (B) 前置存活自检:被测物必须真的在 ---
+    文件在 / 符号在 / 合法片段编得过 ✓
+
+  --- (A) 负例:必须因【预期的那条具体错误】失败 ---
+  [PASS] N1  io(Q0.31) 当 smp(Q4.27) 用  ⇒ 命中预期错误 /incompatible type|expected .chdsp_smp_q4_27_t/
+  [PASS] N2  coef 当 smp 用(同 Q 格式,不同量纲)  ⇒ 命中预期错误 /incompatible type|expected .chdsp_smp_q4_27_t/
+  [PASS] N3  跨定标裸相加(io + smp)  ⇒ 命中预期错误 /invalid operands/
+  [PASS] N4  dB 当线性增益用  ⇒ 命中预期错误 /incompatible type|expected .chdsp_gain_q4_27_t/
+  [PASS] N5  调用方自己写 (acc >> 27)  ⇒ 命中预期错误 /invalid operands|conversion to non-scalar/
+  [PASS] N6  功率域(Q8.54)当样本(Q4.27)用  ⇒ 命中预期错误 /incompatible type/
+  [PASS] N7  斜率(Q16.15)当 dB(Q23.8)用  ⇒ 命中预期错误 /incompatible type/
+
+  --- (C) 机制对照臂:同样七个负例在 STRICT_TYPES=0 下必须【全部编译通过】 ---
+      ⇒ 证明上面的失败来自【强类型】,不是片段本身写错(critic 补造的对照,原样纳入)
+    [对照 OK] N1 在 STRICT=0 下编译通过 ⇒ 该负例的失败确由强类型造成
+    [对照 OK] N2 在 STRICT=0 下编译通过 ⇒ 该负例的失败确由强类型造成
+    [对照 OK] N3 在 STRICT=0 下编译通过 ⇒ 该负例的失败确由强类型造成
+    [对照 OK] N4 在 STRICT=0 下编译通过 ⇒ 该负例的失败确由强类型造成
+    [对照 OK] N6 在 STRICT=0 下编译通过 ⇒ 该负例的失败确由强类型造成
+    [对照 OK] N7 在 STRICT=0 下编译通过 ⇒ 该负例的失败确由强类型造成
+    (N5 不列入对照:acc 右移在裸整数下本就合法,其失败-通过翻转正是预期)
+
+  --- 正当用法必须编译通过(护栏的第二个方向,D6-y) ---
+  [PASS] P1  同类型赋值
+  [PASS] P2  经转换函数
+  [PASS] P3  biquad 正常调用
+
+  合计: PASS=10  FAIL=0  对照失败=0
+  ⇒ PASS
+
+### 3c. ⭐ 变异自证(硬闸门 · **杀伤矩阵的前置**)
+  ⇒ 每个变异先自证「它确实改变了它声称要改变的那个行为」,否则杀伤率的分母不可信
+================================================================
+变异自证(硬闸门 · 杀伤矩阵的前置)
+  规则:探针读数未变 ⇒ 该变异没做到它声称的事 ⇒ ⛔ 不得进杀伤矩阵
+================================================================
+
+--- Phase A:结构探针(链序类变异声称的是【位置】)---
+  CHDSP_BROKEN_HPF_AFTER_DYN   好版本: HPF@43 门@50   变异后: HPF@59 门@50
+  [PASS] A1  ⇒ HPF 确实从 门【之前】挪到了【之后】—— 变异名副其实
+  CHDSP_BROKEN_CHAIN_ORDER     好版本: 分频@117 PEQ@126   变异后: 分频@117 PEQ@114
+  [PASS] A2  ⇒ 分频 确实从 PEQ【之前】挪到了【之后】—— 变异名副其实
+  CHDSP_BROKEN_XO_POLARITY     好版本出现 1 次 ⇒ 变异后 0 次(极性翻转段)
+  [PASS] A3  ⇒ 该段确实被移除了 —— 变异名副其实
+
+--- Phase B:行为探针(只比该变异自己那一行读数)---
+  好版本探针读数 15 条 ✓
+  CHDSP_BROKEN_TRUNC             P_TRUNC            好=2                      变异=1                      
+  [PASS] CHDSP_BROKEN_TRUNC  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  CHDSP_BROKEN_GATE_NEGATIVE     P_GATE_NEGATIVE    好=0                      变异=1                      
+  [PASS] CHDSP_BROKEN_GATE_NEGATIVE  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  CHDSP_BROKEN_DET_ONEDIR        P_DET_ONEDIR       好=-5348                  变异=-5890                  
+  [PASS] CHDSP_BROKEN_DET_ONEDIR  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  CHDSP_BROKEN_FIR_NOBYPASS      P_FIR_NOBYPASS     好=0                      变异=2554                   
+  [PASS] CHDSP_BROKEN_FIR_NOBYPASS  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  CHDSP_BROKEN_FIR_ASYM          P_FIR_ASYM         好=0                      变异=1                      
+  [PASS] CHDSP_BROKEN_FIR_ASYM  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  CHDSP_BROKEN_BESSEL_RBJ        P_BESSEL_RBJ       好=-1018576106            变异=-879171692             
+  [PASS] CHDSP_BROKEN_BESSEL_RBJ  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  CHDSP_BROKEN_LIM_NOLOOK        P_LIM_NOLOOK       好=505426                 变异=899999                 
+  [PASS] CHDSP_BROKEN_LIM_NOLOOK  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  CHDSP_BROKEN_BUTTER_COS        P_BUTTER_COS       好=-249834012             变异=-239110178             
+  [PASS] CHDSP_BROKEN_BUTTER_COS  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  CHDSP_BROKEN_POW_NARROW        P_POW_NARROW       好=16720                  变异=0                      
+  [PASS] CHDSP_BROKEN_POW_NARROW  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  CHDSP_BROKEN_NO_HYST           P_NO_HYST          好=1                      变异=0                      
+  [PASS] CHDSP_BROKEN_NO_HYST  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  CHDSP_BROKEN_BQ_NORAMP         P_BQ_NORAMP        好=8                      变异=1                      
+  [PASS] CHDSP_BROKEN_BQ_NORAMP  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  CHDSP_BROKEN_COMP_HARDKNEE     P_COMP_HARDKNEE    好=-282                   变异=0                      
+  [PASS] CHDSP_BROKEN_COMP_HARDKNEE  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  CHDSP_BROKEN_BQ_TIE_FREE       P_BQ_TIE_FREE      好=0                      变异=189                    
+  [PASS] CHDSP_BROKEN_BQ_TIE_FREE  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  CHDSP_BROKEN_NOEF              P_NOEF             好=-16653                 变异=-8316                  
+  [PASS] CHDSP_BROKEN_NOEF  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  CHDSP_BROKEN_WRAP              P_WRAP             好=2147483647             变异=0                      
+  [PASS] CHDSP_BROKEN_WRAP  ⇒ 声称改变的量确实变了 —— 变异名副其实
+
+================================================================
+变异自证合计: PASS=18  FAIL=0
+⇒ 全部变异名副其实 ⇒ 杀伤矩阵的分母可信 ⇒ PASS
+
+### 4. 杀伤矩阵(硬闸门)
+================================================================
+杀伤矩阵(硬闸门)  变异数 = 15
+================================================================
+  阴性对照(无变异):PASS ✓  ⇒ 下面的杀死可归因于变异
+
+  [已杀死] CHDSP_BROKEN_WRAP  ⇐ CHK-1 CHK-1n   (由 check_fixed 拥有)
+  [已杀死] CHDSP_BROKEN_TRUNC  ⇐ CHK-4 CHK-2b   (由 check_fixed 拥有)
+  [已杀死] CHDSP_BROKEN_NOEF  ⇐ CHK-4 CHK-2b   (由 check_fixed 拥有)
+  [已杀死] CHDSP_BROKEN_BQ_NORAMP  ⇐ CHK-B4b 
+  [已杀死] CHDSP_BROKEN_BQ_TIE_FREE  ⇐ CHK-B2 
+  [已杀死] CHDSP_BROKEN_POW_NARROW  ⇐ CHK-D1 CHK-D2a CHK-D2b 
+  [已杀死] CHDSP_BROKEN_DET_ONEDIR  ⇐ CHK-D1b 
+  [已杀死] CHDSP_BROKEN_GATE_NEGATIVE  ⇐ CHK-Y1c 
+  [已杀死] CHDSP_BROKEN_NO_HYST  ⇐ CHK-Y2b 
+  [已杀死] CHDSP_BROKEN_LIM_NOLOOK  ⇐ CHK-Y3 
+  [已杀死] CHDSP_BROKEN_COMP_HARDKNEE  ⇐ CHK-Y4b 
+  [已杀死] CHDSP_BROKEN_FIR_ASYM  ⇐ CHK-F1 
+  [已杀死] CHDSP_BROKEN_FIR_NOBYPASS  ⇐ CHK-F2 
+  [已杀死] CHDSP_BROKEN_CHAIN_ORDER  ⇐ CHK-C1b 
+  [已杀死] CHDSP_BROKEN_XO_POLARITY  ⇐ CHK-C2 
+  [已杀死] CHDSP_BROKEN_HPF_AFTER_DYN  ⇐ CHK-C3 
+  [已杀死] CHDSP_BROKEN_BUTTER_COS  ⇐ CHK-X3 
+  [已杀死] CHDSP_BROKEN_BESSEL_RBJ  ⇐ CHK-X2 
+
+================================================================
+杀伤矩阵:18/18 全部被杀死  ⇒ PASS
+
+### 5. 第二轨 bit-exact(硬闸门)
+已写出 bitexact_{bq_in,bq_out,det_out}.txt
+==================================================================
+ref_modules.py — 第二轨(独立重写,⛔ 不 import C 实现)
+==================================================================
+  [PASS] T1        biquad DF1+EF 逐位相同(20000 样本,不等 0 处)
+  [PASS] T1+       阳性对照:强制改一个值后比对器报出差异 ⇒ 上一行的「相同」有意义
+  [PASS] T2        检测器功率状态逐位相同(20000 样本,不等 0 处)
+==================================================================
+第二轨: 全部通过
+==================================================================
+
+### 6. 强类型开关的数值中立性(硬闸门)
+已写出 bitexact_{bq_in,bq_out,det_out}.txt
+  STRICT=1 vs 0:逐位 SAME ✓
+  阳性对照:强制错值 ⇒ DIFF ✓ ⇒ 上一行的 SAME 有意义
+
+================================================================================
+总闸门: PASS(全部环节通过)
+================================================================================
