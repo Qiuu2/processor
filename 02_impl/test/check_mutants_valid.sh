@@ -163,6 +163,39 @@ declare -A ALSO=(
 declare -A ALSO_WHY=(
   [CHDSP_BROKEN_TRUNC]="舍入模式**就是量化器的一部分**,而 P_NOEF 测的正是量化误差功率 ⇒ 同一处改动的第二个观测面,不是第二个缺陷"
 )
+# ---------------------------------------------------------------------------
+# ⛔ 名单对表(整改 2026-08-04 · critic 02impl MAJOR-3)
+# ---------------------------------------------------------------------------
+# critic 的实证:从 CLAIM 里**删掉一个变异登记** ⇒ 本脚本报 PASS=15 /「分母可信」/ exit 0,
+# 而杀伤矩阵仍然跑 16 个 ⇒ **少自证的那一个照样进了矩阵、照样计入杀伤率。**
+# ⇒ 「自证覆盖了全部变异」这句话**没有任何机械手段守着** —— 它只是一句话。
+# ⇒ 修法:直接从 run_kill_matrix.sh 读 MUTS/FIXED_MUTS,取**对称差**,非空即 FAIL。
+KM="$HERE/run_kill_matrix.sh"
+echo
+echo "--- 名单对表:自证覆盖面 vs 杀伤矩阵名单(⛔ 对称差必须为空)---"
+if [ ! -f "$KM" ]; then
+  echo "  ⛔ 找不到 $KM ⇒ 无法对表 ⇒ 判 FAIL(⛔ 不得当作通过)"; fail=$((fail+1))
+else
+  km_list=$(sed -n '/^\(MUTS\|FIXED_MUTS\)=(/,/^)/p' "$KM" \
+            | grep -oE 'CHDSP_BROKEN_[A-Z0-9_]+' | sort -u)
+  # 结构类变异不走行为探针(它们由 Phase A 覆盖)⇒ 显式登记,⛔ 不是默默豁免
+  STRUCT="CHDSP_BROKEN_HPF_AFTER_DYN CHDSP_BROKEN_CHAIN_ORDER CHDSP_BROKEN_XO_POLARITY"
+  self_list=$( { for k in "${!CLAIM[@]}"; do echo "$k"; done; for k in $STRUCT; do echo "$k"; done; } | sort -u)
+  only_km=$(comm -23 <(echo "$km_list") <(echo "$self_list"))
+  only_sv=$(comm -13 <(echo "$km_list") <(echo "$self_list"))
+  echo "  杀伤矩阵 $(echo "$km_list" | grep -c .) 个 / 自证覆盖 $(echo "$self_list" | grep -c .) 个"
+  if [ -z "$only_km" ] && [ -z "$only_sv" ]; then
+    echo "  [PASS] 名单对表  ⇒ 对称差为空 ⇒ **进矩阵的每一个都自证过**,杀伤率的分母可信"
+    pass=$((pass+1))
+  else
+    [ -n "$only_km" ] && { echo "  [FAIL] ⛔ 在杀伤矩阵里、但**没有自证**:"; echo "$only_km" | sed 's/^/         /'; }
+    [ -n "$only_sv" ] && { echo "  [FAIL] ⛔ 自证登记了、但**不在杀伤矩阵里**(死登记):"; echo "$only_sv" | sed 's/^/         /'; }
+    echo "         ⇒ 杀伤率的分母不可信 ⇒ 本轮杀伤结论作废"
+    fail=$((fail+1))
+  fi
+fi
+echo
+
 for M in "${!CLAIM[@]}"; do
   TAG="${CLAIM[$M]}"
   gv=$(grep "^PROBE $TAG " "$B/good.txt" | awk '{print $3}')
