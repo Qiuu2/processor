@@ -1,0 +1,26 @@
+================================================================================
+results_d34_r13_killmatrix —— 杀伤矩阵(⚠ 归因已按 critic BLOCKER-2 更正)
+deps: d34_analysis.py@0f158e0875aaaf71
+跑批时间: 2026-08-05T03:05:13+08:00   门禁状态: 未过门
+================================================================================
+
+⛔ 整改要点(critic BLOCKER-2):
+  (a) 原 `qcoef` 一个开关**同时注入两个缺陷**(16-bit 退化 ∧ 关结构约束量化)
+      ⇒ 它杀的 5 条里,EXP-3c/EXP-4a 归错了因 ⇒ 现拆成 qcoef / freeq 两个独立变异
+  (b) `hpf_order` / `xo_order` 原先**只存在于 docstring 里**,零实现 ⇒ 现已实现
+
+变异               杀死的 EXP                      合计
+--------------------------------------------------------------------------------
+polarity             EXP-3a EXP-3b                      合计: PASS=26  FAIL=2  RETIRED=10
+qcoef                EXP-2d EXP-3b EXP-4d EXP-9a        合计: PASS=24  FAIL=4  RETIRED=10
+freeq                EXP-3c                             合计: PASS=27  FAIL=1  RETIRED=10
+hpf_order            EXP-2a EXP-2c                      合计: PASS=26  FAIL=2  RETIRED=10
+xo_order             EXP-1a                             合计: PASS=27  FAIL=1  RETIRED=10
+qcoef_and_freeq      EXP-2d EXP-3b EXP-3c EXP-4a EXP-4d EXP-9a  合计: PASS=22  FAIL=6  RETIRED=10
+
+阴性对照(好版本):合计: PASS=28  FAIL=0  RETIRED=10
+
+⭐ 拆开后暴露的一件事(critic 未点明,本轮实测):
+   **EXP-4a 只在【两个缺陷同时存在】时才被杀** —— 单独 qcoef 或单独 freeq 都杀不死它。
+   ⇒ ∴ 它没有【单缺陷杀手】;它的证伪证据来自一个复合变异,证据力弱于单缺陷杀手。
+   ⇒ ⛔ 如实记,不因为有杀手就算它覆盖充分。

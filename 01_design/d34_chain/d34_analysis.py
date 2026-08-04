@@ -5,7 +5,13 @@
 用法: python3 d34_analysis.py > results_d34_rN.txt
 
 ⚠ 假绿纪律:每组带【坏版本】开关,坏版本下对应检查必须 FAIL。
-   `python3 d34_analysis.py --broken=<name>` ,name ∈ {polarity, qcoef, hpf_order, xo_order}
+   `python3 d34_analysis.py --broken=<name>`
+   name ∈ {polarity, qcoef, freeq, qcoef_and_freeq, hpf_order, xo_order}
+
+⛔⛔ 整改 2026-08-05(critic BLOCKER-2b):`hpf_order` 与 `xo_order` 原先**只存在于本行字符串里**
+   —— `BROKEN` 全文件只被消费三次,全属 polarity/qcoef ⇒ 跑它们**一个字节的行为都不变**,
+   而结果头照印「坏版本开关: xo_order」⇒ **产出一份看起来像"该变异存活"的归档件**。
+   ⇒ 而缺的这两个,恰是 §0 承重表 #1/#3 两条链序结论**唯一可能的变异**。⇒ 现已实现。
 """
 import numpy as np, math, sys, hashlib, os
 from scipy import signal
@@ -69,7 +75,12 @@ def lr_polarity(lr_order):
 
 # ---------------------------------------------------------------- 定点量化
 def qcoef(x):
-    if BROKEN == 'qcoef':
+    # ⛔⛔ 整改 2026-08-05(critic BLOCKER-2a):原先 `qcoef` 这一个开关**同时注入两个缺陷** ——
+    #   ① 系数退化到 16-bit(本函数)② 顺手把结构约束量化也关了(qsec 里的 `and BROKEN != 'qcoef'`)
+    #   ⇒ 它杀掉的 5 条里,**EXP-3c 与 EXP-4a 实际是被 ② 杀死的,不是被 ① 杀死的**
+    #   ⇒ 杀伤矩阵把功记在了错的缺陷上 ⇒ **一条假的杀伤记录**。
+    #   ⇒ 现拆成两个独立变异:`qcoef`(只退化位宽)与 `freeq`(只关结构约束)。
+    if BROKEN in ('qcoef', 'qcoef_and_freeq'):
         s = 14                                      # ⛔ 坏版本:退化成 Q?.14(16-bit 级)
     else:
         s = COEF_F
@@ -81,7 +92,7 @@ def qcoef(x):
 def qsec(sec, tie=None):
     """量化一个 biquad。tie='hp'/'lp' 时用结构约束量化(b1=∓2b0, b2=b0)。"""
     b, a = sec
-    if tie in ('hp', 'lp') and BROKEN != 'qcoef':
+    if tie in ('hp', 'lp') and BROKEN not in ('freeq', 'qcoef_and_freeq'):
         b0 = qcoef(b[0])
         b1 = -2*b0 if tie == 'hp' else 2*b0
         bq = np.array([b0, b1, b0])
@@ -120,7 +131,11 @@ NOM = 10**(-20/20.0)      # 标称 −20 dBFS
 for ftest, label, band in [(40.0, '阻带激励 40 Hz', 'stop'), (1000.0, '通带对照 1 kHz', 'pass')]:
     w = np.array([2*np.pi*ftest/FS])
     lv = {}
-    for nm, secs in [('PEQ 在前', peq+xo), ('分频在前', xo+peq)]:
+    # ⛔ 坏版本 xo_order:把「分频在前」那一臂也按 PEQ 在前算 ⇒ 两臂等价 ⇒ 差值塌到 0
+    #    (整改 2026-08-05 · critic BLOCKER-2b:本变异原先只存在于 docstring 里)
+    _arms = [('PEQ 在前', peq+xo),
+             ('分频在前', (peq+xo) if BROKEN == 'xo_order' else (xo+peq))]
+    for nm, secs in _arms:
         g = 1.0; peaks = []
         for s in secs:
             g *= abs(sec_H(s, w)[0])
@@ -169,7 +184,9 @@ def apply_sec(sec, sig):
     b, a = sec
     return signal.lfilter(b, a, sig)
 
-x_hpf_first = apply_sec(hpf, x)
+# ⛔ 坏版本 hpf_order:让「HPF 在动态之前」那一臂实际**不过 HPF** ⇒ 两读数相同 ⇒ EXP-2a 塌
+#    (整改 2026-08-05 · critic BLOCKER-2b:本变异原先只存在于 docstring 里)
+x_hpf_first = x if BROKEN == 'hpf_order' else apply_sec(hpf, x)
 det_first = rms_detector(x_hpf_first, 20.0)      # HPF 在动态之前
 det_after = rms_detector(x, 20.0)                # HPF 在动态之后 ⇒ 侧链看到原始信号
 # 静默段(每周期的后 60%)
