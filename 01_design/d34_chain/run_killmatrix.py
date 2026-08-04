@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """
-d34 杀伤矩阵驱动件(r16 起机械化;此前是手工跑 + 手工抄表)
+d34 杀伤矩阵驱动件(自 r16 起机械化;此前是手工跑 + 手工抄表)
+⭐⭐ 本文件名**刻意不带轮次号**(2026-08-05 · critic D3D4-r3 MAJOR-2):
+   上一版叫 `run_killmatrix_r16.py`,而 critic 用本文件自己的模块头当证据 ——
+   「r16 起机械化,此前是手工跑」= **驱动件是每轮换的** ⇒ 换件时没有任何东西强迫
+   新件带上基线登记。⇒ ∴ 驱动件与登记件**都**改成轮次无关的名字。
+   ⚠ 而【结果件】仍带轮次(results_d34_rN_killmatrix.txt)—— 那是 02impl-r11 的教训,
+     两件事方向相反:**工具不带轮次,产物必须带轮次。**
 ⛔ 门禁状态:未过门。
 
 ⭐⭐ 本轮它必须改的那一件事:**好版本不再是「FAIL = 0」**。
@@ -10,7 +16,7 @@ d34 杀伤矩阵驱动件(r16 起机械化;此前是手工跑 + 手工抄表)
   算成每一个变异的战功 ⇒ **6 条假杀伤**。
 ⇒ 新判据:**杀死 = FAIL 集合【超出基线】**。基线本身必须逐条具名登记。
 
-用法: python3 run_killmatrix_r16.py > results_d34_r16_killmatrix.txt
+用法: python3 run_killmatrix.py > results_d34_rN_killmatrix.txt
 退出码: 0 = 全部变异都被杀死且基线与登记相符;非 0 = 有变异存活 / 基线漂移
 """
 import subprocess
@@ -57,7 +63,7 @@ def run(broken=None):
 
 
 print("=" * 88)
-print("results_d34_r16_killmatrix —— 杀伤矩阵(基线感知版)")
+print("results_d34_killmatrix —— 杀伤矩阵(基线感知版;⚠ 轮次以文件名为准)")
 print(f"deps: d34_analysis.py@{hashlib.sha256(open(SCRIPT,'rb').read()).hexdigest()[:16]}")
 print(f"跑批时间: {datetime.datetime.now().astimezone().isoformat(timespec='seconds')}   门禁状态: 未过门")
 print("=" * 88)
@@ -98,9 +104,20 @@ print("-" * 88)
 print("\n⚠ 未知变异名闸门(critic BLOCKER-2 修法④,r16 补做):")
 p = subprocess.run([sys.executable, SCRIPT, "--broken=__nonexistent__"],
                    capture_output=True, text=True, timeout=1800)
-ok_guard = (p.returncode == 2)
-print(f"  [{'PASS' if ok_guard else 'FAIL'}] --broken=__nonexistent__ 退出码 = {p.returncode}(须 = 2)")
+# ⛔⛔ 退出码 2 现在有【两个来源】:未知变异名 与 META-1(登记项缺失)。
+#   ⇒ 只看 "== 2" 会让 META-1 的红把这一条染绿 —— 那正是本文件在别处修掉的那个病
+#     (把功记在错的缺陷上)。⇒ ∴ 必须同时核【它自己的失败特征】。
+ok_guard = (p.returncode == 2 and "未知的 --broken 名" in p.stderr)
+print(f"  [{'PASS' if ok_guard else 'FAIL'}] --broken=__nonexistent__ 退出码 = {p.returncode}(须 = 2)"
+      f" ∧ stderr 命中「未知的 --broken 名」(须命中,⛔ 否则那个 2 可能来自 META-1)")
 if not ok_guard:
+    rc = 1
+
+# ⭐ META-1 反向闸门:基线跑批的退出码**不得**是 2 —— 2 意味着登记项已从判定集合里消失。
+print("\n⚠ META-1(登记项必须存在)在基线上的状态:")
+ok_meta = (base_rc != 2)
+print(f"  [{'PASS' if ok_meta else 'FAIL'}] 基线跑批退出码 = {base_rc}(⛔ 不得为 2;2 = 登记项不见了)")
+if not ok_meta:
     rc = 1
 
 print("=" * 88)

@@ -11,17 +11,19 @@
                                             r16_addendum}.txt
          01_design/d34_chain/d34_analysis.py        ← 主验证件
          01_design/d34_chain/check_r16.py           ← r16 独立复算(⛔ 不 import 主验证件)
-         01_design/d34_chain/run_killmatrix_r16.py  ← 杀伤矩阵驱动(基线感知)
+         01_design/d34_chain/run_killmatrix.py      ← 杀伤矩阵驱动(基线感知;⛔ 文件名刻意不带轮次号)
+         01_design/d34_chain/BASELINE_FAILS.txt     ← 常驻 FAIL 的登记(⛔ 轮次无关;驱动件缺它即中止)
+         01_design/d34_chain/check_r17_worstQ.py    ← r17 独立复核(⛔ 不 import 主验证件)
          01_design/d34_chain/check_noise_chain_r5.py / xover_r8.py
-         01_design/d34_chain/results_d34_{r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r16}.txt
-                                                              ← **r16 为现行结果**
-         01_design/d34_chain/results_d34_{r2,r6,r13,r16}_killmatrix.txt
-         01_design/d34_chain/results_r16_batchreason.txt
+         01_design/d34_chain/results_d34_{r2,…,r13,r16,r17}.txt
+                                                              ← **r17 为现行结果**
+         01_design/d34_chain/results_d34_{r2,r6,r13,r16,r17}_killmatrix.txt
+         01_design/d34_chain/results_r16_batchreason.txt / results_r17_worstQ.txt
          01_design/d34_chain/RETIREMENT_LOG.txt   ← 五条 FAIL→RETIRED 改判的正式记录
          01_design/d34_chain/ERRATA_r1.txt        ← 「results_d34_r1.txt 从未存在」的更正(m-6)
          01_design/D3D4_CONSTANT_LEDGER_v0.1.md(自定常数台账)
 
-⛔⛔ 现行结果 r16 的合计是 **PASS=30 / FAIL=1 / RETIRED=10** —— **那条 FAIL 是故意的**:
+⛔⛔ 现行结果 r17 的合计是 **PASS=30 / FAIL=1 / RETIRED=10** —— **那条 FAIL 是故意的**:
    `EXP-5c`(**在参数字典范围上求最坏**的噪声底突破 PRD **51.62 dB**)。⛔ 它不得被退役、不得改判据,
    ⚠ **量级更正(2026-08-05 · critic D3D4-r3 BLOCKER-1)**:原报 **29.03 dB** ——
    那取的是【**默认 Q = 1.4 / f0 = 1000**】那一点,**⛔ 不是最坏点**。真值 **51.62 dB**。
@@ -819,6 +821,9 @@ REF 只启用 4 段,群延迟 **5.895 ms**,反而**大于**上轮 8 段全开的
 > 且直接标 ✓ 余量 52.9 dB。而 D34 §6.2-4 **明文允许**「8 段 PEQ 全部 +15 dB 叠在同一频率」——
 > 该配置下噪声被后级放大 **72.68 dB**(8×PEQ 段)⇒ **✓ 变 ⛔**。
 > **⇒ 这一格是本件的,不是前置件的** —— 增益结构归 D3/D4。
+> **⚠ 而这条论证【引对了结论、用错了轴】(2026-08-05 补注)**:「同频叠加」确实被明文允许,
+> 而**承重的轴是 `Q`** —— 8 段**散开**但 Q 取字典下限 ⇒ −68.37,仍比「同频 + 默认 Q」差 **8.59 dB**。
+> ⇒ ∴ 就算 D2 禁掉「同频多段同向大增益」,**也拦不住这条** ⇒ 见下方 BLOCKER-1 留痕与 Y11。
 >
 > **⛔⛔ 整改留痕(2026-08-05 · critic MAJOR-3 · r16)—— 三处,逐条**
 >
@@ -935,9 +940,10 @@ REF 只启用 4 段,群延迟 **5.895 ms**,反而**大于**上轮 8 段全开的
 
 | 项 | 结果 |
 |---|---|
-| **r16 好版本(现行)** | **PASS = 30,FAIL = 1,RETIRED = 10**。⛔ **那条 FAIL 是 `EXP-5c`,它是【故意的】** —— **在参数字典范围上求最坏**的噪声底 **−54.38 dBFS**,突破 PRD 的 −106 达 **51.62 dB**(见 §6 与 Y11)。⚠ 原报 29.03 dB 取的是【默认 Q】那一点,已更正。**⛔ 它不得被退役、不得改判据**(处置预先写死于 `PREREG_D34_r16_addendum` §3) |
+| **r17 好版本(现行)** | **PASS = 30,FAIL = 1,RETIRED = 10**。⛔ **那条 FAIL 是 `EXP-5c`,它是【故意的】** —— **在参数字典范围上求最坏**的噪声底 **−54.38 dBFS**,突破 PRD 的 −106 达 **51.62 dB**(见 §6 与 Y11)。⚠ 原报 29.03 dB 取的是【默认 Q】那一点,已更正。**⛔ 它不得被退役、不得改判据**(处置预先写死于 `PREREG_D34_r16_addendum` §3) |
 | **新增检查(r16)** | `EXP-3d`(`xo_slope`→极性的映射,critic MAJOR-4)｜`EXP-5b`(含级间增益的噪声模型自洽)｜`EXP-5c`(**参数字典范围上的最坏** vs PRD,critic MAJOR-3;r17 按 D3D4-r3 BLOCKER-1 由「钉一个默认点」改为「扫量程」) |
-| **杀伤矩阵 · 变异表**(r16) ⚠ 本行**只列变异与杀伤**,归因更正留痕见下方 (B) | **6/6 全部被杀死** |
+| **⭐ META-1(r17 新增)** | **「登记在案的判定项必须还在」** —— 读**不带轮次号**的 `d34_chain/BASELINE_FAILS.txt`,判定项集合里缺任何一条登记项 ⇒ **退出码 2**;登记件本身缺失 ⇒ **退出码 2**(⛔ 不回退到内嵌默认集合)。**⚠ 它只验【存在】,⛔ 不验 PASS/FAIL** —— 增益结构真修好时 EXP-5c 应当 PASS。⇒ 理由(critic 原话):**「EXP-5c 在不在,不能由 EXP-5c 自己回答」**。阴性对照两条均实测退出码 2 |
+| **杀伤矩阵 · 变异表**(r17) ⚠ 本行**只列变异与杀伤**,归因更正留痕见下方 (B) | **6/6 全部被杀死** |
 | ↳ 变异表逐行(⛔ 一个变异一个缺陷) | `polarity` → EXP-3a / 3b / **3d**<br>`qcoef`(只退位宽 16-bit) → EXP-2d / 3b / **3d** / 4d / 9a<br>`freeq`(只关结构约束) → EXP-3c<br>`hpf_order` → EXP-2a / 2c<br>`xo_order` → EXP-1a<br>`qcoef_and_freeq`(旧形态,留作回归) → 上述并集 + EXP-4a |
 | ⭐ **判据变更(必须与结果一起读)** | 好版本自 r16 起带一条如实为 FAIL 的检查 ⇒ 「杀死 = 出现 FAIL」这个旧判据**失效**(它会把 `EXP-5c` 记成每个变异的战功 ⇒ **6 条假杀伤**)。⇒ 新判据 = **FAIL 集合【超出基线】**,基线逐条具名登记在 `run_killmatrix_r16.py` 的 `BASELINE_EXPECTED`,**基线漂移即 FAIL**。⚠ 这与 critic BLOCKER-2 打的是同一个病:**把功记在错的缺陷上** |
 | ⚠ **而 EXP-4a 没有单缺陷杀手** | 它**只在 qcoef ∧ freeq 同时存在**时才被杀 ⇒ 证据力弱于单缺陷杀手,⛔ 如实记 |
