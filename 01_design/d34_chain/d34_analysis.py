@@ -698,7 +698,7 @@ def report(tag, hpf_secs, peq_in, peq_out, xo_secs, fir_taps, look_ms):
     print(f"\n  ── {tag} ──")
     for nm, v, fp in rows:
         print(f"     {nm:24s} {v:9.3f} ms   峰 @ {fp:8.1f} Hz")
-    print(f"     {'转换器 ADC+DAC':24s} {ADC_DAC:9.5f} ms")
+    print(f"     {'转换器 ADC+DAC':24s} {ADC_DAC:9.4f} ms")   # ⛔ m-7:.5f 会印出截断值 0.99967
     print(f"     {'块 I/O (L=64, 2L)':24s} {BLK_L64:9.3f} ms")
     print(f"     {'线性相位 FIR':24s} {fir_ms:9.3f} ms   ({fir_taps if fir_taps else '关'} tap)")
     print(f"     {'lim_lookahead':24s} {look_ms:9.3f} ms")

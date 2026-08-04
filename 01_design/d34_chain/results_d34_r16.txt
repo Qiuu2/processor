@@ -1,9 +1,9 @@
-/home/it1234/processor/01_design/d34_chain/d34_analysis.py:362: UserWarning: The filter's denominator is extremely small at frequencies [0.000], around which a singularity may be present
+/home/it1234/processor/01_design/d34_chain/d34_analysis.py:373: UserWarning: The filter's denominator is extremely small at frequencies [0.000], around which a singularity may be present
   _, g = signal.group_delay((b, a), w=wg)
 ====================================================================================
 results_d34  —  D3/D4 通道链设计 · 验证结果(轮次见文件名)
 预注册: PREREG_D34_r1.txt + PREREG_D34_r2_addendum.txt(一字未改)
-deps: d34_analysis.py@1547d3ad769a34f7
+deps: d34_analysis.py@6ae179200ad0a145
 numpy 2.2.6 / scipy scipy.signal  fs = 48000.0 Hz  系数格式 Q4.27
 坏版本开关: 无(出货构建)
 门禁状态: 未过门
@@ -86,7 +86,8 @@ EXP-3  D-4 级联:LR 分频器求和 / DC / Nyquist(lead 点名的那条)
   [PASS] EXP-3b    Q4.27 量化后求和偏离 ≤0.05 dB(实测 0.0036)
   [PASS] EXP-3c    HP@DC 与 LP@Nyquist 泄漏 ≤ −120 dB(最坏 -6000.0 dB)
     阳性对照(把 LR4 的极性人为写反):
-      LR4 fc=2000 反相求和 max|偏离| = 87.72 dB
+      LR4 fc=2000 反相求和:fc 处残差 = 1.44e-15(≈0 ⇒ 存在零点,理想深度 −∞)
+      ⛔ 深度数值不报 —— 它随网格密度单调发散,是【器械】的性质不是【被测物】的(erratum2 / RETRACTED_STRINGS: 87.72 dB)
   [PASS] EXP-3p    极性写反时求和出现【零点】⇒ EXP-3a/b 有分辨力,不是恒真。⛔ 深度数值不得报出(erratum2:理想深度 = −∞,实测值只反映网格密度)
 
     EXP-3d 从界面参数 xo_slope(dB/oct)到求和极性的映射(MAJOR-4)
@@ -257,7 +258,7 @@ EXP-9  参考配置(REF) vs 最坏可配置(WORST) —— 急件,定义与理由
      D3 PEQ(启用 4 段)               5.895 ms   峰 @     40.1 Hz
      D4 分频                        6.792 ms   峰 @     51.5 Hz
      D4 PEQ(启用 5 段)               5.904 ms   峰 @     40.1 Hz
-     转换器 ADC+DAC                0.99967 ms
+     转换器 ADC+DAC                 0.9997 ms
      块 I/O (L=64, 2L)             2.667 ms
      线性相位 FIR                     0.000 ms   (关 tap)
      lim_lookahead                1.000 ms
@@ -268,7 +269,7 @@ EXP-9  参考配置(REF) vs 最坏可配置(WORST) —— 急件,定义与理由
      D3 PEQ(启用 8 段)            2590.762 ms   峰 @     20.1 Hz
      D4 分频                       58.459 ms   峰 @     20.1 Hz
      D4 PEQ(启用 10 段)           3238.453 ms   峰 @     20.1 Hz
-     转换器 ADC+DAC                0.99967 ms
+     转换器 ADC+DAC                 0.9997 ms
      块 I/O (L=64, 2L)             2.667 ms
      线性相位 FIR                     5.323 ms   (512 tap)
      lim_lookahead                2.000 ms
