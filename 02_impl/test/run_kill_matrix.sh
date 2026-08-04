@@ -69,16 +69,65 @@ echo "================================================================"
 echo "杀伤矩阵(硬闸门)  变异数 = ${#MUTS[@]}"
 echo "================================================================"
 
-# ---- 阴性对照:无变异必须通过 ----
+# ============================================================================
+# ⭐⭐ 基线登记(N-6,2026-08-05)—— 把设计侧 r16/r17 那套搬过来,**先于**第一条常驻 FAIL
+# ----------------------------------------------------------------------------
+# ⛔ 旧判据:阴性对照 =「好版本必须 exit 0」;杀死 =「变异 exit ≠ 0」。
+#   ⇒ 好版本一旦带一条【如实为 FAIL】的检查(设计侧 EXP-5c 的 C 侧对应物迟早要来),
+#     旧判据会把那一条记成**每一个变异的战功** ⇒ N 条假杀伤
+#     = critic 在设计侧判过的那条 BLOCKER-2「把功记在错的缺陷上」。
+# ⇒ ∴ 新判据:**杀死 = FAIL 集合【超出基线】**;基线本身逐条具名登记在
+#   **不带轮次号**的 test/BASELINE_FAILS.txt(⛔ 读不到即中止,⛔ 不回退到内嵌默认值)。
+# ============================================================================
+REG="$HERE/BASELINE_FAILS.txt"
+if [ ! -f "$REG" ]; then
+  echo "⛔ 找不到基线登记件:$REG" >&2
+  echo "⛔ 拒绝在【无登记】的情况下跑杀伤矩阵 —— 回退到默认集合会把逃逸路径开回来。" >&2
+  exit 2
+fi
+# 登记项:非空、非 # 开头的行,取第一个 | 之前的标识
+BASELINE=$(grep -vE '^\s*(#|$)' "$REG" | sed 's/|.*//' | tr -d ' \t' | grep -E '^CHK-' | sort -u)
+n_reg=$(printf '%s' "$BASELINE" | grep -c . || true)
+echo "  基线登记件: test/BASELINE_FAILS.txt(⛔ 不带轮次号)  登记 $n_reg 条"
+
+# ---- 阴性对照:好版本的 FAIL 集合必须【逐条等于】登记(⛔ 双向) ----
 if ! $CC $CFLAGS $SRC -o "$BUILD/good" -lm 2>"$BUILD/good_build.log"; then
   echo "⛔ 好版本编译失败:"; sed 's/^/    /' "$BUILD/good_build.log"; exit 1
 fi
-if ! "$BUILD/good" > "$BUILD/good.txt" 2>&1; then
-  echo "⛔ 阴性对照失败:**无变异时就有 FAIL** ⇒ 杀伤结论不可归因于变异"
+"$BUILD/good" > "$BUILD/good.txt" 2>&1 || true
+# 标识提取与下方覆盖率段同源(⛔ 不另写一套正则:CHK 名后可能跟中文括注)
+tagof(){ grep -oE '^\s*\[FAIL\] +CHK-[A-Za-z0-9]+' "$1" | awk '{print $2}' | sort -u; }
+alltag(){ grep -oE '^\s*\[(PASS|FAIL)\] +CHK-[A-Za-z0-9]+' "$1" | awk '{print $2}' | sort -u; }
+BASE_FAILS=$(tagof "$BUILD/good.txt")
+BASE_ALL=$(alltag "$BUILD/good.txt")
+
+# ④-a 登记了、而该检查【不在判定集合里】(被删 / 改名 / 退役)⇒ 退出码 2
+gone=$(comm -23 <(printf '%s\n' "$BASELINE" | grep -E '^CHK-' || true) <(printf '%s\n' "$BASE_ALL"))
+if [ -n "$gone" ]; then
+  echo "⛔⛔ 登记在案却**不在本次判定项里**:$(echo $gone)"
+  echo "     ⇒ 它可能被删除、改名、或降级为非判定项。⛔ 退出码 2。"
+  echo "     ⇒ ⭐ 理由:【某条检查在不在,不能由它自己回答】—— 它被删了就不会报警。"
+  echo "     ⇒ 删除登记须 lead + 独立 critic,见 test/BASELINE_FAILS.txt 规矩 ③。"
+  exit 2
+fi
+# ④-b 登记了、而它 PASS ⇒ 基线漂移(好消息,而须有意识地改登记)
+fixed=$(comm -23 <(printf '%s\n' "$BASELINE" | grep -E '^CHK-' || true) <(printf '%s\n' "$BASE_FAILS"))
+# ④-c 未登记、而好版本上它 FAIL ⇒ 未登记的常驻 FAIL
+extra=$(comm -13 <(printf '%s\n' "$BASELINE" | grep -E '^CHK-' || true) <(printf '%s\n' "$BASE_FAILS"))
+if [ -n "$fixed" ] || [ -n "$extra" ]; then
+  echo "⛔ 阴性对照失败:好版本的 FAIL 集合 ≠ 登记 ⇒ 杀伤结论不可归因于变异"
+  [ -n "$fixed" ] && echo "    · 登记为 FAIL 而实测 PASS(基线漂移 / 它被修好了):$(echo $fixed)"
+  [ -n "$extra" ] && echo "    · **未登记**的常驻 FAIL:$(echo $extra)"
   grep -E '^\s*\[FAIL\]' "$BUILD/good.txt" | sed 's/^/    /'
   exit 1
 fi
-echo "  阴性对照(无变异):PASS ✓  ⇒ 下面的杀死可归因于变异"
+if [ "$n_reg" -eq 0 ]; then
+  echo "  阴性对照(无变异):FAIL 集合 = 空 = 登记 ✓  ⇒ 下面的杀死可归因于变异"
+  echo "  ⚠ 当前登记为空 ⇒ 本机制此刻是恒等式;它会不会响由 test/check_baseline_mech.sh 单独证"
+else
+  echo "  阴性对照(无变异):FAIL 集合逐条等于登记($(echo $BASE_FAILS)) ✓"
+  echo "  ⇒ 下面的「杀死」全部是【超出基线】的部分"
+fi
 echo
 
 survived=0
@@ -113,12 +162,20 @@ for M in "${MUTS[@]}"; do
     echo "  [编译失败] $M"; sed 's/^/      /' "$BUILD/b_$M.log" | head -3; survived=$((survived+1)); continue
   fi
   "$BUILD/m_$M" > "$BUILD/o_$M.txt" 2>&1
-  rc=$?
-  if [ $rc -ne 0 ]; then
-    killers=$(grep -E '^\s*\[FAIL\]' "$BUILD/o_$M.txt" | awk '{print $2}' | tr '\n' ' ')
+  # ⭐ 判据 = FAIL 集合【超出基线】,⛔ 不再看退出码
+  #   (退出码在有常驻 FAIL 时对每个变异都非 0 ⇒ 会把基线那条记成每个变异的战功)
+  mf=$(tagof "$BUILD/o_$M.txt")
+  killers=$(comm -13 <(printf '%s\n' "$BASE_FAILS") <(printf '%s\n' "$mf") | tr '\n' ' ')
+  lost=$(comm -23 <(printf '%s\n' "$BASE_FAILS") <(printf '%s\n' "$mf") | tr '\n' ' ')
+  if [ -n "${killers// /}" ]; then
     echo "  [已杀死] $M  ⇐ $killers"
   else
-    echo "  [⛔ 存活] $M  —— **没有任何检查抓到它**"
+    echo "  [⛔ 存活] $M  —— **没有任何检查抓到它**(⛔ 超出基线的 FAIL 为空)"
+    survived=$((survived+1))
+  fi
+  if [ -n "${lost// /}" ]; then
+    echo "  [⛔ 基线丢失] $M  ⇒ 基线中的 $lost 在本变异下反而 PASS"
+    echo "      ⇒ **变异改动了它不该改的东西** ⇒ 计入存活"
     survived=$((survived+1))
   fi
 done
