@@ -1,9 +1,9 @@
 ================================================================================
 results_impl_r1 —— D3/D4 C 实现 · 总闸门
 门禁状态: 未过门(未经独立 critic 评审)
-时间: 2026-08-04T16:24:00+08:00
+时间: 2026-08-04T23:40:01+08:00
 deps: chdsp_biquad.h@6d95dea5f8b3472b chdsp_chain.h@a37932eec5e25534 chdsp_config.h@d1112b527e408c2f chdsp_delay.h@5fe962b7a355715a chdsp_detector.h@5174324e05b09f2f chdsp_dynamics.h@4b033e284d7a8056 chdsp_fir.h@0ceed3f2aac3eb73 chdsp_notch.h@7b089f8ff579290d chdsp_biquad.c@017496fd8901b617 chdsp_chain.c@06bcbbab54a75388 chdsp_delay.c@17491f0d34d4c0a3 chdsp_detector.c@e8085bea08eb4748 chdsp_dynamics.c@a82dfc1b12464ca8 chdsp_fir.c@a499834ca5626c38 chdsp_notch.c@7224f93db832c29b 
-      check_modules.c@a18cc087060cabdc ref_modules.py@1178ad663dd1e18a
+      check_modules.c@a18cc087060cabdc ref_modules.py@edb625ec0f1dbd4d
 编译器: gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
 ================================================================================
 
@@ -24,8 +24,8 @@ deps: chdsp_biquad.h@6d95dea5f8b3472b chdsp_chain.h@a37932eec5e25534 chdsp_confi
   [PASS] base:killmatrix  基线上「杀伤矩阵」是绿的 ⇒ 下面的红可归因于变异
   [PASS] G5  把 LR 极性规则改坏 ⇒ 杀伤矩阵的【阴性对照】应变红 ⇒ 闸门确实变红(命中 /阴性对照失败|存活|⛔/)
   [PASS] G6  注入一个必然存活的变异(被测物零消费者)⇒ 杀伤矩阵应报存活并变红 ⇒ 闸门确实变红(命中 /存活/)
-  [PASS] base:bitexact  基线上「第二轨 bit-exact」是绿的 ⇒ 下面的红可归因于变异
-  [PASS] G7  只扰动 C 轨的 biquad 输出(+1 LSB)⇒ 第二轨对表应变红 ⇒ 闸门确实变红(命中 /\[FAIL\]|不同|DIFF/)
+  [PASS] base:bitexact  基线上「实现一致性核 + 独立解析轨」是绿的 ⇒ 下面的红可归因于变异
+  [PASS] G7  只扰动 C 轨的 biquad 输出(+1 LSB)⇒ 实现一致性核(A 轨)应变红 ⇒ 闸门确实变红(命中 /\[FAIL\]|不同|DIFF/)
   [PASS] base:neutral  基线上「强类型中立性」是绿的 ⇒ 下面的红可归因于变异
   [PASS] G8  注入只在 STRICT=0 下生效的扰动 ⇒ 强类型中立性应变红 ⇒ 闸门确实变红(命中 /differ|DIFF|不同|不一致/)
   [PASS] base:mutvalid  基线上「变异自证」是绿的 ⇒ 下面的红可归因于变异
@@ -342,20 +342,34 @@ chain
 ================================================================
 杀伤矩阵:22/22 全部被杀死  ⇒ PASS
 
-### 5. 第二轨 bit-exact(硬闸门)
-已写出 bitexact_{bq_in,bq_out,det_out}.txt
+### 5. 实现一致性核 + 铁律七的独立解析轨(硬闸门)
+  ⛔ 两件事分开报(整改 · critic 02impl MAJOR-1):
+     (A) 实现一致性核 —— ref_modules.py 是**同式转写**,只证转写忠实,⛔ 不证算法对
+     (B) 铁律七的独立轨 —— 拿解析式做参照,与实现无共用代码
+  ⚠ 原称「第二轨 bit-exact」,那个定级越了铁律七的界
+已写出 bitexact_{bq_in,bq_out,det_out,lim_gdb,det_step}.txt
 ==================================================================
-ref_modules.py — 第二轨(独立重写,⛔ 不 import C 实现)
+ref_modules.py — (A) 实现一致性核 + (B) 铁律七的独立解析轨
 ==================================================================
+--- (A) 实现一致性核:同式转写 ⇒ 只证【转写忠实】,⛔ 不证算法对 ---
   [PASS] T1        biquad DF1+EF 逐位相同(20000 样本,不等 0 处)
   [PASS] T1+       阳性对照:强制改一个值后比对器报出差异 ⇒ 上一行的「相同」有意义
   [PASS] T2        检测器功率状态逐位相同(20000 样本,不等 0 处)
+  [PASS] T2+       阳性对照:强制改一个值后比对器报出差异 ⇒ 上一行的「相同」有意义(整改 · critic MAJOR-2:T2 原先没有阳性对照)
+
+--- (B) 铁律七的独立解析轨:拿【解析式】做参照,⛔ 与实现无共用代码 ---
+  [PASS] T3a       前提自检:限幅器增益**真的动了**(205 个不同取值)⇒ 下面几条才有内容
+  [PASS] T3        解析律①:限幅器只衰减不放大(max gdb = +0.0000 dB ≤ 0)
+  [PASS] T3b       解析律②:最深衰减 -5.691 dB ≈ 阈值−输入峰值 -6.000 dB(容差 1.5 dB;⚠ 峰值检测器的跟踪误差使二者不会精确相等)
+  [PASS] T4a       前提自检:阶跃响应真的在爬升(终值 1125899840421218,7991 个不同取值)
+  [PASS] T4        解析:到达 1−1/e 用了 479 样本 = 0.998·tau(一阶节应 ≈1.0;容差 ±25%)
+  [PASS] T4+       阳性对照:若按 4×tau 判,同一数据给 0.249 ⇒ 落在判据外 ⇒ T4 不是恒真
 ==================================================================
-第二轨: 全部通过
+(A) 实现一致性核 + (B) 独立解析轨: 全部通过
 ==================================================================
 
 ### 6. 强类型开关的数值中立性(硬闸门)
-已写出 bitexact_{bq_in,bq_out,det_out}.txt
+已写出 bitexact_{bq_in,bq_out,det_out,lim_gdb,det_step}.txt
   STRICT=1 vs 0:逐位 SAME ✓
   阳性对照:强制错值 ⇒ DIFF ✓ ⇒ 上一行的 SAME 有意义
 

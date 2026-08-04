@@ -39,7 +39,20 @@ int main(void){
         (void)chdsp_limiter_process1(&L, chdsp_smp_from_raw((int32_t)v), &s, &gdb);
         fprintf(fl,"%d\n",(int)chdsp_db_raw(gdb));
     }
+    /* ④ 检测器【阶跃响应】—— 供 (B) 轨做**解析**时间常数比对(⛔ 与实现无共用代码) */
+    {
+        FILE *fs2=fopen("bitexact_det_step.txt","w");
+        chdsp_det_t ds; int k;
+        if(!fs2) return 5;
+        chdsp_det_init(&ds,CHDSP_DET_RMS,10.0,100.0);   /* attack = 10 ms */
+        for(k=0;k<8000;k++){
+            /* 0 → 满幅常值阶跃(⚠ 常值输入,不是随机 —— 一阶节的 tau 只有在阶跃下才可测) */
+            chdsp_smp_q4_27_t xin = chdsp_smp_from_raw((k<10)?0:(1<<25));
+            fprintf(fs2,"%lld\n",(long long)chdsp_pow_raw(chdsp_det_process1(&ds,xin)));
+        }
+        fclose(fs2);
+    }
     fclose(fi);fclose(fo);fclose(fd);fclose(fl);
-    printf("已写出 bitexact_{bq_in,bq_out,det_out,lim_gdb}.txt\n");
+    printf("已写出 bitexact_{bq_in,bq_out,det_out,lim_gdb,det_step}.txt\n");
     return 0;
 }

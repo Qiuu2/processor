@@ -66,7 +66,11 @@ if [ $mut_valid -ne 0 ]; then
   echo "       它的『被杀死』是一条【假的杀伤记录】,而假杀伤是隐形的。"
 fi
 
-echo; echo "### 5. 第二轨 bit-exact(硬闸门)"
+echo; echo "### 5. 实现一致性核 + 铁律七的独立解析轨(硬闸门)"
+echo "  ⛔ 两件事分开报(整改 · critic 02impl MAJOR-1):"
+echo "     (A) 实现一致性核 —— ref_modules.py 是**同式转写**,只证转写忠实,⛔ 不证算法对"
+echo "     (B) 铁律七的独立轨 —— 拿解析式做参照,与实现无共用代码"
+echo "  ⚠ 原称「第二轨 bit-exact」,那个定级越了铁律七的界"
 $CC $CFLAGS -DCHDSP_STRICT_TYPES=1 "$HERE/emit_bitexact.c" "$ROOT"/src/*.c "$FIXED/chdsp_fixed.c" \
     -o "$ROOT/build/emit" -lm 2>&1 || rc_all=1
 ( cd "$ROOT/build" && ./emit && python3 "$ROOT/ref/ref_modules.py" ) || rc_all=1

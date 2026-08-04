@@ -16,7 +16,10 @@
    (A) 实现一致性核 T1/T1+/T2/T2+/T3/T3a —— 同式转写,只证转写忠实
    (B) 铁律七的独立解析轨 T4/T4+ —— **与实现无共用代码**,拿解析式做参照
 
-对表项(A):①biquad DF1+EF 逐位 ②检测器功率状态逐位 ③限幅器增益 dB 逐位
+对表项(A):①biquad DF1+EF 逐位 ②检测器功率状态逐位
+   ⚠ 原 docstring 还写了「③限幅器增益 dB 逐位」,而它**在物理上不存在**
+     (emit 从未导出限幅器数据)。⇒ 按 critic「二选一,不得并存」:
+     **限幅器改由 (B) 轨用解析律检验**,⛔ 不再声称逐位对表。
 用法:C 侧先写出 bitexact_*.txt,本脚本读取并比对;退出码非 0 = 硬闸门失败。
 """
 import sys, math, os
@@ -102,19 +105,53 @@ if xq is not None and dy is not None:
         "阳性对照:强制改一个值后比对器报出差异 ⇒ 上一行的「相同」有意义"
         "(整改 · critic MAJOR-2:T2 原先没有阳性对照)")
 
-# T3 限幅器增益 dB —— critic MAJOR-2:docstring 承诺了它,而它在物理上不存在
+print()
+print("--- (B) 铁律七的独立解析轨:拿【解析式】做参照,⛔ 与实现无共用代码 ---")
+
+# T3 限幅器:检验它的**定义性质**,不是转写它的实现
 ly = load("bitexact_lim_gdb.txt")
-if xq is not None and ly is not None:
-    py = lim_gdb([max(I32MIN, min(I32MAX, v * 4)) for v in xq], -6.0, 1.0, 50.0)
-    # ⭐ 前提自检:C 轨读数必须**真的动过**,否则这是"两列 0 对表"
-    #   ⚠ 首版就栽在这:xs 幅度 −12 dBFS 而阈值 −6 dBFS ⇒ gdb 恒 0,20000 个样本只有 1 个取值。
+if ly is not None:
+    THR_DB = -6.0
+    # ⭐ 前提自检:C 轨读数必须**真的动过**,否则下面几条是在常数列上通过
+    #   ⚠ 首版就栽在这:xs 幅度 −12 dBFS 而阈值 −6 dBFS ⇒ gdb 恒 0(20000 样本只有 1 个取值)
     chk("T3a", len(set(ly)) > 10,
-        f"前提自检:C 轨限幅器增益**真的动了**({len(set(ly))} 个不同取值)"
-        "⇒ 下一行的逐位比对才有内容")
-    diff = [i for i, (a, b) in enumerate(zip(ly, py)) if a != b]
-    chk("T3", not diff, f"限幅器增益 dB 逐位相同({len(py)} 样本,不等 {len(diff)} 处)")
+        f"前提自检:限幅器增益**真的动了**({len(set(ly))} 个不同取值)⇒ 下面几条才有内容")
+    # 性质①:限幅器只衰减,永不放大 —— gdb ≤ 0
+    chk("T3", max(ly) <= 0,
+        f"解析律①:限幅器只衰减不放大(max gdb = {max(ly)/256.0:+.4f} dB ≤ 0)")
+    # 性质②:最深衰减 ≈ 输入峰值超过阈值的量(比率 ∞ ⇒ 超多少压多少)
+    xin = load("bitexact_bq_in.txt")
+    if xin is not None:
+        pk = max(abs(v) for v in xin) * 4
+        pk_db = 20 * math.log10(min(pk, I32MAX) / float(1 << SMP_F))
+        want = THR_DB - pk_db                     # 应压下去的量(负)
+        got = min(ly) / 256.0
+        chk("T3b", abs(got - want) <= 1.5,
+            f"解析律②:最深衰减 {got:+.3f} dB ≈ 阈值−输入峰值 {want:+.3f} dB(容差 1.5 dB;"
+            "⚠ 峰值检测器的跟踪误差使二者不会精确相等)")
+
+# T4 检测器时间常数 —— 一阶节的解析性质,⛔ 不转写实现
+st = load("bitexact_det_step.txt")
+if st is not None:
+    final = st[-1]
+    tau_n = 10.0e-3 * FS                          # attack = 10 ms
+    target = final * (1 - math.exp(-1.0))         # 一阶节在 t=tau 处到 1−1/e
+    idx = next((i for i, v in enumerate(st) if v >= target), None)
+    chk("T4a", final > 0 and len(set(st)) > 100,
+        f"前提自检:阶跃响应真的在爬升(终值 {final},{len(set(st))} 个不同取值)")
+    if idx is not None:
+        rel = (idx - 10) / tau_n                  # 阶跃起点在第 10 个样本
+        chk("T4", 0.8 <= rel <= 1.25,
+            f"解析:到达 1−1/e 用了 {idx-10} 样本 = {rel:.3f}·tau(一阶节应 ≈1.0;容差 ±25%)")
+        # 阳性对照:换一个错的 tau ⇒ 判据必须不通过 ⇒ 证明它不是恒真
+        rel_bad = (idx - 10) / (tau_n * 4)
+        chk("T4+", not (0.8 <= rel_bad <= 1.25),
+            f"阳性对照:若按 4×tau 判,同一数据给 {rel_bad:.3f} ⇒ 落在判据外 ⇒ T4 不是恒真")
+    else:
+        chk("T4", False, "阶跃响应从未到达 1−1/e ⇒ 无法测时间常数")
 
 print("=" * 66)
-print(f"第二轨: {'全部通过' if not fails else '未通过 ' + ','.join(fails)}")
+print(f"(A) 实现一致性核 + (B) 独立解析轨: "
+      f"{'全部通过' if not fails else '未通过 ' + ','.join(fails)}")
 print("=" * 66)
 sys.exit(0 if not fails else 1)

@@ -19,7 +19,7 @@
 #      这正是 critic MAJOR-1 在 fixedpoint/run_r3.sh 里抓到的同型缺陷
 #      (`管道 || echo` 的报警分支恒不可达)。⇒ 新增 G6 直接测它。
 #
-#   ⛔ 漏 2 · 第二轨 bit-exact(第 5 环)与强类型中立性(第 6 环)完全没有元检查
+#   ⛔ 漏 2 · 第 5 环(一致性核/解析轨)与强类型中立性(第 6 环)完全没有元检查
 #      ⇒ 新增 G7 / G8。
 #
 #   ⛔ 漏 3 · **没有人测过 run_all.sh 自己会不会聚合失败**
@@ -209,7 +209,7 @@ fi
 # ---------------------------------------------------------------- 第 5 环:第二轨 bit-exact
 # 扰动 C 实现(⛔ 不动 py 轨)⇒ 两轨必须对不上 ⇒ 第 5 环变红。
 BITEXACT_CMD="$CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint test/emit_bitexact.c src/*.c ../01_design/fixedpoint/chdsp_fixed.c -o build/emit -lm && cd build && ./emit && python3 ../ref/ref_modules.py"
-ensure_green bitexact "第二轨 bit-exact" "$BITEXACT_CMD"
+ensure_green bitexact "实现一致性核 + 独立解析轨" "$BITEXACT_CMD"
 W=$TMPROOT/g2; mkwork $W
 if append_mut $W/02_impl/src/chdsp_biquad.c <<'EOF'
 /* 元检查注入:只扰动 C 轨,py 轨不动 ⇒ 第二轨必须报出差异 */
@@ -218,7 +218,7 @@ EOF
 then
   mutate $W/02_impl/src/chdsp_biquad.c \
     's|^    return chdsp_biquad_df1(&b->cur, &b->st, x, sat);|    return chdsp_smp_from_raw(chdsp_smp_raw(chdsp_biquad_df1(\&b->cur, \&b->st, x, sat)) + 1);|' &&
-  expect_red G7 "只扰动 C 轨的 biquad 输出(+1 LSB)⇒ 第二轨对表应变红" "$BITEXACT_CMD" $W "\\[FAIL\\]|不同|DIFF"
+  expect_red G7 "只扰动 C 轨的 biquad 输出(+1 LSB)⇒ 实现一致性核(A 轨)应变红" "$BITEXACT_CMD" $W "\\[FAIL\\]|不同|DIFF"
 fi
 
 # ---------------------------------------------------------------- 第 6 环:强类型开关的数值中立性
