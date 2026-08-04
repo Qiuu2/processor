@@ -67,7 +67,18 @@ chdsp_slope_q16_15_t chdsp_slope_from_f64(double v);
  * ⚠ **肯定式条件**(团队纪律 D-2):开门走「持有肯定结论」的分支,
  *   新增/异常状态默认落**关门**侧,⛔ 不写「若非关门则开门」。
  */
+/* ⭐ CLOSED 必须 = 0 —— 这样【全 0 初始化的对象自动落安全侧】(D6-k)。
+ * ⛔ 变异 CHDSP_BROKEN_GATE_ENUM 把安全状态挪离 0,正是 CHK-Y1a 要防的那件事:
+ *   语义上一切照旧(全部代码都用具名常量),**只有 memset(0) 的默认落点变了**
+ *   ⇒ 那是一种不会被任何功能测试发现、只会在"忘了初始化"时发作的缺陷。 */
+#ifndef CHDSP_BROKEN_GATE_ENUM
+#  define CHDSP_BROKEN_GATE_ENUM 0
+#endif
+#if CHDSP_BROKEN_GATE_ENUM
+typedef enum { CHDSP_GATE_OPEN = 0, CHDSP_GATE_CLOSED = 1, CHDSP_GATE_HOLD = 2 } chdsp_gate_state_t;
+#else
 typedef enum { CHDSP_GATE_CLOSED = 0, CHDSP_GATE_OPEN = 1, CHDSP_GATE_HOLD = 2 } chdsp_gate_state_t;
+#endif
 
 typedef struct {
     chdsp_det_t          det;

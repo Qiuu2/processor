@@ -117,9 +117,14 @@ int chdsp_coef_from_f64(double x, chdsp_coef_q4_27_t *out)
      * (因为 16·2^27 = 2^31 恰好越过 INT32_MAX)⇒ §3.4「对 |x| ≥ 16 返回非 0」
      * 是**碰巧成立**,而 CHDSP_COEF_ABS_MAX_INT 全库【零消费者】。
      * ⇒ 现在改成:那个常数**真的**是拦截依据 —— 改它就改行为。 */
+#ifndef CHDSP_BROKEN_COEF_NOCONST   /* 1 = 退回"只靠 int32 边界碰巧等价"(常数重新变成零消费者) */
+#  define CHDSP_BROKEN_COEF_NOCONST 0
+#endif
+#if !CHDSP_BROKEN_COEF_NOCONST
     if (!(x > -(double)CHDSP_COEF_ABS_MAX_INT && x < (double)CHDSP_COEF_ABS_MAX_INT)) {
         return -1;
     }
+#endif
     if (f64_to_fixed(x, CHDSP_COEF_FRACBITS, &r) != 0) { return -1; }
     *out = CHDSP_MK(chdsp_coef_q4_27_t, r);
     return 0;

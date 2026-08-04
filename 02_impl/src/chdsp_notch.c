@@ -9,6 +9,12 @@
 #ifndef CHDSP_BROKEN_NOTCH_RESET_ALL     /* 1 = 复位动态槽时把固定槽也清掉 */
 #  define CHDSP_BROKEN_NOTCH_RESET_ALL 0
 #endif
+#ifndef CHDSP_BROKEN_NOTCH_MRU           /* 1 = 回收【最新】而不是最早(LRU→MRU) */
+#  define CHDSP_BROKEN_NOTCH_MRU 0
+#endif
+#ifndef CHDSP_BROKEN_NOTCH_NOWRITE       /* 1 = 只记簿记,不写滤波器系数(遥测会撒谎) */
+#  define CHDSP_BROKEN_NOTCH_NOWRITE 0
+#endif
 
 void chdsp_notch_bank_init(chdsp_notch_bank_t *b, chdsp_notch_mode_t mode, uint16_t n_fixed)
 {
@@ -53,8 +59,14 @@ static int place(chdsp_notch_bank_t *b, chdsp_bq_chain_t *chain, uint16_t idx,
     /* AFC 陷波 = 负增益峰型(depth_db ≤ 0);depth 为 0 ⇒ 视为"不衰减",仍占槽但旁路 */
     int e = chdsp_bq_design(CHDSP_FT_PEAKING, f_hz, q, depth_db, &c);
     if (e != CHDSP_BQ_OK) { return CHDSP_NOTCH_ERR_PARAM; }
+#if CHDSP_BROKEN_NOTCH_NOWRITE
+    (void)c;   /* ⛔ 坏版本:簿记记了,系数不写 ⇒ 遥测说有陷波,音频里没有 */
+    if (0) {
+        chdsp_bq_set_coef_now(&chain->sec[idx], &c);
+#else
     if (chain != 0) {
         chdsp_bq_set_coef_now(&chain->sec[idx], &c);
+#endif
         chain->sec[idx].bypass = (uint8_t)((depth_db == 0.0) ? 1 : 0);
         if (chain->n <= idx) { chain->n = (uint16_t)(idx + 1u); }
     }
@@ -92,7 +104,11 @@ int chdsp_notch_bank_request(chdsp_notch_bank_t *b, chdsp_bq_chain_t *chain,
 #else
             if (b->slot[i].is_fixed || !b->slot[i].in_use) { continue; }
 #endif
+#if CHDSP_BROKEN_NOTCH_MRU
+            if (oldest == 0xFFFFFFFFu || b->slot[i].seq > oldest) { oldest = b->slot[i].seq; pick = i; }
+#else
             if (b->slot[i].seq < oldest) { oldest = b->slot[i].seq; pick = i; }
+#endif
         }
         evicting = (pick != (uint16_t)CHDSP_NOTCH_COUNT);
     }

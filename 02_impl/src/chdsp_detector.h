@@ -44,6 +44,9 @@ static inline chdsp_pow_q8_54_t chdsp_pow_from_raw(int64_t r)
 static inline int64_t chdsp_pow_raw(chdsp_pow_q8_54_t p) { return CHDSP_RAW(p); }
 static inline chdsp_smooth_q0_31_t chdsp_smooth_from_raw(int32_t r)
 { return CHDSP_MK(chdsp_smooth_q0_31_t, r); }
+/* ⚠ 补齐访问器(2026-08-05):本类型原先**只有构造器没有取值器**,而同族其它类型都有两个。
+ *   ⇒ 结果是想读 α 的地方只能绕开强类型 —— 那正是强类型最容易被侵蚀的入口。 */
+static inline int32_t chdsp_smooth_raw(chdsp_smooth_q0_31_t a) { return CHDSP_RAW(a); }
 
 typedef enum {
     CHDSP_DET_PEAK = 0,

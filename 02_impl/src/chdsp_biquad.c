@@ -33,6 +33,21 @@
 #ifndef CHDSP_BROKEN_GUARD_BY_S    /* 1 = 包络守卫【退回按 S 守】—— CHK-B1b 声称要防的那次回退 */
 #  define CHDSP_BROKEN_GUARD_BY_S 0
 #endif
+#ifndef CHDSP_BROKEN_XO_NORANGE    /* 1 = 极性函数去掉量程守卫(误喂 dB/oct 会得到"合理"的 0) */
+#  define CHDSP_BROKEN_XO_NORANGE 0
+#endif
+#ifndef CHDSP_BROKEN_BUTTER_KOFF   /* 1 = butter_q 的 k 偏一位(既不是 sin 也不是 cos 式) */
+#  define CHDSP_BROKEN_BUTTER_KOFF 0
+#endif
+#ifndef CHDSP_BROKEN_BESSEL_SCALE  /* 1 = Bessel 每节增益归一化写错 ⇒ 系数放大 */
+#  define CHDSP_BROKEN_BESSEL_SCALE 0
+#endif
+#ifndef CHDSP_BROKEN_LR_ODD_OK     /* 1 = LR 接受奇数阶(数学上不存在的滤波器) */
+#  define CHDSP_BROKEN_LR_ODD_OK 0
+#endif
+#ifndef CHDSP_BROKEN_FIRSTORDER    /* 1 = 一阶节系数写错 ⇒ max|b| 越 1 */
+#  define CHDSP_BROKEN_FIRSTORDER 0
+#endif
 
 /* ==========================================================================
  * 1. 运行时
@@ -253,6 +268,8 @@ static double butter_q(int order, int k)
 {
 #if CHDSP_BROKEN_BUTTER_COS
     return 1.0 / (2.0 * cos(M_PI * (2.0 * k + 1.0) / (2.0 * order)));  /* ⛔ 坏版本 */
+#elif CHDSP_BROKEN_BUTTER_KOFF
+    return 1.0 / (2.0 * sin(M_PI * (2.0 * (k + 1) + 1.0) / (2.0 * order)));  /* ⛔ k 偏一位 */
 #else
     return 1.0 / (2.0 * sin(M_PI * (2.0 * k + 1.0) / (2.0 * order)));
 #endif
@@ -266,7 +283,9 @@ int chdsp_xover_needs_polarity_flip(int lr, chdsp_xo_order_t order_n)
      *   会全部得到 0 ⇒ LR2/LR6 判成同相 ⇒ 分频点深谷。
      *   ⇒ 现在:n 必须落在 LR 合法阶数 {2,4,6,8};否则返回 −1。
      *   ⚠ STRICT_TYPES=1 下传错单位是**编译错误**;本守卫是 STRICT_TYPES=0 的兜底。 */
+#if !CHDSP_BROKEN_XO_NORANGE
     if (n < 2 || n > 8 || (n % 2) != 0) { return -1; }
+#endif
     if (!lr) { return 0; }                       /* 非 LR ⇒ 不由本函数管 */
 #if CHDSP_BROKEN_XO_UNIT
     /* ⛔ 坏版本:把 mod 4 算在 **dB/oct** 上(= 设计件表头那个记法)
@@ -284,7 +303,11 @@ int chdsp_bq_design_xover(int lr, int order, int highpass, double fc,
     uint16_t n = 0u;
     int i, e = 0;
 
+#if CHDSP_BROKEN_LR_ODD_OK
+    if (order <= 0 || order > 8) { return CHDSP_BQ_ERR_ORDER; }   /* ⛔ 坏版本:不拦奇数阶 */
+#else
     if (order <= 0 || (order % 2) != 0 || order > 8) { return CHDSP_BQ_ERR_ORDER; }
+#endif
 
     if (lr) {
         /* LR{order} = (Butterworth order/2 阶)² */
@@ -330,10 +353,16 @@ int chdsp_bq_design_first_order(int highpass, double fc_hz, chdsp_biquad_coef_t 
     double K;
     if (!(fc_hz > 0.0) || fc_hz >= (double)CHDSP_FS_HZ * 0.5) { return CHDSP_BQ_ERR_FREQ; }
     K = tan(M_PI * fc_hz / (double)CHDSP_FS_HZ);
+#if CHDSP_BROKEN_FIRSTORDER
+    /* ⛔ 坏版本:分母漏了 ⇒ 高 fc 处 max|b| 远越 1 */
+    if (highpass) { return pack(1.0, -1.0, 0.0, (K - 1.0) / (K + 1.0), 0.0, out); }
+    return pack(K, K, 0.0, (K - 1.0) / (K + 1.0), 0.0, out);
+#else
     if (highpass) {
         return pack(1.0 / (K + 1.0), -1.0 / (K + 1.0), 0.0, (K - 1.0) / (K + 1.0), 0.0, out);
     }
     return pack(K / (K + 1.0), K / (K + 1.0), 0.0, (K - 1.0) / (K + 1.0), 0.0, out);
+#endif
 }
 
 /* 归一化(−3 dB)Bessel 极点表,order 1..8。
@@ -442,6 +471,9 @@ static int design_bessel(int order, int highpass, double fc_hz,
               double de = dr2 * dr2 + di2 * di2;   /* |zt − p|² = (zt−p)(zt−p*) */
               g = fabs(de / nu); }
         }
+#if CHDSP_BROKEN_BESSEL_SCALE
+        g *= 8.0;                     /* ⛔ 坏版本:归一化写错 ⇒ max|b| 越 2 */
+#endif
         b0 *= g; b1 *= g; b2 *= g;
         if (n >= CHDSP_OUT_XO_SECTIONS) { return CHDSP_BQ_ERR_ORDER; }
         e |= pack(b0, b1, b2, a1, a2, &out[n]);
@@ -464,7 +496,9 @@ int chdsp_bq_design_xover2(chdsp_xover_type_t type, int order, int highpass,
     switch (type) {
     case CHDSP_XO_LINKWITZ_RILEY:
         /* ⛔ LR = BW² ⇒ 奇数阶数学上不存在。这不是缺口,是定义。 */
+#if !CHDSP_BROKEN_LR_ODD_OK
         if ((order % 2) != 0) { return CHDSP_BQ_ERR_ORDER; }
+#endif
         return chdsp_bq_design_xover(1, order, highpass, fc_hz, out, n_out);
 
     case CHDSP_XO_BUTTERWORTH:

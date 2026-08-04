@@ -13,6 +13,12 @@
 #ifndef CHDSP_BROKEN_HPF_AFTER_DYN    /* 1 = D3 把 HPF 放到动态处理【之后】 */
 #  define CHDSP_BROKEN_HPF_AFTER_DYN 0
 #endif
+#ifndef CHDSP_BROKEN_HOOK_SKIP        /* 1 = AGC 插入点不再被调用(算法挂上去也不生效) */
+#  define CHDSP_BROKEN_HOOK_SKIP 0
+#endif
+#ifndef CHDSP_BROKEN_NO_SATTEL        /* 1 = 链内饱和不计数(C-B 遥测失效) */
+#  define CHDSP_BROKEN_NO_SATTEL 0
+#endif
 
 void chdsp_hook_clear(chdsp_alg_hook_t *h) { h->fn = 0; h->user = 0; h->call_count = 0u; }
 
@@ -87,7 +93,9 @@ void chdsp_in_ch_process(chdsp_in_ch_t *ch, const chdsp_io_q0_31_t *in,
     chdsp_bq_chain_process(&ch->hpf, out, out, n, &ch->sat);
 #endif
     /* ✳ AGC */
+#if !CHDSP_BROKEN_HOOK_SKIP
     chdsp_hook_run(&ch->hook_agc, out, n);
+#endif
     /* ⑥ PEQ → ✳ AFC 陷波器组 */
     chdsp_bq_chain_process(&ch->peq, out, out, n, &ch->sat);
     chdsp_hook_run(&ch->hook_afc, out, n);
@@ -100,7 +108,9 @@ void chdsp_in_ch_process(chdsp_in_ch_t *ch, const chdsp_io_q0_31_t *in,
 #if CHDSP_DEBUG_ASSERT
     /* ⭐ C-B 接线(critic m-6):D3 链上没有合法削波点 ⇒ 任何饱和都是【链内饱和】= 设计缺陷。
      * ⛔ 计数不 abort —— abort 会让饱和行为本身无法被测。消费者:D14 bring-up + 自验。 */
+#if !CHDSP_BROKEN_NO_SATTEL
     if (chdsp_sat_tripped(&ch->sat)) { ch->internal_sat_frames++; }
+#endif
 #endif
 }
 

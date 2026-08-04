@@ -138,6 +138,19 @@ declare -A CLAIM=(
   [CHDSP_BROKEN_NOTCH_EVICT_FIXED]=P_NOTCH_EVICT
   [CHDSP_BROKEN_NOTCH_RESET_ALL]=P_NOTCH_RESET
   [CHDSP_BROKEN_GUARD_BY_S]=P_GUARD_BY_S
+  [CHDSP_BROKEN_NOTCH_MRU]=P_NOTCH_MRU
+  [CHDSP_BROKEN_NOTCH_NOWRITE]=P_NOTCH_NOWRITE
+  [CHDSP_BROKEN_HOOK_SKIP]=P_HOOK_SKIP
+  [CHDSP_BROKEN_NO_SATTEL]=P_NO_SATTEL
+  [CHDSP_BROKEN_SLOPE_CONV]=P_SLOPE_CONV
+  [CHDSP_BROKEN_XO_NORANGE]=P_XO_NORANGE
+  [CHDSP_BROKEN_BUTTER_KOFF]=P_BUTTER_KOFF
+  [CHDSP_BROKEN_BESSEL_SCALE]=P_BESSEL_SCALE
+  [CHDSP_BROKEN_LR_ODD_OK]=P_LR_ODD_OK
+  [CHDSP_BROKEN_FIRSTORDER]=P_FIRSTORDER
+  [CHDSP_BROKEN_SMOOTH_FIXED]=P_SMOOTH_FIXED
+  [CHDSP_BROKEN_GATE_ENUM]=P_GATE_ENUM
+  [CHDSP_BROKEN_COEF_NOCONST]=P_COEF_NOCONST
 )
 
 # ---------------------------------------------------------------------------
@@ -160,9 +173,23 @@ declare -A CLAIM=(
 #   ⇒ ⛔ 声明是留痕,不是豁免:任何**未声明**的连带变化一律 FAIL。
 declare -A ALSO=(
   [CHDSP_BROKEN_TRUNC]="P_NOEF"
+  [CHDSP_BROKEN_BUTTER_COS]="P_BUTTER_KOFF"
+  [CHDSP_BROKEN_BUTTER_KOFF]="P_BUTTER_COS"
+  [CHDSP_BROKEN_BESSEL_RBJ]="P_BESSEL_SCALE"
+  [CHDSP_BROKEN_BESSEL_SCALE]="P_BESSEL_RBJ"
+  [CHDSP_BROKEN_GATE_ENUM]="P_GATE_NEGATIVE P_NO_HYST"
+  [CHDSP_BROKEN_SMOOTH_FIXED]="P_DET_ONEDIR P_LIM_NOLOOK P_COMP_HARDKNEE"
+  [CHDSP_BROKEN_WRAP]="P_NO_SATTEL"
 )
 declare -A ALSO_WHY=(
   [CHDSP_BROKEN_TRUNC]="舍入模式**就是量化器的一部分**,而 P_NOEF 测的正是量化误差功率 ⇒ 同一处改动的第二个观测面,不是第二个缺陷"
+  [CHDSP_BROKEN_BUTTER_COS]="两条探针都读 butter_q 的输出(一条 BW3、一条 BW4)⇒ 同一个函数的两个观测面"
+  [CHDSP_BROKEN_BUTTER_KOFF]="同上,方向相反"
+  [CHDSP_BROKEN_BESSEL_RBJ]="两条探针都读 Bessel 系数(一条 a1 之和、一条 max|b|)⇒ 同一族系数的两个观测面"
+  [CHDSP_BROKEN_BESSEL_SCALE]="同上,方向相反"
+  [CHDSP_BROKEN_SMOOTH_FIXED]="chdsp_smooth_from_ms 是**全部检测器共用**的平滑系数函数 ⇒ 冻住它,门/压限/限幅的时间常数一起变。这是改动点本身的作用域,不是三个缺陷"
+  [CHDSP_BROKEN_WRAP]="把饱和换成回绕 ⇒ **根本不再发生饱和** ⇒ chdsp_sat_tripped 永不为真 ⇒ 链内饱和计数必然归零。⇒ 是同一处改动的必然后果,不是第二个缺陷"
+  [CHDSP_BROKEN_GATE_ENUM]="⚠ 这一条要说清:门的**行为完全没变**,变的是状态的【数值编码】(CLOSED 从 0 变 1)。P_GATE_NEGATIVE / P_NO_HYST 读的正是 (int)g.state ⇒ 它们的读数必然跟着编码走。⇒ 是**表示**的连带,不是第二个缺陷"
 )
 # ---------------------------------------------------------------------------
 # ⛔ 名单对表(整改 2026-08-04 · critic 02impl MAJOR-3)

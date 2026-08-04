@@ -40,6 +40,7 @@
 #include "chdsp_fir.h"
 #include "chdsp_delay.h"
 #include "chdsp_notch.h"
+#include "chdsp_chain.h"
 #include <stdio.h>
 #include <math.h>
 
@@ -50,6 +51,8 @@
 static chdsp_coef_q4_27_t g_fir_h[CHDSP_OUT_FIR_TAPS];
 static chdsp_smp_q4_27_t  g_fir_z[CHDSP_OUT_FIR_TAPS];
 static chdsp_smp_q4_27_t  g_look[4096];
+static chdsp_smp_q4_27_t  g_dly2[CHDSP_IN_DELAY_MAX_SAMPLES + CHDSP_FRAME_SAMPLES];
+static chdsp_smp_q4_27_t  g_look2[CHDSP_FRAME_SAMPLES * 4];
 
 static chdsp_smp_q4_27_t smp_f(double v)
 {
@@ -336,6 +339,105 @@ int main(void)
         r[3] = chdsp_bq_design(CHDSP_FT_HIGHSHELF, 20.0, 1.0, 17.9, &c);
         for (i = 0; i < 4; i++) { v = v * 10 + (long)(-r[i]); }
         printf("PROBE P_GUARD_BY_S %ld\n", v);
+    }
+
+    /* ══ r12:为 MAJOR-5 的 14 条欠账补的探针 ══ */
+    {   /* P_NOTCH_MRU:槽满时回收【最早】还是【最新】。读数 = 被复用的槽号 */
+        chdsp_notch_bank_t b; chdsp_bq_t sec[CHDSP_NOTCH_COUNT]; chdsp_bq_chain_t ch;
+        int i; uint16_t k = 0xFFFFu;
+        chdsp_bq_chain_init(&ch, sec, CHDSP_NOTCH_COUNT);
+        chdsp_notch_bank_init(&b, CHDSP_NOTCH_MODE_DYNAMIC, 0u);
+        for (i = 0; i < CHDSP_NOTCH_COUNT; i++)
+            (void)chdsp_notch_bank_request(&b, &ch, 200.0 + i, 8.0, -6.0, 0);
+        (void)chdsp_notch_bank_request(&b, &ch, 9000.0, 8.0, -6.0, &k);
+        printf("PROBE P_NOTCH_MRU %u\n", (unsigned)k);
+    }
+    {   /* P_NOTCH_NOWRITE:request 有没有真的写系数。读数 = 该节 bypass 标志 */
+        chdsp_notch_bank_t b; chdsp_bq_t sec[CHDSP_NOTCH_COUNT]; chdsp_bq_chain_t ch;
+        uint16_t k = 0u;
+        chdsp_bq_chain_init(&ch, sec, CHDSP_NOTCH_COUNT);
+        chdsp_notch_bank_init(&b, CHDSP_NOTCH_MODE_DYNAMIC, 0u);
+        (void)chdsp_notch_bank_request(&b, &ch, 1000.0, 8.0, -18.0, &k);
+        printf("PROBE P_NOTCH_NOWRITE %d\n", (int)ch.sec[k].bypass + 10 * (int)ch.n);
+    }
+    {   /* P_HOOK_SKIP:AGC 插入点是否真被调用。读数 = call_count */
+        chdsp_in_ch_t ich; chdsp_io_q0_31_t in[CHDSP_FRAME_SAMPLES];
+        chdsp_smp_q4_27_t out[CHDSP_FRAME_SAMPLES]; int i;
+        (void)chdsp_in_ch_init(&ich, g_dly2, (uint32_t)(sizeof(g_dly2)/sizeof(g_dly2[0])),
+                               g_look2, (uint32_t)(sizeof(g_look2)/sizeof(g_look2[0])));
+        for (i = 0; i < CHDSP_FRAME_SAMPLES; i++) in[i] = chdsp_io_from_raw(1 << 20);
+        chdsp_in_ch_process(&ich, in, out, CHDSP_FRAME_SAMPLES);
+        printf("PROBE P_HOOK_SKIP %u\n", (unsigned)ich.hook_agc.call_count);
+    }
+    {   /* P_NO_SATTEL:链内饱和是否被计数。读数 = internal_sat_frames */
+        chdsp_in_ch_t ich; chdsp_biquad_coef_t pc;
+        chdsp_io_q0_31_t in[CHDSP_FRAME_SAMPLES]; chdsp_smp_q4_27_t out[CHDSP_FRAME_SAMPLES];
+        int i;
+        (void)chdsp_in_ch_init(&ich, g_dly2, (uint32_t)(sizeof(g_dly2)/sizeof(g_dly2[0])),
+                               g_look2, (uint32_t)(sizeof(g_look2)/sizeof(g_look2[0])));
+        ich.trim = chdsp_db_to_gain(chdsp_db(24));
+        (void)chdsp_bq_design(CHDSP_FT_PEAKING, 1000.0, 1.0, 15.0, &pc);
+        ich.peq.n = 1u; chdsp_bq_set_coef_now(&ich.peq_sec[0], &pc); ich.peq_sec[0].bypass = 0u;
+        for (i = 0; i < CHDSP_FRAME_SAMPLES; i++)
+            in[i] = chdsp_io_from_raw((int32_t)(2147483647.0 * sin(2.0*M_PI*1000.0*i/CHDSP_FS_HZ)));
+        chdsp_in_ch_process(&ich, in, out, CHDSP_FRAME_SAMPLES);
+        printf("PROBE P_NO_SATTEL %u\n", (unsigned)chdsp_in_ch_internal_sat_frames(&ich));
+    }
+    {   /* P_SLOPE_CONV:dB/oct → 阶数 的换算因子 */
+        printf("PROBE P_SLOPE_CONV %ld\n",
+               (long)chdsp_xo_order_n(chdsp_xo_order_from_slope(chdsp_xo_slope(12))));
+    }
+    {   /* P_XO_NORANGE:误喂 dB/oct 时的量程守卫 */
+        printf("PROBE P_XO_NORANGE %d\n",
+               chdsp_xover_needs_polarity_flip(1, chdsp_xo_order(24)));
+    }
+    {   /* P_BUTTER_KOFF:BW4 第 2 节的 a1(butter_q 的 k 取值直接决定它) */
+        chdsp_biquad_coef_t sec[CHDSP_OUT_XO_SECTIONS]; uint16_t n = 0u;
+        int e = chdsp_bq_design_xover2(CHDSP_XO_BUTTERWORTH, 4, 0, 1000.0, sec, &n);
+        /* ⚠ 必须取 sec[0]:KOFF 下 BW4 的 Q 集合从 {1.3066, 0.5412} 退化成 {0.5412, 0.5412}
+         *   ⇒ **sec[1] 恰好不变**,取它就没有分辨力(首版就是这样,被断言① 当场抓出)。 */
+        printf("PROBE P_BUTTER_KOFF %ld\n",
+               (e == CHDSP_BQ_OK && n >= 2u) ? (long)chdsp_coef_raw(sec[0].a1) : -999999L);
+    }
+    {   /* P_BESSEL_SCALE:Bessel4 的 max|b| raw(归一化写错会放大它) */
+        chdsp_biquad_coef_t sec[CHDSP_OUT_XO_SECTIONS]; uint16_t n = 0u; long w = 0;
+        if (chdsp_bq_design_xover2(CHDSP_XO_BESSEL, 4, 0, 1000.0, sec, &n) == CHDSP_BQ_OK) {
+            uint16_t i; for (i = 0u; i < n; i++) {
+                long r[3]; int j; r[0]=(long)chdsp_coef_raw(sec[i].b0);
+                r[1]=(long)chdsp_coef_raw(sec[i].b1); r[2]=(long)chdsp_coef_raw(sec[i].b2);
+                for (j=0;j<3;j++){ long v = r[j]<0?-r[j]:r[j]; if (v>w) w=v; } }
+        } else { w = -1; }
+        printf("PROBE P_BESSEL_SCALE %ld\n", w);
+    }
+    {   /* P_LR_ODD_OK:LR 奇数阶是否被拒 */
+        chdsp_biquad_coef_t sec[CHDSP_OUT_XO_SECTIONS]; uint16_t n = 0u;
+        printf("PROBE P_LR_ODD_OK %d\n",
+               chdsp_bq_design_xover2(CHDSP_XO_LINKWITZ_RILEY, 3, 0, 1000.0, sec, &n));
+    }
+    {   /* P_FIRSTORDER:一阶节的 max|b| raw */
+        chdsp_biquad_coef_t c; long w = 0; int i;
+        for (i = 0; i < 60; i++) {
+            double fc = 20.0 * pow(1000.0, (double)i / 59.0);
+            if (chdsp_bq_design_first_order(0, fc, &c) == CHDSP_BQ_OK) {
+                long r[2]; int j; r[0]=(long)chdsp_coef_raw(c.b0); r[1]=(long)chdsp_coef_raw(c.b1);
+                for (j=0;j<2;j++){ long v=r[j]<0?-r[j]:r[j]; if (v>w) w=v; } }
+        }
+        printf("PROBE P_FIRSTORDER %ld\n", w);
+    }
+    {   /* P_SMOOTH_FIXED:平滑系数是否随 tau 变 */
+        printf("PROBE P_SMOOTH_FIXED %ld\n",
+               (long)chdsp_smooth_raw(chdsp_smooth_from_ms(3000.0)));
+    }
+    {   /* P_GATE_ENUM:安全状态是不是 0(⇒ 全 0 初始化落安全侧) */
+        printf("PROBE P_GATE_ENUM %d\n", (int)CHDSP_GATE_CLOSED);
+    }
+    {   /* P_COEF_NOCONST:系数界是否由具名常数显式守 */
+        chdsp_coef_q4_27_t c;
+        /* ⚠ 两道守卫只在【负边界 −16.0】处不等价:int32 判据是 `scaled < −2^31` (严格小于),
+         *   而 −16.0 恰好 = −2^31 ⇒ 它**通过** int32 判据;只有具名常数判据 (|x| < 16) 拦得住。
+         *   ⇒ 探针必须取这个点,否则两版读数相同(首版取 15.99999995/16.0 就是这样,无分辨力)。 */
+        printf("PROBE P_COEF_NOCONST %d\n",
+               chdsp_coef_from_f64(-16.0, &c) * 10 + chdsp_coef_from_f64(16.0, &c));
     }
 
     return 0;

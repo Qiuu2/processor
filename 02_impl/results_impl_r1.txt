@@ -1,9 +1,9 @@
 ================================================================================
 results_impl_r1 —— D3/D4 C 实现 · 总闸门
 门禁状态: 未过门(未经独立 critic 评审)
-时间: 2026-08-05T00:03:00+08:00
-deps: chdsp_biquad.h@6d95dea5f8b3472b chdsp_chain.h@a37932eec5e25534 chdsp_config.h@d1112b527e408c2f chdsp_delay.h@5fe962b7a355715a chdsp_detector.h@5174324e05b09f2f chdsp_dynamics.h@4b033e284d7a8056 chdsp_fir.h@0ceed3f2aac3eb73 chdsp_notch.h@7b089f8ff579290d chdsp_biquad.c@017496fd8901b617 chdsp_chain.c@06bcbbab54a75388 chdsp_delay.c@17491f0d34d4c0a3 chdsp_detector.c@e8085bea08eb4748 chdsp_dynamics.c@a82dfc1b12464ca8 chdsp_fir.c@a499834ca5626c38 chdsp_notch.c@7224f93db832c29b 
-      check_modules.c@a18cc087060cabdc ref_modules.py@edb625ec0f1dbd4d
+时间: 2026-08-05T00:26:00+08:00
+deps: chdsp_biquad.h@564a2b4fd22d8f09 chdsp_chain.h@a37932eec5e25534 chdsp_config.h@d1112b527e408c2f chdsp_delay.h@5fe962b7a355715a chdsp_detector.h@bc4c25a74820fa2f chdsp_dynamics.h@bd8150ff00d69d9f chdsp_fir.h@0ceed3f2aac3eb73 chdsp_notch.h@7b089f8ff579290d chdsp_biquad.c@945d41564c60c875 chdsp_chain.c@49f570a1ae42feeb chdsp_delay.c@17491f0d34d4c0a3 chdsp_detector.c@b83fa6b0c870070b chdsp_dynamics.c@a82dfc1b12464ca8 chdsp_fir.c@a499834ca5626c38 chdsp_notch.c@92206b335ea6ec47 
+      check_modules.c@d6a35a3fa79d36b0 ref_modules.py@edb625ec0f1dbd4d
 编译器: gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
 ================================================================================
 
@@ -220,10 +220,10 @@ chain
   [PASS] A3  ⇒ 该段确实被移除了 —— 变异名副其实
 
 --- Phase B:行为探针(只比该变异自己那一行读数)---
-  好版本探针读数 19 条 ✓
+  好版本探针读数 32 条 ✓
 
 --- 名单对表:自证覆盖面 vs 杀伤矩阵名单(⛔ 对称差必须为空)---
-  杀伤矩阵 22 个 / 自证覆盖 22 个
+  杀伤矩阵 35 个 / 自证覆盖 35 个
   [PASS] 名单对表  ⇒ 对称差为空 ⇒ **进矩阵的每一个都自证过**,杀伤率的分母可信
 
   CHDSP_BROKEN_TRUNC             P_TRUNC            好=2                      变异=1                     
@@ -232,6 +232,12 @@ chain
   CHDSP_BROKEN_GATE_NEGATIVE     P_GATE_NEGATIVE    好=0                      变异=1                     
   [PASS] CHDSP_BROKEN_GATE_NEGATIVE ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_GATE_NEGATIVE ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  CHDSP_BROKEN_BUTTER_KOFF       P_BUTTER_KOFF      好=-253477689             变异=-237498853            
+  [PASS] CHDSP_BROKEN_BUTTER_KOFF ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_BUTTER_KOFF ②  ⇒ 其余探针逐位未变(已声明连带:P_BUTTER_COS —— 同上,方向相反)
+  CHDSP_BROKEN_HOOK_SKIP         P_HOOK_SKIP        好=1                      变异=0                     
+  [PASS] CHDSP_BROKEN_HOOK_SKIP ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_HOOK_SKIP ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
   CHDSP_BROKEN_DET_ONEDIR        P_DET_ONEDIR       好=-5348                  变异=-5890                 
   [PASS] CHDSP_BROKEN_DET_ONEDIR ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_DET_ONEDIR ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
@@ -241,18 +247,33 @@ chain
   CHDSP_BROKEN_FIR_NOBYPASS      P_FIR_NOBYPASS     好=0                      变异=2554                  
   [PASS] CHDSP_BROKEN_FIR_NOBYPASS ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_FIR_NOBYPASS ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  CHDSP_BROKEN_NO_SATTEL         P_NO_SATTEL        好=1                      变异=0                     
+  [PASS] CHDSP_BROKEN_NO_SATTEL ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_NO_SATTEL ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
   CHDSP_BROKEN_FIR_ASYM          P_FIR_ASYM         好=0                      变异=1                     
   [PASS] CHDSP_BROKEN_FIR_ASYM ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_FIR_ASYM ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  CHDSP_BROKEN_GATE_ENUM         P_GATE_ENUM        好=0                      变异=1                     
+  [PASS] CHDSP_BROKEN_GATE_ENUM ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_GATE_ENUM ②  ⇒ 其余探针逐位未变(已声明连带:P_GATE_NEGATIVE P_NO_HYST —— ⚠ 这一条要说清:门的**行为完全没变**,变的是状态的【数值编码】(CLOSED 从 0 变 1)。P_GATE_NEGATIVE / P_NO_HYST 读的正是 (int)g.state ⇒ 它们的读数必然跟着编码走。⇒ 是**表示**的连带,不是第二个缺陷)
+  CHDSP_BROKEN_FIRSTORDER        P_FIRSTORDER       好=105854185              变异=500907380             
+  [PASS] CHDSP_BROKEN_FIRSTORDER ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_FIRSTORDER ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
   CHDSP_BROKEN_BESSEL_RBJ        P_BESSEL_RBJ       好=-1018576106            变异=-879171692            
   [PASS] CHDSP_BROKEN_BESSEL_RBJ ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
-  [PASS] CHDSP_BROKEN_BESSEL_RBJ ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  [PASS] CHDSP_BROKEN_BESSEL_RBJ ②  ⇒ 其余探针逐位未变(已声明连带:P_BESSEL_SCALE —— 两条探针都读 Bessel 系数(一条 a1 之和、一条 max|b|)⇒ 同一族系数的两个观测面)
   CHDSP_BROKEN_LIM_NOLOOK        P_LIM_NOLOOK       好=505426                 变异=899999                
   [PASS] CHDSP_BROKEN_LIM_NOLOOK ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_LIM_NOLOOK ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  CHDSP_BROKEN_XO_NORANGE        P_XO_NORANGE       好=-1                     变异=0                     
+  [PASS] CHDSP_BROKEN_XO_NORANGE ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_XO_NORANGE ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
   CHDSP_BROKEN_BUTTER_COS        P_BUTTER_COS       好=-249834012             变异=-239110178            
   [PASS] CHDSP_BROKEN_BUTTER_COS ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
-  [PASS] CHDSP_BROKEN_BUTTER_COS ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  [PASS] CHDSP_BROKEN_BUTTER_COS ②  ⇒ 其余探针逐位未变(已声明连带:P_BUTTER_KOFF —— 两条探针都读 butter_q 的输出(一条 BW3、一条 BW4)⇒ 同一个函数的两个观测面)
+  CHDSP_BROKEN_LR_ODD_OK         P_LR_ODD_OK        好=-6                     变异=0                     
+  [PASS] CHDSP_BROKEN_LR_ODD_OK ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_LR_ODD_OK ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
   CHDSP_BROKEN_POW_NARROW        P_POW_NARROW       好=16720                  变异=0                     
   [PASS] CHDSP_BROKEN_POW_NARROW ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_POW_NARROW ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
@@ -262,9 +283,15 @@ chain
   CHDSP_BROKEN_BQ_NORAMP         P_BQ_NORAMP        好=8                      变异=1                     
   [PASS] CHDSP_BROKEN_BQ_NORAMP ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_BQ_NORAMP ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  CHDSP_BROKEN_NOTCH_MRU         P_NOTCH_MRU        好=0                      变异=7                     
+  [PASS] CHDSP_BROKEN_NOTCH_MRU ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_NOTCH_MRU ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
   CHDSP_BROKEN_GUARD_BY_S        P_GUARD_BY_S       好=30                     变异=3040                  
   [PASS] CHDSP_BROKEN_GUARD_BY_S ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_GUARD_BY_S ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  CHDSP_BROKEN_SMOOTH_FIXED      P_SMOOTH_FIXED     好=14913                  变异=894598                
+  [PASS] CHDSP_BROKEN_SMOOTH_FIXED ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_SMOOTH_FIXED ②  ⇒ 其余探针逐位未变(已声明连带:P_DET_ONEDIR P_LIM_NOLOOK P_COMP_HARDKNEE —— chdsp_smooth_from_ms 是**全部检测器共用**的平滑系数函数 ⇒ 冻住它,门/压限/限幅的时间常数一起变。这是改动点本身的作用域,不是三个缺陷)
   CHDSP_BROKEN_NOTCH_RESET_ALL   P_NOTCH_RESET      好=4                      变异=0                     
   [PASS] CHDSP_BROKEN_NOTCH_RESET_ALL ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_NOTCH_RESET_ALL ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
@@ -274,23 +301,35 @@ chain
   CHDSP_BROKEN_XO_UNIT           P_XO_UNIT          好=3232                   变异=2222                  
   [PASS] CHDSP_BROKEN_XO_UNIT ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_XO_UNIT ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  CHDSP_BROKEN_COEF_NOCONST      P_COEF_NOCONST     好=-11                    变异=-1                    
+  [PASS] CHDSP_BROKEN_COEF_NOCONST ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_COEF_NOCONST ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  CHDSP_BROKEN_SLOPE_CONV        P_SLOPE_CONV       好=2                      变异=1                     
+  [PASS] CHDSP_BROKEN_SLOPE_CONV ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_SLOPE_CONV ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
   CHDSP_BROKEN_BQ_TIE_FREE       P_BQ_TIE_FREE      好=0                      变异=189                   
   [PASS] CHDSP_BROKEN_BQ_TIE_FREE ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_BQ_TIE_FREE ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  CHDSP_BROKEN_BESSEL_SCALE      P_BESSEL_SCALE     好=2597063                变异=20776502              
+  [PASS] CHDSP_BROKEN_BESSEL_SCALE ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_BESSEL_SCALE ②  ⇒ 其余探针逐位未变(已声明连带:P_BESSEL_RBJ —— 同上,方向相反)
   CHDSP_BROKEN_NOEF              P_NOEF             好=-16653                 变异=-8316                 
   [PASS] CHDSP_BROKEN_NOEF ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_NOEF ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  CHDSP_BROKEN_NOTCH_NOWRITE     P_NOTCH_NOWRITE    好=10                     变异=1                     
+  [PASS] CHDSP_BROKEN_NOTCH_NOWRITE ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_NOTCH_NOWRITE ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
   CHDSP_BROKEN_WRAP              P_WRAP             好=2147483647             变异=0                     
   [PASS] CHDSP_BROKEN_WRAP ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
-  [PASS] CHDSP_BROKEN_WRAP ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  [PASS] CHDSP_BROKEN_WRAP ②  ⇒ 其余探针逐位未变(已声明连带:P_NO_SATTEL —— 把饱和换成回绕 ⇒ **根本不再发生饱和** ⇒ chdsp_sat_tripped 永不为真 ⇒ 链内饱和计数必然归零。⇒ 是同一处改动的必然后果,不是第二个缺陷)
 
 ================================================================
-变异自证合计: PASS=42  FAIL=0
+变异自证合计: PASS=68  FAIL=0
 ⇒ 全部变异名副其实 ⇒ 杀伤矩阵的分母可信 ⇒ PASS
 
 ### 4. 杀伤矩阵(硬闸门)
 ================================================================
-杀伤矩阵(硬闸门)  变异数 = 19
+杀伤矩阵(硬闸门)  变异数 = 32
 ================================================================
   阴性对照(无变异):PASS ✓  ⇒ 下面的杀死可归因于变异
 
@@ -316,31 +355,31 @@ chain
   [已杀死] CHDSP_BROKEN_NOTCH_EVICT_FIXED  ⇐ CHK-N1 CHK-N3 CHK-N4 
   [已杀死] CHDSP_BROKEN_NOTCH_RESET_ALL  ⇐ CHK-N4 
   [已杀死] CHDSP_BROKEN_GUARD_BY_S  ⇐ CHK-B1 CHK-B1b 
+  [已杀死] CHDSP_BROKEN_NOTCH_MRU  ⇐ CHK-N2 
+  [已杀死] CHDSP_BROKEN_NOTCH_NOWRITE  ⇐ CHK-N5 
+  [已杀死] CHDSP_BROKEN_HOOK_SKIP  ⇐ CHK-C4 
+  [已杀死] CHDSP_BROKEN_NO_SATTEL  ⇐ CHK-M6b 
+  [已杀死] CHDSP_BROKEN_SLOPE_CONV  ⇐ CHK-B3c 
+  [已杀死] CHDSP_BROKEN_XO_NORANGE  ⇐ CHK-B3u 
+  [已杀死] CHDSP_BROKEN_BUTTER_KOFF  ⇐ CHK-B3s CHK-X3 CHK-X4 
+  [已杀死] CHDSP_BROKEN_BESSEL_SCALE  ⇐ CHK-X1 CHK-X2 
+  [已杀死] CHDSP_BROKEN_LR_ODD_OK  ⇐ CHK-X5 
+  [已杀死] CHDSP_BROKEN_FIRSTORDER  ⇐ CHK-X3 CHK-X6 
+  [已杀死] CHDSP_BROKEN_SMOOTH_FIXED  ⇐ CHK-D3 CHK-Y3 CHK-D1b 
+  [已杀死] CHDSP_BROKEN_GATE_ENUM  ⇐ CHK-Y1a 
+  [已杀死] CHDSP_BROKEN_COEF_NOCONST  ⇐ CHK-M6a 
 
 ================================================================
 杀伤覆盖率(MAJOR-5)—— ⛔ 三类分开,合成一个数会掩盖差别
-  检查总数 46;无任何变异杀得死 22,其中:
+  检查总数 46;无任何变异杀得死 9,其中:
     · 回归项 6 条 —— critic MAJOR-4 已判零分辨力,加标注即为此(按标注自动推导)
-    · 前提自检 3 条 —— 断言测试台的工作点落在有分辨力的区间(不是产品行为)⇒ 产品变异不该杀它们
-    · ⛔ **真欠账 14 条** —— 声称测产品行为,却没有任何变异能杀死它:
-         CHK-B3c
-         CHK-B3u
-         CHK-C3a
-         CHK-C4
-         CHK-D3
-         CHK-M6a
-         CHK-M6b
-         CHK-N2
-         CHK-N5
-         CHK-X1
-         CHK-X4
-         CHK-X5
-         CHK-X6
-         CHK-Y1a
-  ⇒ 真欠账 14 ≤ 登记上限 14 ✓(棘轮:只许降,⛔ 不许上调上限)
+    · 前提自检 5 条 —— 断言测试台的工作点落在有分辨力的区间(不是产品行为)⇒ 产品变异不该杀它们
+    · ⛔ **真欠账 0 条** —— 声称测产品行为,却没有任何变异能杀死它:
+         
+  ⇒ 真欠账 0 ≤ 登记上限 2 ✓(棘轮:只许降,⛔ 不许上调上限)
 
 ================================================================
-杀伤矩阵:22/22 全部被杀死  ⇒ PASS
+杀伤矩阵:35/35 全部被杀死  ⇒ PASS
 
 ### 5. 实现一致性核 + 铁律七的独立解析轨(硬闸门)
   ⛔ 两件事分开报(整改 · critic 02impl MAJOR-1):

@@ -48,6 +48,19 @@ MUTS=(
   CHDSP_BROKEN_NOTCH_EVICT_FIXED  # notch(r10):回收时把固定槽也算进候选
   CHDSP_BROKEN_NOTCH_RESET_ALL    # notch(r10):复位动态槽时把固定槽也清掉
   CHDSP_BROKEN_GUARD_BY_S         # biquad(r11):包络守卫退回按 S 守 ⇒ CHK-B1b 声称要防的回退
+  CHDSP_BROKEN_NOTCH_MRU          # notch(r12):回收最新而不是最早(LRU→MRU)
+  CHDSP_BROKEN_NOTCH_NOWRITE      # notch(r12):只记簿记不写系数
+  CHDSP_BROKEN_HOOK_SKIP          # chain(r12):AGC 插入点不再被调用
+  CHDSP_BROKEN_NO_SATTEL          # chain(r12):链内饱和不计数(C-B 遥测失效)
+  CHDSP_BROKEN_SLOPE_CONV         # biquad(r12):dB/oct→阶数 换算因子写错
+  CHDSP_BROKEN_XO_NORANGE         # biquad(r12):极性函数去掉量程守卫
+  CHDSP_BROKEN_BUTTER_KOFF        # biquad(r12):butter_q 的 k 偏一位
+  CHDSP_BROKEN_BESSEL_SCALE       # biquad(r12):Bessel 归一化写错 ⇒ 系数放大
+  CHDSP_BROKEN_LR_ODD_OK          # biquad(r12):LR 接受奇数阶
+  CHDSP_BROKEN_FIRSTORDER         # biquad(r12):一阶节系数写错
+  CHDSP_BROKEN_SMOOTH_FIXED       # detector(r12):平滑系数不随 tau 变
+  CHDSP_BROKEN_GATE_ENUM          # dynamics(r12):安全状态挪离 0 ⇒ 全 0 初始化落错侧
+  CHDSP_BROKEN_COEF_NOCONST       # fixed(r12):系数界退回只靠 int32 边界
 )
 
 echo "================================================================"
@@ -137,7 +150,7 @@ regress_tags=$(grep -E '保留为回归项' "$BUILD/good.txt" \
            | sed -nE 's/^[^C]*\b(CHK-[A-Za-z0-9]+).*/\1/p' | sort -u)
 # (b) 前提自检:它们断言的是【测试台自己有分辨力】,不是产品行为
 #     ⇒ 产品变异本就不该杀死它们。必须**显式声明 + 写明理由**(同自证的 ALSO 机制)。
-PRECOND="CHK-Y1c0 CHK-Y2b0 CHK-N5a"
+PRECOND="CHK-Y1c0 CHK-Y2b0 CHK-N5a CHK-C3a CHK-T4a"
 PRECOND_WHY="断言测试台的工作点落在有分辨力的区间(不是产品行为)⇒ 产品变异不该杀它们"
 precond_tags=$(echo "$PRECOND" | tr ' ' '\n' | grep -c . >/dev/null; echo "$PRECOND" | tr ' ' '\n' | sort -u)
 
@@ -157,7 +170,7 @@ echo "    · 回归项 $n_reg 条 —— critic MAJOR-4 已判零分辨力,加�
 echo "    · 前提自检 $n_pre 条 —— $PRECOND_WHY"
 echo "    · ⛔ **真欠账 $n_debt 条** —— 声称测产品行为,却没有任何变异能杀死它:"
 echo "$debt" | sed 's/^/         /'
-LIMIT=${CHDSP_KILL_UNCOVERED_MAX:-14}
+LIMIT=${CHDSP_KILL_UNCOVERED_MAX:-0}
 if [ "$n_debt" -gt "$LIMIT" ]; then
   echo "  ⛔ 真欠账 $n_debt > 登记上限 $LIMIT ⇒ **覆盖率变差** ⇒ FAIL"
   echo "     ⇒ 新增检查必须同时新增能杀死它的变异,⛔ 不得只加检查"

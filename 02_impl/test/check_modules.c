@@ -305,9 +305,13 @@ int main(void)
                 "离功率底 ≥20 dB 处精度 ≤0.2 dB");
         }
     }
-    {   /* CHK-D3 功率底 vs release —— 锁住那张表 */
-        double a50  = 1.0 - exp(-1.0 / (0.050 * CHDSP_FS_HZ));
-        double a3k  = 1.0 - exp(-1.0 / (3.000 * CHDSP_FS_HZ));
+    {   /* CHK-D3 功率底 vs release —— 锁住那张表
+         * ⛔⛔ 整改 2026-08-05:本条原先**根本没调被测物** —— 它用 exp()/ldexp() 在测试里
+         *   把公式重算了一遍,与 chdsp_* 一个函数都不沾 ⇒ **任何产品变异都杀不死它**。
+         *   ⇒ 这正是 critic MAJOR-4 点名 CHK-C1 的那个形状(在测试里自己搭一套)。
+         *   ⇒ 现改为调用**产品的** chdsp_smooth_from_ms() 取 α,再由它算功率底。 */
+        double a50  = (double)chdsp_smooth_raw(chdsp_smooth_from_ms(50.0))   / 2147483648.0;
+        double a3k  = (double)chdsp_smooth_raw(chdsp_smooth_from_ms(3000.0)) / 2147483648.0;
         double f50  = 10.0 * log10((1.0 / a50) / ldexp(1.0, CHDSP_POW_FRACBITS));
         double f3k  = 10.0 * log10((1.0 / a3k) / ldexp(1.0, CHDSP_POW_FRACBITS));
         printf("      功率底: release 50ms ⇒ %.2f dB;3000ms ⇒ %.2f dB\n", f50, f3k);
@@ -1009,16 +1013,24 @@ int main(void)
                     nb++;
                 }
                 if (na != nb) { bad++; continue; }
-                /* 集合比对(顺序可不同) */
-                for (i = 0; i < (int)na; i++) {
+                /* ⭐ **多重集**比对:每个 b 只能被配掉一次(⛔ 不是"每个 a 找到某个 b")
+                 * 〔整改 2026-08-05:原写法在 a 有重复元素时会用同一个 b 配多次
+                 *   ⇒ a={Q1,Q1} 与 b={Q1,Q2} 会被判为"全部匹配" ⇒ 本条比它声称的弱。
+                 *   是写 CHDSP_BROKEN_BUTTER_KOFF 变异时发现的:butter_q 的 k 偏一位
+                 *   使偶数阶 Q 集合退化成两个相同值,而本条**没有变红**。〕 */
+                { int used[CHDSP_OUT_XO_SECTIONS]; int u;
+                  for (u = 0; u < (int)nb; u++) { used[u] = 0; }
+                  for (i = 0; i < (int)na; i++) {
                     for (j = 0; j < (int)nb; j++) {
+                        if (used[j]) { continue; }
                         if (chdsp_coef_raw(a[i].b0) == chdsp_coef_raw(b[j].b0) &&
                             chdsp_coef_raw(a[i].b1) == chdsp_coef_raw(b[j].b1) &&
                             chdsp_coef_raw(a[i].b2) == chdsp_coef_raw(b[j].b2) &&
                             chdsp_coef_raw(a[i].a1) == chdsp_coef_raw(b[j].a1) &&
-                            chdsp_coef_raw(a[i].a2) == chdsp_coef_raw(b[j].a2)) { matched++; break; }
+                            chdsp_coef_raw(a[i].a2) == chdsp_coef_raw(b[j].a2)) {
+                            used[j] = 1; matched++; break; }
                     }
-                }
+                  } }
                 if (matched != (int)na) { bad++; }
             }
         }

@@ -165,10 +165,17 @@ static inline int32_t chdsp_xo_slope_db_oct(chdsp_xo_slope_t s)
 { return CHDSP_RAW(s); }
 
 /** dB/oct → 阶数(6 dB/oct = 1 阶)。非 6 的倍数 ⇒ 返回 n = 0(非法,下游会拒)。 */
+#ifndef CHDSP_BROKEN_SLOPE_CONV      /* 1 = dB/oct→阶数 换算用错因子(6 dB/oct = 1 阶) */
+#  define CHDSP_BROKEN_SLOPE_CONV 0
+#endif
 static inline chdsp_xo_order_t chdsp_xo_order_from_slope(chdsp_xo_slope_t s)
 {
     int32_t d = CHDSP_RAW(s);
+#if CHDSP_BROKEN_SLOPE_CONV
+    return CHDSP_MK(chdsp_xo_order_t, ((d > 0) && (d % 12 == 0)) ? (d / 12) : 0);  /* ⛔ */
+#else
     return CHDSP_MK(chdsp_xo_order_t, ((d > 0) && (d % 6 == 0)) ? (d / 6) : 0);
+#endif
 }
 static inline chdsp_xo_slope_t chdsp_xo_slope_from_order(chdsp_xo_order_t o)
 { return CHDSP_MK(chdsp_xo_slope_t, CHDSP_RAW(o) * 6); }

@@ -18,9 +18,16 @@
 #  define CHDSP_BROKEN_DET_ONEDIR 0
 #endif
 
+#ifndef CHDSP_BROKEN_SMOOTH_FIXED   /* 1 = 平滑系数不随 tau 变(功率底与 release 解耦) */
+#  define CHDSP_BROKEN_SMOOTH_FIXED 0
+#endif
 chdsp_smooth_q0_31_t chdsp_smooth_from_ms(double tau_ms)
 {
     double a;
+#if CHDSP_BROKEN_SMOOTH_FIXED
+    (void)tau_ms;                       /* ⛔ 坏版本:忽略 tau,固定取 50 ms 的值 */
+    tau_ms = 50.0;
+#endif
     int64_t r;
     if (!(tau_ms > 0.0)) { return chdsp_smooth_from_raw((int32_t)((1LL << 31) - 1)); }
     a = 1.0 - exp(-1.0 / (tau_ms * 1e-3 * (double)CHDSP_FS_HZ));
