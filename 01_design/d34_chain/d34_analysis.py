@@ -26,6 +26,18 @@ for a in sys.argv[1:]:
     if a.startswith('--broken='):
         BROKEN = a.split('=', 1)[1]
 
+# ⛔⛔ 整改 2026-08-05(critic BLOCKER-2 修法④,r16 补做)
+#   上一轮我报「BLOCKER-2 已闭」,而四条修法里**这一条当时没做** ——
+#   实测 `--broken=不存在的名字` 会跑完全程、退出 0,并在结果头照印那个名字
+#   ⇒ 正是 critic 点名的那种"看起来像该变异存活"的归档件。
+#   ⇒ D6-ap:一个只输出不阻断的检查不是检查。未知变异名必须**当场中止**。
+_KNOWN_BROKEN = ('polarity', 'qcoef', 'freeq', 'qcoef_and_freeq', 'hpf_order', 'xo_order')
+if BROKEN and BROKEN not in _KNOWN_BROKEN:
+    sys.stderr.write(f"⛔ 未知的 --broken 名: {BROKEN!r};已实现的变异 = {_KNOWN_BROKEN}\n"
+                     f"⛔ ⛔ 拒绝当作出货构建跑完 —— 那会产出一份看起来像"
+                     f"「该变异存活」的归档件。\n")
+    sys.exit(2)
+
 _pass, _fail, _retired = 0, 0, 0
 def OK(tag, cond, msg):
     global _pass, _fail
@@ -294,7 +306,45 @@ li = lr_sections(2000.0, 4, 'lp'); hi_ = lr_sections(2000.0, 4, 'hp')
 bad = casc_H(li, w) - casc_H(hi_, w)
 bd = np.max(np.abs(20*np.log10(np.abs(bad)+1e-300)[band]))
 print(f"      LR4 fc=2000 反相求和 max|偏离| = {bd:.2f} dB")
-OK("EXP-3p", bd > 20.0, "极性写反时求和出现 >20 dB 深谷 ⇒ EXP-3a/b 有分辨力,不是恒真")
+OK("EXP-3p", bd > 20.0,
+   "极性写反时求和出现【零点】⇒ EXP-3a/b 有分辨力,不是恒真。"
+   "⛔ 深度数值不得报出(erratum2:理想深度 = −∞,实测值只反映网格密度)")
+
+# ---- EXP-3d(r16,critic MAJOR-4 修法④):从【界面参数 xo_slope】到极性的映射 ----
+# ⛔ 这条守的是 MAJOR-4 点名的那个单位陷阱:实现方手上的是 dB/oct(12/24/36/48),
+#    而极性规则里的 N 是**滤波器阶数**(2/4/6/8)。12 mod 4 = 0 ≠ 2 mod 4 ——
+#    照参数值直接套规则会把 LR2/LR6 判成同相 ⇒ 分频点出现零点。
+def xo_order_n_from_slope(slope_db_oct):
+    """dB/oct → 滤波器阶数 N。LR 每阶 6 dB/oct。⛔ 非 6 的整数倍 ⇒ 0(非法)。"""
+    if slope_db_oct % 6 != 0:
+        return 0
+    return slope_db_oct // 6
+
+print("\n    EXP-3d 从界面参数 xo_slope(dB/oct)到求和极性的映射(MAJOR-4)")
+_slope_bad = 0
+_map_bad = 0
+print(f"      {'xo_slope':>9s} {'⇒ 阶数 N':>9s} {'N mod 4':>8s} {'规则给的极性':>10s} "
+      f"{'该极性求和偏离':>14s} {'另一极性 fc 处':>14s}")
+for _sl in (12, 24, 36, 48):
+    _n = xo_order_n_from_slope(_sl)
+    _pol = lr_polarity(_n)
+    _fc = 1000.0
+    _l = lr_sections(_fc, _n, 'lp'); _h = lr_sections(_fc, _n, 'hp')
+    _lq = [qsec(s, 'lp') for s in _l]; _hq = [qsec(s, 'hp') for s in _h]
+    _wb = np.linspace(2*np.pi*20/FS, 2*np.pi*20000/FS, 40001)
+    _dev = np.max(np.abs(20*np.log10(np.abs(casc_H(_lq, _wb) + _pol*casc_H(_hq, _wb))+1e-300)))
+    _wfc = np.array([2*np.pi*_fc/FS])
+    _res = abs(casc_H(_l, _wfc)[0] - _pol*casc_H(_h, _wfc)[0])   # 另一极性在 fc 处的残差
+    if _dev > 0.05:
+        _slope_bad += 1
+    if _res > 1e-9:
+        _map_bad += 1
+    print(f"      {_sl:9d} {_n:9d} {_n % 4:8d} {'同相' if _pol > 0 else '反相':>10s} "
+          f"{_dev:11.4f} dB {_res:14.2e}")
+OK("EXP-3d", _slope_bad == 0 and _map_bad == 0,
+   f"四档 xo_slope 按 N = slope÷6 求得的极性,求和偏离全部 ≤0.05 dB(越界 {_slope_bad} 档);"
+   f"而另一极性在 fc 处残差全部 ≈0 ⇒ 存在零点(未出现零点 {_map_bad} 档)"
+   f" ⇒ ⛔ 若照 12/24/36/48 直接 mod 4,四档全判同相,LR2/LR6 必错")
 
 # ---------------------------------------------------------------- EXP-4
 print("\nEXP-4  群延迟与延迟预算(⚠ 强制两轨,因 PREREG §0 X-1)")
@@ -382,14 +432,53 @@ print()
 print("    ⛔⛔ 适用范围(2026-08-04 整改 · critic MAJOR-2 · channel-dsp 实例 #2)")
 print("      上面的模型是【直接功率相加】,**只在各节增益 = 1 时成立**。")
 print("      第 k 节的噪声要经第 k+1…N 节的传函才到链末,而 D34 §6.2-4 **明文允许**")
-print("      用户把 8 段 PEQ 全部 +15 dB 叠在同一频率。级联复算(含级间增益):")
-print("        ① 各节增益=1          ⇒ −164.32 dBFS(模型精确)")
-print("        ④ 8 段全 +15 dB 同频  ⇒ **−91.64 dBFS**(差 +72.68 dB)")
-print("        ④′ 同配置的 D3 输入链 ⇒ **−76.97 dBFS**(差 +85.59 dB)")
-print("      ⇒ ④ 突破 PRD 的 −106 dBFS 达 14.36 dB、突破设计目标 −120 达 28.36 dB。")
-print("      ⇒ ⛔ 本 EXP-5 的判据【不覆盖】级间增益这一维;该维的复算件 = ")
-print("         d34_chain/check_noise_chain_r5.py + results_noise_chain_r5.txt")
-print("      ⇒ 处置属 D3/D4 的增益结构设计(大增益放链尾/限制累计增益),不是改格式。")
+print("      用户把 8 段 PEQ 全部 +15 dB 叠在同一频率(D34_FIXEDPOINT §6.2 第 4 条)。")
+
+# ---- EXP-5b/5c(r16,critic MAJOR-3 修法③):把级间增益【做进模型】,并做成会响的闸门 ----
+# ⛔ 整改 2026-08-05:上一轮这一段只是几行 print + 一句"该维的复算件在别处"。
+#    ⇒ 而"最坏合法配置突破 PRD"这件事当时是**一行输出**,不是**一个闸门** ——
+#      一个只输出不阻断的检查不是检查(D6-ap)。本轮把它接成判定项。
+def noise_floor_interstage(secs, n_tail_unity=0, NW=4096):
+    """链末噪声底 dBFS。第 k 节输出处有一个量化器,其噪声经第 k+1…N 节的 |H|²。
+    n_tail_unity = 位于链尾、其后无任何增益的附加量化器个数。"""
+    wv = np.pi*(np.arange(NW)+0.5)/NW
+    p1 = 10**(NOISE_PER_SECTION_DBFS/10.0)
+    tot = 0.0
+    for k in range(len(secs)):
+        g = np.ones_like(wv)
+        for j in range(k+1, len(secs)):
+            g *= np.abs(sec_H(secs[j], wv))**2
+        tot += p1*float(np.mean(g))
+    return 10*math.log10(tot + p1*n_tail_unity)
+
+_unity8 = [qsec(rbj_peaking(1000.0, 1.0, 0.0)) for _ in range(8)]
+_worst8 = [qsec(rbj_peaking(1000.0, 1.4, 15.0)) for _ in range(8)]
+_hpf1 = [qsec(bw_hp(80.0, 0.7071), 'hp')]
+# D3 输入链 = HPF(1) + PEQ×8(8) = 9 个量化器(与本 EXP-5 上表同一套记账)
+d3_unity = noise_floor_interstage(_hpf1 + _unity8)
+d3_worst = noise_floor_interstage(_hpf1 + _worst8)
+d3_model = NOISE_PER_SECTION_DBFS + 10*math.log10(9)
+print(f"      含级间增益的复算(D3 输入链,9 量化器):")
+print(f"        ① 各节增益=1         ⇒ {d3_unity:8.2f} dBFS(直接相加模型 {d3_model:.2f})")
+print(f"        ④ 8 段全 +15 dB 同频 ⇒ **{d3_worst:8.2f} dBFS**(差 {d3_worst-d3_unity:+.2f} dB)")
+OK("EXP-5b", abs(d3_unity - d3_model) < 0.01,
+   f"含级间增益的模型在【各节增益=1】时回到直接相加({d3_unity:.2f} vs {d3_model:.2f})"
+   f" ⇒ 它没写错,且能认出'没有级间增益'这件事")
+OK("EXP-5c", d3_worst <= -106.0,
+   f"⛔ **§6.2-4 明文允许**的最坏合法配置下链末噪声底 {d3_worst:.2f} dBFS ≤ −106(PRD)"
+   f" ⇒ 实测突破 {d3_worst+106:.2f} dB")
+print("      ⛔⛔ EXP-5c 的处置【预先写死在 PREREG_D34_r16_addendum §3】:")
+print("        它 FAIL 就以 FAIL 的身份留在结果里。⛔ 不退役、⛔ 不改判据、")
+print("        ⛔ 不因'已路由给 architect/D2'就当它不存在 —— 处置权在别人手里,")
+print("        不改变【本轮它是 FAIL】这个事实。(EXP-10b 那次是'该响的没响',本条先写死'必须响'。)")
+print(f"      ⇒ 处置属**增益结构设计**,是一个 headroom-vs-噪声的**权衡**")
+print(f"        (增益靠前:噪声底低、饱和风险高;靠后:反之)⇒ ⛔ 不是改格式。")
+print(f"        ⛔ 「把大增益放链尾」已撤回(critic D3D4 erratum1):它在噪声轴上方向反了。")
+print(f"      ⚠ 第二轨 = check_noise_chain_r5.py(独立实现,不 import 本件)。")
+print(f"        ⛔ 而两轨在【D3 的量化器个数】上不一致:本件按 9(HPF+PEQ×8),")
+print(f"        r5 脚本按 12(多算了 3 个'链尾单位增益量化器')—— 而本件 §6 自己写明")
+print(f"        门/压限/延时**不引入新量化器** ⇒ **9 是对的,r5 的 12 是错的**;")
+print(f"        差 {10*math.log10(12/9):.2f} dB,只影响各节增益=1 那一格,最坏配置那一格几乎不受影响。")
 
 # ---------------------------------------------------------------- EXP-6
 print("\nEXP-6  按竞品 Q 口径(0.02~50)重扫 PEQ 系数上界 —— 闭台账 C2")
