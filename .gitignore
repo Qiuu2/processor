@@ -20,3 +20,8 @@ venv/
 Thumbs.db
 *.swp
 *~
+
+# 构建产物(可再生,不入库)—— channel-dsp 报
+02_impl/build_kill/
+02_impl/build/
+*.o
