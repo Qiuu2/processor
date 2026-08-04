@@ -161,42 +161,65 @@ def design_bessel(fc, order, hp):
         den *= (zt - pk)
     k = abs(den / num)
 
-    # 分组成节(共轭配对),把总增益放到第一节
-    out = []
-    usedp = [False] * len(pd)
-    usedz = [False] * len(zd)
-
-    def take_pair(lst, used):
+    # ---- 分组成节 ----
+    # ⛔ 首跑这里错了一次,留痕:原 take_pair 对**实数**根只取【一个】,
+    #    于是双二阶节拿到 (1 + z⁻¹) 而不是 (1 + z⁻¹)² ⇒ 每个双二阶节少一个 z=−1 零点
+    #    ⇒ 增益差恰好 2 倍 = 6.0206 dB/节对 —— 实测 LP 阶 2/3→6.02、4/5→12.04、
+    #      6/7→18.06、8→24.08 dB,**正好是 6.0206 的整数倍**,这就是它的指纹。
+    #    ⇒ 修法:先把极点分组,再按【该组要几个零点】去取零点(2 个或 1 个)。
+    def split(lst):
+        pairs, reals, used = [], [], [False] * len(lst)
         for i, v in enumerate(lst):
             if used[i]:
                 continue
             if abs(v.imag) < 1e-9:
                 used[i] = True
-                return (v.real,)
+                reals.append(v.real)
+                continue
             for j in range(i + 1, len(lst)):
                 if not used[j] and abs(lst[j] - v.conjugate()) < 1e-7:
                     used[i] = used[j] = True
-                    return (v, v.conjugate())
-            used[i] = True
-            return (v.real,)
-        return None
+                    pairs.append(v)
+                    break
+            else:
+                used[i] = True
+                reals.append(v.real)
+        return pairs, reals
 
-    while True:
-        pp = take_pair(pd, usedp)
-        if pp is None:
-            break
-        zz = take_pair(zd, usedz) or ()
-        if len(pp) == 2:
-            a1, a2 = -2.0 * pp[0].real, abs(pp[0]) ** 2
-        else:
-            a1, a2 = -pp[0], 0.0
-        if len(zz) == 2:
-            b1, b2 = -2.0 * zz[0].real, abs(zz[0]) ** 2
-        elif len(zz) == 1:
-            b1, b2 = -zz[0], 0.0
-        else:
-            b1 = b2 = 0.0
-        out.append([1.0, b1, b2, 1.0, a1, a2])
+    ppair, preal = split(pd)
+    zpair, zreal = split(zd)
+
+    def take_zeros(want):
+        """取 want(1 或 2)个零点,返回 (b1, b2)"""
+        if want == 2:
+            if zpair:
+                z = zpair.pop(0)
+                return -2.0 * z.real, abs(z) ** 2
+            if len(zreal) >= 2:
+                r1, r2 = zreal.pop(0), zreal.pop(0)
+                return -(r1 + r2), r1 * r2
+            if len(zreal) == 1:
+                r1 = zreal.pop(0)
+                return -r1, 0.0
+            return 0.0, 0.0
+        if zreal:
+            r1 = zreal.pop(0)
+            return -r1, 0.0
+        if zpair:                      # 不该发生:一阶节配不上共轭对
+            z = zpair.pop(0)
+            zpair.insert(0, z)
+        return 0.0, 0.0
+
+    out = []
+    for p in ppair:
+        b1, b2 = take_zeros(2)
+        out.append([1.0, b1, b2, 1.0, -2.0 * p.real, abs(p) ** 2])
+    for r in preal:
+        b1, b2 = take_zeros(1)
+        out.append([1.0, b1, b2, 1.0, -r, 0.0])
+    if zpair or zreal:
+        raise AssertionError(f"零点未用尽:pair={len(zpair)} real={len(zreal)} "
+                             f"⇒ 分组错误,⛔ 不得当作通过")
     for i in range(3):
         out[0][i] *= k
     return [tuple(s) for s in out]

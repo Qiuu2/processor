@@ -21,6 +21,12 @@
 #ifndef CHDSP_BROKEN_BQ_TIE_FREE   /* 1 = HPF/LPF 改自由量化(不用结构约束) */
 #  define CHDSP_BROKEN_BQ_TIE_FREE 0
 #endif
+#ifndef CHDSP_BROKEN_BUTTER_COS    /* 1 = butter_q 退回 cos 式(奇数阶会静默算错) */
+#  define CHDSP_BROKEN_BUTTER_COS 0
+#endif
+#ifndef CHDSP_BROKEN_BESSEL_RBJ    /* 1 = Bessel 退回逐节 RBJ(高阶高通会错到 90 dB) */
+#  define CHDSP_BROKEN_BESSEL_RBJ 0
+#endif
 
 /* ==========================================================================
  * 1. 运行时
@@ -216,8 +222,24 @@ int chdsp_bq_design(chdsp_filter_type_t type, double f0, double q, double gdb,
 }
 
 /* Butterworth 各节的 Q(偶数阶) */
+/** Butterworth 第 k 个双二阶节的 Q。
+ *
+ * ⭐⭐ 2026-08-04(r8)整改:**sin,不是 cos**。
+ *   原写 `1/(2·cos(π(2k+1)/(2n)))`。对**偶数**阶它给出的是**同一个 Q 集合、只是顺序相反**
+ *   (证:sin x = cos(π/2−x),而 π/2 − π(2k+1)/(2n) = π(2k′+1)/(2n) 当 k′ = n/2−k−1;
+ *    偶数 n 时 k′ 必落在 [0, n/2−1])⇒ 级联顺序不改变总传函 ⇒ **旧代码在当时是对的**。
+ *   ⛔ 但对**奇数**阶两式不等:n=3 时 cos 式给 0.5774,正确值是 **1.0**。
+ *   ⇒ 本轮加奇数阶,若照搬 cos 式会**静默产出错的滤波器**(编译过、跑得动、频响错)。
+ *   ⇒ 已加 CHK-X4 逐位回归:偶数阶(LR2/4/6/8、BW2/4/6/8)系数必须与改动前**逐位相同**
+ *     (预注册 PREREG_D34_r8_xover.txt 的证伪条件 F-4)。 */
 static double butter_q(int order, int k)
-{ return 1.0 / (2.0 * cos(M_PI * (2.0 * k + 1.0) / (2.0 * order))); }
+{
+#if CHDSP_BROKEN_BUTTER_COS
+    return 1.0 / (2.0 * cos(M_PI * (2.0 * k + 1.0) / (2.0 * order)));  /* ⛔ 坏版本 */
+#else
+    return 1.0 / (2.0 * sin(M_PI * (2.0 * k + 1.0) / (2.0 * order)));
+#endif
+}
 
 int chdsp_xover_needs_polarity_flip(int lr, int order)
 {
@@ -261,4 +283,176 @@ int chdsp_bq_design_xover(int lr, int order, int highpass, double fc,
     }
     *n_out = n;
     return e;
+}
+
+/* ==========================================================================
+ * 2b. C 第二批(r8):一阶节 + 通用分频(BW / LR / Bessel,1..8 阶)
+ * ==========================================================================
+ * 缘起:D3D4 参数表 §4③ 已列 `xo_type = {BW, LR, Bessel}` 与
+ *       `xo_slope` 的奇数档(竞品 6/18/30/42),而实现只有 BW/LR 且第一行就
+ *       `if (order % 2) return ERR_ORDER;` ⇒ **本件自己写下的合法档位,实现全部拒绝。**
+ * 预注册:01_design/d34_chain/PREREG_D34_r8_xover.txt
+ * 结果  :01_design/d34_chain/results_xover_r8.txt
+ */
+
+int chdsp_bq_design_first_order(int highpass, double fc_hz, chdsp_biquad_coef_t *out)
+{
+    double K;
+    if (!(fc_hz > 0.0) || fc_hz >= (double)CHDSP_FS_HZ * 0.5) { return CHDSP_BQ_ERR_FREQ; }
+    K = tan(M_PI * fc_hz / (double)CHDSP_FS_HZ);
+    if (highpass) {
+        return pack(1.0 / (K + 1.0), -1.0 / (K + 1.0), 0.0, (K - 1.0) / (K + 1.0), 0.0, out);
+    }
+    return pack(K / (K + 1.0), K / (K + 1.0), 0.0, (K - 1.0) / (K + 1.0), 0.0, out);
+}
+
+/* 归一化(−3 dB)Bessel 极点表,order 1..8。
+ * 由 01_design/d34_chain/xover_r8.py 的 bessel_poles_norm() 生成:
+ * 反 Bessel 多项式 θ_n(s) 求根 + 二分求 −3 dB 频率归一。
+ * ⚠ 两轨核过:与 scipy.signal.bessel(norm='mag') 的幅频 max|Δ| = **0.000000 dB**
+ *   (1..8 阶 × LP/HP 全部),阳性对照(人为改一节 Q)差 56.5 dB [L2/宿主实测 EXP-10]。 */
+typedef struct { double re, im; } chdsp_cpole_t;      /* im = 0 ⇒ 实极点 */
+
+static const chdsp_cpole_t k_bessel_p1[] = { { -1.000000000000, 0.0 } };
+static const chdsp_cpole_t k_bessel_p2[] = { { -1.101601330592, 0.636009824757 } };
+static const chdsp_cpole_t k_bessel_p3[] = { { -1.322675799910, 0.0 },
+                                             { -1.047409161009, 0.999264436281 } };
+static const chdsp_cpole_t k_bessel_p4[] = { { -0.995208764350, 1.257105739455 },
+                                             { -1.370067830551, 0.410249717494 } };
+static const chdsp_cpole_t k_bessel_p5[] = { { -1.502316271447, 0.0 },
+                                             { -0.957676548563, 1.471124320730 },
+                                             { -1.380877325860, 0.717909587627 } };
+static const chdsp_cpole_t k_bessel_p6[] = { { -0.930656522947, 1.661863268943 },
+                                             { -1.381858097597, 0.971471890712 },
+                                             { -1.571490403616, 0.320896374223 } };
+static const chdsp_cpole_t k_bessel_p7[] = { { -1.684368179273, 0.0 },
+                                             { -0.909867780623, 1.836451353036 },
+                                             { -1.378903216795, 1.191566777801 },
+                                             { -1.612038766226, 0.589244506932 } };
+static const chdsp_cpole_t k_bessel_p8[] = { { -0.892869718847, 1.998325843641 },
+                                             { -1.373841217637, 1.388356575877 },
+                                             { -1.636939418127, 0.822795625140 },
+                                             { -1.757408400402, 0.272867575102 } };
+
+static const chdsp_cpole_t *const k_bessel[9] = {
+    0, k_bessel_p1, k_bessel_p2, k_bessel_p3, k_bessel_p4,
+    k_bessel_p5, k_bessel_p6, k_bessel_p7, k_bessel_p8
+};
+static const uint8_t k_bessel_n[9] = { 0u, 1u, 1u, 2u, 2u, 3u, 3u, 4u, 4u };
+
+/** Bessel 单支:归一化极点 → 单次预畸 → 双线性。⛔ 不走逐节 RBJ(见头文件说明)。 */
+static int design_bessel(int order, int highpass, double fc_hz,
+                         chdsp_biquad_coef_t *out, uint16_t *n_out)
+{
+    const double c  = 2.0 * (double)CHDSP_FS_HZ;
+    const double wa = c * tan(M_PI * fc_hz / (double)CHDSP_FS_HZ);
+    uint16_t n = 0u, i;
+    int e = 0;
+    /* 高通零点在 z = +1,低通零点在 z = −1;两者都恰好每节 2 个(一阶节 1 个) */
+    const double zr = highpass ? 1.0 : -1.0;
+
+#if CHDSP_BROKEN_BESSEL_RBJ
+    /* ⛔ 坏版本:退回「逐节 RBJ,f0 = fc·|p|,Q = |p|/(2|Re p|)」那条路。
+     *   它对 Butterworth/LR 恰好等价(各节共用同一 ω0),对 Bessel **不等价**。 */
+    {
+        uint16_t bn = 0u; int bi; int be = 0;
+        for (bi = 0; bi < (int)k_bessel_n[order]; bi++) {
+            chdsp_cpole_t bp = k_bessel[order][bi];
+            double mag = sqrt(bp.re * bp.re + bp.im * bp.im);
+            double f0  = fc_hz * mag;
+            if (f0 >= (double)CHDSP_FS_HZ * 0.5) { f0 = (double)CHDSP_FS_HZ * 0.499; }
+            if (bp.im == 0.0) {
+                be |= chdsp_bq_design_first_order(highpass, f0, &out[bn]);
+            } else {
+                be |= chdsp_bq_design(highpass ? CHDSP_FT_HPF : CHDSP_FT_LPF,
+                                      f0, mag / (2.0 * fabs(bp.re)), 0.0, &out[bn]);
+            }
+            bn++;
+        }
+        *n_out = bn;
+        return be;
+    }
+#endif
+
+    for (i = 0u; i < k_bessel_n[order]; i++) {
+        chdsp_cpole_t p = k_bessel[order][i];
+        double sre, sim, dre, dim, den, pr, pi_, b0, b1, b2, a1, a2, g;
+        if (p.im == 0.0) {
+            /* 实极点 ⇒ 一阶节 */
+            sre = highpass ? (wa / p.re) : (wa * p.re);
+            pr  = (1.0 + sre / c) / (1.0 - sre / c);
+            b0 = 1.0; b1 = -zr; b2 = 0.0;
+            a1 = -pr; a2 = 0.0;
+            /* 归一:LP 在 z=1、HP 在 z=−1 处增益 1 */
+            { double zt = highpass ? -1.0 : 1.0;
+              double nu = (zt - zr), de = (zt - pr);
+              g = fabs(de / nu); }
+        } else {
+            /* 共轭对 ⇒ 双二阶。s_hp = wa / p  (复数除法) */
+            if (highpass) {
+                den = p.re * p.re + p.im * p.im;
+                sre = wa * p.re / den;
+                sim = -wa * p.im / den;
+            } else {
+                sre = wa * p.re;
+                sim = wa * p.im;
+            }
+            /* 双线性 z = (1 + s/c)/(1 − s/c),复数 */
+            { double nr = 1.0 + sre / c, ni = sim / c;
+              double dr = 1.0 - sre / c, di = -sim / c;
+              double dd = dr * dr + di * di;
+              dre = (nr * dr + ni * di) / dd;
+              dim = (ni * dr - nr * di) / dd; }
+            pr = dre; pi_ = dim;
+            b0 = 1.0; b1 = -2.0 * zr; b2 = zr * zr;
+            a1 = -2.0 * pr; a2 = pr * pr + pi_ * pi_;
+            { double zt = highpass ? -1.0 : 1.0;
+              double nu = (zt - zr) * (zt - zr);
+              double dr2 = (zt - pr), di2 = -pi_;
+              double de = dr2 * dr2 + di2 * di2;   /* |zt − p|² = (zt−p)(zt−p*) */
+              g = fabs(de / nu); }
+        }
+        b0 *= g; b1 *= g; b2 *= g;
+        if (n >= CHDSP_OUT_XO_SECTIONS) { return CHDSP_BQ_ERR_ORDER; }
+        e |= pack(b0, b1, b2, a1, a2, &out[n]);
+        n++;
+    }
+    *n_out = n;
+    return e ? CHDSP_BQ_ERR_COEF_RANGE : CHDSP_BQ_OK;
+}
+
+int chdsp_bq_design_xover2(chdsp_xover_type_t type, int order, int highpass,
+                           double fc_hz, chdsp_biquad_coef_t *out, uint16_t *n_out)
+{
+    chdsp_filter_type_t t = highpass ? CHDSP_FT_HPF : CHDSP_FT_LPF;
+    uint16_t n = 0u;
+    int i, e = 0;
+
+    if (order <= 0 || order > 8) { return CHDSP_BQ_ERR_ORDER; }
+    if (!(fc_hz > 0.0) || fc_hz >= (double)CHDSP_FS_HZ * 0.5) { return CHDSP_BQ_ERR_FREQ; }
+
+    switch (type) {
+    case CHDSP_XO_LINKWITZ_RILEY:
+        /* ⛔ LR = BW² ⇒ 奇数阶数学上不存在。这不是缺口,是定义。 */
+        if ((order % 2) != 0) { return CHDSP_BQ_ERR_ORDER; }
+        return chdsp_bq_design_xover(1, order, highpass, fc_hz, out, n_out);
+
+    case CHDSP_XO_BUTTERWORTH:
+        if ((order % 2) == 1) {
+            /* 奇数阶 = 一个一阶节 + (order−1)/2 个双二阶节 */
+            e |= chdsp_bq_design_first_order(highpass, fc_hz, &out[n]); n++;
+        }
+        for (i = 0; i < order / 2; i++) {
+            if (n >= CHDSP_OUT_XO_SECTIONS) { return CHDSP_BQ_ERR_ORDER; }
+            e |= chdsp_bq_design(t, fc_hz, butter_q(order, i), 0.0, &out[n]); n++;
+        }
+        *n_out = n;
+        return e;
+
+    case CHDSP_XO_BESSEL:
+        return design_bessel(order, highpass, fc_hz, out, n_out);
+
+    default:
+        return CHDSP_BQ_ERR_TYPE;
+    }
 }

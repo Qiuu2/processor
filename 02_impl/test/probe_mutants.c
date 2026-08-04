@@ -255,5 +255,27 @@ int main(void)
         printf("PROBE P_FIR_NOBYPASS %d\n", bad);
     }
 
+    /* ---- P_BUTTER_COS:butter_q 的 sin/cos 之别 ------------------------------
+     * 声称改变的行为:**奇数阶** Butterworth 的 Q(n=3:sin 式 1.0 vs cos 式 0.5774)。
+     * 读数 = BW3 低通第 2 节(那个双二阶节)的 a1 raw。 */
+    {
+        chdsp_biquad_coef_t sec[CHDSP_OUT_XO_SECTIONS]; uint16_t n = 0u;
+        int e = chdsp_bq_design_xover2(CHDSP_XO_BUTTERWORTH, 3, 0, 1000.0, sec, &n);
+        printf("PROBE P_BUTTER_COS %ld\n",
+               (e == CHDSP_BQ_OK && n >= 2u) ? (long)chdsp_coef_raw(sec[1].a1) : -999999L);
+    }
+
+    /* ---- P_BESSEL_RBJ:Bessel 的设计路径 -------------------------------------
+     * 声称改变的行为:Bessel 改走逐节 RBJ ⇒ 系数不同(高阶高通差最大)。
+     * 读数 = Bessel8 高通全部节的 a1 raw 之和。 */
+    {
+        chdsp_biquad_coef_t sec[CHDSP_OUT_XO_SECTIONS]; uint16_t n = 0u;
+        int e = chdsp_bq_design_xover2(CHDSP_XO_BESSEL, 8, 1, 1000.0, sec, &n);
+        long acc = 0; uint16_t i;
+        if (e == CHDSP_BQ_OK) { for (i = 0u; i < n; i++) { acc += (long)chdsp_coef_raw(sec[i].a1); } }
+        else { acc = -999999L; }
+        printf("PROBE P_BESSEL_RBJ %ld\n", acc);
+    }
+
     return 0;
 }

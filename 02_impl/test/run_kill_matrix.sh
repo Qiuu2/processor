@@ -42,6 +42,8 @@ MUTS=(
   CHDSP_BROKEN_CHAIN_ORDER    # chain:D4 把 PEQ 放到分频之前
   CHDSP_BROKEN_XO_POLARITY    # chain:忽略 LR 极性规则
   CHDSP_BROKEN_HPF_AFTER_DYN  # chain:D3 把 HPF 放到动态之后
+  CHDSP_BROKEN_BUTTER_COS     # biquad(r8):butter_q 退回 cos 式 ⇒ 奇数阶 BW 静默算错
+  CHDSP_BROKEN_BESSEL_RBJ     # biquad(r8):Bessel 退回逐节 RBJ ⇒ 高阶高通错到 90 dB
 )
 
 echo "================================================================"

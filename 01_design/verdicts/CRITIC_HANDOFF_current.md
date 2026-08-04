@@ -7,18 +7,21 @@
 
 ## 0. 当前断点(⛔ 恢复工作先读这行)
 - **第一优先【已出件】**:`critic_D3D4_CHAIN_v0.1_verdict_20260804.md` = **FAIL**(2B/5M/7m)。已报 lead。
-- **第二优先【中止件已出】**:`critic_02impl_INTERIM_20260804.md` —— **1 BLOCKER 已坐实 + 4 条正面结论**,
-  但**被审树在评审窗口内每 2 分钟变一次**(14:12→14:21→14:23),**已请 lead 给冻结点**。
-  ⇒ **⛔ 恢复时先确认是否已冻结;冻结后重新锁版,按中止件 §3 的清单做完。**
+- **第二优先【已出正式件】**:`critic_02impl_r1_verdict_20260804.md` = **FAIL**(1B/5M/4m)。
+  版本锁 = **`review/02impl-r1` = `8402198`**(lead 建的冻结点;我在独立 worktree 上评的,没碰作者工作树)。
+  中止件 `critic_02impl_INTERIM_20260804.md` 已被它取代(结论一致,正式件更全)。
 - **第三优先【已出件】**:`critic_r87_F76-F80_verdict_20260804.md` = **PASS-with-conditions**(0B/1M/2m)。
   四条放行条件全是「写一句话」级,⛔ 不需重跑任何实验。
-- **⇒ 三件都已报 lead。当前唯一在等的是 02_impl 的冻结点。**
+- **⇒ 三件全部出正式件并已报 lead。**
+- **⇒ 下一件 = W1-P 收口件三件(`01_design/W1P_CLOSEOUT/`)** —— lead 排的第 3 项,CTO 要拿它做路线决定。
+  ⚠ 它是**合成件**,不含新测量 ⇒ 评审重点 = 它引用的每个数的**限定串有没有在引用时掉光**(D6-t/D6-x),
+  而那些数我多半已经审过。**⇒ 要新 tag 时向 lead 要 `-r2`。**
 
 ## 1. 评审队列与状态
 | # | 标的 | 状态 | verdict |
 |---|---|---|---|
 | 1 | `D3D4_CHANNEL_CHAIN_v0.1.md` + `d34_chain/` | ✅ **FAIL** | `critic_D3D4_CHAIN_v0.1_verdict_20260804.md` |
-| 2 | `02_impl/` C 实现第一批 | 🟡 **中止(树在动)** | `critic_02impl_INTERIM_20260804.md` |
+| 2 | `02_impl/` C 实现第一批 | ✅ **FAIL** | `critic_02impl_r1_verdict_20260804.md`(锁 `review/02impl-r1`=`8402198`) |
 | 3 | r87 收口件 F76–F80 | ✅ **PASS-with-conditions** | `critic_r87_F76-F80_verdict_20260804.md` |
 
 ## 1c. 第三优先已坐实的(细节见 verdict)

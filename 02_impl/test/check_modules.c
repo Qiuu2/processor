@@ -587,6 +587,176 @@ int main(void)
             "⭐ HPF 在动态之前 ⇒ 隆隆不顶开门 ⇒ 输出被压(⛔ HPF 在后会顶开门)");
     }
 
+    /* ================= C 第二批(r8):分频补全 ================= */
+    printf("\n分频补全(C 第二批 r8:奇数阶 + Bessel)\n");
+    {   /* CHK-X1 ⭐ Y7 闭合:Bessel 全族系数装得进 Q4.27
+         * ⛔ 顺序纪律:先扫界(EXP-9)后实现。本条是那个扫描结论的**机械形式**。 */
+        chdsp_biquad_coef_t sec[CHDSP_OUT_XO_SECTIONS];
+        uint16_t n; int order, hp, i, bad = 0, worst_raw = 0;
+        for (order = 1; order <= 8; order++) {
+            for (hp = 0; hp < 2; hp++) {
+                int e = chdsp_bq_design_xover2(CHDSP_XO_BESSEL, order, hp, 1000.0, sec, &n);
+                if (e != CHDSP_BQ_OK) { bad++; continue; }
+                for (i = 0; i < (int)n; i++) {
+                    int32_t r[3]; int j;
+                    r[0] = chdsp_coef_raw(sec[i].b0); r[1] = chdsp_coef_raw(sec[i].b1);
+                    r[2] = chdsp_coef_raw(sec[i].b2);
+                    for (j = 0; j < 3; j++) {
+                        int32_t a = r[j] < 0 ? -r[j] : r[j];
+                        if (a > worst_raw) { worst_raw = a; }
+                    }
+                }
+            }
+        }
+        /* ⚠ ⛔ 判据写法留痕:初版写 `worst_raw < (16 << CHDSP_COEF_FRACBITS)`,
+         *   而 16<<27 = 2³¹ **溢出 int32** ⇒ 常量变成 −2147483648 ⇒ 判据恒假。
+         *   ⇒ 「Q4.27 的上界」在 raw 域**根本表示不出来**(|c|<16 ⟺ raw ≤ INT32_MAX)。
+         *   ⇒ 这与本项目「界的种类」那条同族:先问这个界在**这个类型里**存不存在。 */
+        printf("      Bessel 1..8 阶 × LP/HP:设计失败 %d 次;max|b| = %.6f(Q4.27 上限 16)\n",
+               bad, (double)worst_raw / (double)(1 << CHDSP_COEF_FRACBITS));
+        OKC("CHK-X1", bad == 0
+                      && (double)worst_raw / (double)(1 << CHDSP_COEF_FRACBITS) <= 2.0,
+            "⭐ Y7 闭合:Bessel 全族 max|b| ≤ 2 ⇒ 装得进 Q4.27(EXP-9 解析预测兑现)");
+    }
+    {   /* CHK-X2 ⭐ 两轨:C 的 Bessel 响应 vs python 轨(xover_r8.py,scipy 交叉核过)
+         * ⛔ 参考值是**独立轨算出来的**,不是从本实现回读的。 */
+        static const double FQ[5]  = { 100.0, 500.0, 1000.0, 2000.0, 8000.0 };
+        static const double REF_LP[5] = { -0.027664, -0.703579, -3.010300, -13.513101, -61.304440 };
+        static const double REF_HP[5] = { -65.731200, -13.432177, -3.010300, -0.698961, -0.035760 };
+        chdsp_biquad_coef_t sec[CHDSP_OUT_XO_SECTIONS];
+        uint16_t n; int hp, i, k; double worst = 0.0;
+        for (hp = 0; hp < 2; hp++) {
+            if (chdsp_bq_design_xover2(CHDSP_XO_BESSEL, 4, hp, 1000.0, sec, &n) != CHDSP_BQ_OK) {
+                worst = 999.0; break;
+            }
+            for (k = 0; k < 5; k++) {
+                double w = 2.0 * M_PI * FQ[k] / (double)CHDSP_FS_HZ, mag = 1.0, d;
+                for (i = 0; i < (int)n; i++) {
+                    double br = 0.0, bi = 0.0, ar = 1.0, ai = 0.0, cw, sw;
+                    int t;
+                    double bc[3], ac[3];
+                    bc[0] = chdsp_coef_to_f64(sec[i].b0); bc[1] = chdsp_coef_to_f64(sec[i].b1);
+                    bc[2] = chdsp_coef_to_f64(sec[i].b2);
+                    ac[0] = 1.0; ac[1] = chdsp_coef_to_f64(sec[i].a1);
+                    ac[2] = chdsp_coef_to_f64(sec[i].a2);
+                    br = bi = 0.0; ar = ai = 0.0;
+                    for (t = 0; t < 3; t++) {
+                        cw = cos(-w * t); sw = sin(-w * t);
+                        br += bc[t] * cw; bi += bc[t] * sw;
+                        ar += ac[t] * cw; ai += ac[t] * sw;
+                    }
+                    mag *= sqrt((br * br + bi * bi) / (ar * ar + ai * ai));
+                }
+                d = fabs(20.0 * log10(mag) - (hp ? REF_HP[k] : REF_LP[k]));
+                if (d > worst) { worst = d; }
+            }
+        }
+        printf("      Bessel4 @fc=1k,5 个频点 × LP/HP:与 python 轨 max|Δ| = %.6f dB\n", worst);
+        OKC("CHK-X2", worst <= 0.02,
+            "⭐ 两轨:C 的 Bessel 与独立 python 轨(已与 scipy 逐点核过)一致 ≤0.02 dB");
+    }
+    {   /* CHK-X3 ⭐⭐ butter_q 的 sin/cos 之别 —— 这一条守的是【奇数阶】
+         * 偶数阶下 sin 式与 cos 式给出**同一个 Q 集合**(顺序相反)⇒ 旧代码当时是对的;
+         * 奇数阶下不等(n=3:cos 式 0.5774,正确 1.0)。
+         * ⇒ 本条直接测 3 阶 BW 的响应,cos 式会当场翻红。 */
+        static const double FQ[5]  = { 100.0, 500.0, 1000.0, 2000.0, 8000.0 };
+        static const double REF[5] = { -0.000004, -0.066905, -3.010300, -18.239613, -56.694609 };
+        chdsp_biquad_coef_t sec[CHDSP_OUT_XO_SECTIONS];
+        uint16_t n; int i, k; double worst = 0.0;
+        if (chdsp_bq_design_xover2(CHDSP_XO_BUTTERWORTH, 3, 0, 1000.0, sec, &n) != CHDSP_BQ_OK) {
+            worst = 999.0;
+        } else {
+            for (k = 0; k < 5; k++) {
+                double w = 2.0 * M_PI * FQ[k] / (double)CHDSP_FS_HZ, mag = 1.0, d;
+                for (i = 0; i < (int)n; i++) {
+                    double bc[3], ac[3], br = 0.0, bi = 0.0, ar = 0.0, ai = 0.0;
+                    int t;
+                    bc[0] = chdsp_coef_to_f64(sec[i].b0); bc[1] = chdsp_coef_to_f64(sec[i].b1);
+                    bc[2] = chdsp_coef_to_f64(sec[i].b2);
+                    ac[0] = 1.0; ac[1] = chdsp_coef_to_f64(sec[i].a1);
+                    ac[2] = chdsp_coef_to_f64(sec[i].a2);
+                    for (t = 0; t < 3; t++) {
+                        double cw = cos(-w * t), sw = sin(-w * t);
+                        br += bc[t] * cw; bi += bc[t] * sw;
+                        ar += ac[t] * cw; ai += ac[t] * sw;
+                    }
+                    mag *= sqrt((br * br + bi * bi) / (ar * ar + ai * ai));
+                }
+                d = fabs(20.0 * log10(mag) - REF[k]);
+                if (d > worst) { worst = d; }
+            }
+        }
+        printf("      BW3(奇数阶,含一阶节)LP:节数 %u,与 python 轨 max|Δ| = %.6f dB\n",
+               (unsigned)n, worst);
+        OKC("CHK-X3", n == 2u && worst <= 0.02,
+            "⭐ 奇数阶 BW 正确(守的是 butter_q 用 sin;cos 式在此处会翻红)");
+    }
+    {   /* CHK-X4 F-4 回归:偶数阶必须与改动前**逐位相同**
+         * 做法:sin 式与 cos 式各自设计,断言两者产出的系数【集合】逐位相同。
+         * ⇒ 这就是「butter_q 从 cos 改 sin 没有动偶数阶」的机械证明。 */
+        chdsp_biquad_coef_t a[CHDSP_OUT_XO_SECTIONS], b[CHDSP_OUT_XO_SECTIONS];
+        uint16_t na, nb; int order, hp, bad = 0;
+        for (order = 2; order <= 8; order += 2) {
+            for (hp = 0; hp < 2; hp++) {
+                int i, j, matched = 0;
+                if (chdsp_bq_design_xover2(CHDSP_XO_BUTTERWORTH, order, hp, 1234.0, a, &na)
+                    != CHDSP_BQ_OK) { bad++; continue; }
+                /* 用 cos 式重建同一组 Q(即旧实现),逐节设计 */
+                nb = 0u;
+                for (i = 0; i < order / 2; i++) {
+                    double q = 1.0 / (2.0 * cos(M_PI * (2.0 * i + 1.0) / (2.0 * order)));
+                    if (chdsp_bq_design(hp ? CHDSP_FT_HPF : CHDSP_FT_LPF, 1234.0, q, 0.0, &b[nb])
+                        != CHDSP_BQ_OK) { bad++; }
+                    nb++;
+                }
+                if (na != nb) { bad++; continue; }
+                /* 集合比对(顺序可不同) */
+                for (i = 0; i < (int)na; i++) {
+                    for (j = 0; j < (int)nb; j++) {
+                        if (chdsp_coef_raw(a[i].b0) == chdsp_coef_raw(b[j].b0) &&
+                            chdsp_coef_raw(a[i].b1) == chdsp_coef_raw(b[j].b1) &&
+                            chdsp_coef_raw(a[i].b2) == chdsp_coef_raw(b[j].b2) &&
+                            chdsp_coef_raw(a[i].a1) == chdsp_coef_raw(b[j].a1) &&
+                            chdsp_coef_raw(a[i].a2) == chdsp_coef_raw(b[j].a2)) { matched++; break; }
+                    }
+                }
+                if (matched != (int)na) { bad++; }
+            }
+        }
+        printf("      偶数阶 BW 2/4/6/8 × LP/HP:sin 式 vs cos 式系数集合不匹配 %d 处\n", bad);
+        OKC("CHK-X4", bad == 0,
+            "⭐ F-4 回归:butter_q 改 sin **没有动偶数阶**(逐位同集合)");
+    }
+    {   /* CHK-X5 LR 奇数阶必须被拒(LR = BW²,奇数阶数学上不存在,这不是缺口) */
+        chdsp_biquad_coef_t sec[CHDSP_OUT_XO_SECTIONS]; uint16_t n;
+        int e3 = chdsp_bq_design_xover2(CHDSP_XO_LINKWITZ_RILEY, 3, 0, 1000.0, sec, &n);
+        int e4 = chdsp_bq_design_xover2(CHDSP_XO_LINKWITZ_RILEY, 4, 0, 1000.0, sec, &n);
+        int e9 = chdsp_bq_design_xover2(CHDSP_XO_BESSEL, 9, 0, 1000.0, sec, &n);
+        printf("      LR3=%d(期 %d) LR4=%d(期 %d) Bessel9=%d(期 %d)\n",
+               e3, CHDSP_BQ_ERR_ORDER, e4, CHDSP_BQ_OK, e9, CHDSP_BQ_ERR_ORDER);
+        OKC("CHK-X5", e3 == CHDSP_BQ_ERR_ORDER && e4 == CHDSP_BQ_OK && e9 == CHDSP_BQ_ERR_ORDER,
+            "各自返回【它自己那条】错误码(⛔ 不是「非 0 即算过」)");
+    }
+    {   /* CHK-X6 ⭐ 一阶节 max|b| ≤ 1(EXP-9b 的机械形式) */
+        chdsp_biquad_coef_t c; int i, hp, bad = 0; int32_t worst = 0;
+        for (i = 0; i < 300; i++) {
+            double fc = 20.0 * pow(1000.0, (double)i / 299.0);
+            for (hp = 0; hp < 2; hp++) {
+                int32_t r[3]; int j;
+                if (chdsp_bq_design_first_order(hp, fc, &c) != CHDSP_BQ_OK) { bad++; continue; }
+                r[0] = chdsp_coef_raw(c.b0); r[1] = chdsp_coef_raw(c.b1); r[2] = chdsp_coef_raw(c.b2);
+                for (j = 0; j < 3; j++) {
+                    int32_t v = r[j] < 0 ? -r[j] : r[j];
+                    if (v > worst) { worst = v; }
+                }
+            }
+        }
+        printf("      一阶节 300 个 fc × LP/HP:失败 %d;max|b| raw = %d(1.0 = %d)\n",
+               bad, worst, 1 << CHDSP_COEF_FRACBITS);
+        OKC("CHK-X6", bad == 0 && worst <= (1 << CHDSP_COEF_FRACBITS),
+            "一阶节 max|b| ≤ 1 ⇒ Q4.27 装得下,不需额外包络检查");
+    }
+
     printf("\n================================================================\n");
     printf("合计: PASS=%d  FAIL=%d\n", g_pass, g_fail);
     printf("退出码 = %d  ⇒ **本文件的每条检查都是硬闸门**\n", g_fail ? 1 : 0);

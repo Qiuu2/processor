@@ -130,6 +130,42 @@ int chdsp_bq_design_xover(int lr, int order, int highpass, double fc_hz,
 int chdsp_xover_needs_polarity_flip(int lr, int order);
 
 /* ==========================================================================
+ * 2b. 分频类型(C 第二批,r8)—— 补齐参数表 §4③ 已列出但实现拿不出来的档位
+ * ========================================================================== */
+typedef enum {
+    CHDSP_XO_BUTTERWORTH = 0,
+    CHDSP_XO_LINKWITZ_RILEY,        /**< = Butterworth²,⛔ 只有偶数阶存在 */
+    CHDSP_XO_BESSEL,
+    CHDSP_XO_TYPE_COUNT
+} chdsp_xover_type_t;
+
+/**
+ * 一阶 LPF/HPF(双线性 + 预畸),以双二阶形式返回(b2 = a2 = 0)。
+ * 奇数阶 Butterworth / Bessel 必含一个这样的节。
+ * ⚠ max|b| ≤ 1 [L2/宿主实测 EXP-9b] ⇒ Q4.27 装得下,不需要额外包络检查。
+ */
+int chdsp_bq_design_first_order(int highpass, double fc_hz, chdsp_biquad_coef_t *out);
+
+/**
+ * ⭐ 分频器设计(**通用版**,支持 BW/LR/Bessel × 1..8 阶)。
+ * @param type  见 chdsp_xover_type_t
+ * @param order 1..8。⛔ LR 只接受偶数阶(LR = BW²,奇数阶数学上不存在)
+ * @param out   至少 (order+1)/2 节;LR 需 order/2 节
+ *
+ * ⛔⛔ **Bessel 走的不是逐节 RBJ 那条路**(r8 证伪条件 F-2 命中后定位):
+ *   Butterworth/LR 的所有节共用同一个 ω0 = ωc ⇒「逐节各自预畸」与「整支预畸一次」重合,
+ *   所以 RBJ 那条路对它们是对的。**Bessel 各节 ω0 互不相同 ⇒ 重合消失。**
+ *   照搬 RBJ 逐节设计,8 阶高通与独立第二轨(scipy)差 **91.7 dB**。
+ *   ⇒ Bessel 用【归一化极点表 → 单次预畸 → 双线性】。
+ *
+ * ⚠ **Bessel 的 LP+HP 求和不平坦**(实测最好一相 1.686 dB @4 阶,最差 25.4 dB @8 阶)
+ *   ⇒ `chdsp_xover_needs_polarity_flip()` 那条「阶数 mod 4」规则**对 Bessel 不适用**。
+ *   Bessel 的卖点是群延迟平坦,不是求和平坦。[L2/宿主实测 EXP-11]
+ */
+int chdsp_bq_design_xover2(chdsp_xover_type_t type, int order, int highpass,
+                           double fc_hz, chdsp_biquad_coef_t *out, uint16_t *n_out);
+
+/* ==========================================================================
  * 3. 算力自报(解析估计,⛔ 非实测)
  * ==========================================================================
  * 每节每样本(DF1 + 二阶 EF,整数模式):
