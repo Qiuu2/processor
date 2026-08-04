@@ -67,8 +67,14 @@ total=$(( ${#MUTS[@]} + ${#FIXED_MUTS[@]} ))
 FSRC="$FIXED/check_fixed.c $FIXED/chdsp_fixed.c"
 if $CC -std=gnu99 -O2 -Wall -Wextra -I$FIXED $FSRC -o "$BUILD/fx_good" -lm 2>/dev/null; then
   for M in "${FIXED_MUTS[@]}"; do
-    $CC -std=gnu99 -O2 -Wall -Wextra -I$FIXED -DCHDSP_CHECK_FORCE_GOOD_ASSERT=1 -D$M=1 \
-        $FSRC -o "$BUILD/fx_$M" -lm 2>/dev/null
+    # ⚠ 自审抓出的同型缺陷:原写法**没有区分【编译失败】与【被检查杀死】**
+    #   —— 编译失败时可执行文件不存在,子 shell 也返回非 0 ⇒ 会被记成"已杀死"
+    #   ⇒ 那就是一个【不会响的报警】,与 critic 判 BLOCKER 的负编译同型。
+    if ! $CC -std=gnu99 -O2 -Wall -Wextra -I$FIXED -DCHDSP_CHECK_FORCE_GOOD_ASSERT=1 -D$M=1 \
+         $FSRC -o "$BUILD/fx_$M" -lm 2>"$BUILD/fb_$M.log"; then
+      echo "  [编译失败] $M ⇒ ⛔ 不算杀死"; sed 's/^/      /' "$BUILD/fb_$M.log" | head -2
+      survived=$((survived+1)); continue
+    fi
     ( cd "$BUILD" && ./fx_$M ) > "$BUILD/fo_$M.txt" 2>&1
     if [ $? -ne 0 ]; then
       k=$(grep -E '^\s*\[FAIL\]' "$BUILD/fo_$M.txt" | grep -v 'CHK-0' | awk '{print $2}' | tr '\n' ' ')

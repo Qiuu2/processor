@@ -20,7 +20,6 @@ echo "编译器: $($CC --version|head -1)"
 echo "================================================================================"
 
 echo; echo "### 1. 严格编译(-Werror,强类型)"
-if $CC $CFLAGS -DCHDSP_STRICT_TYPES=1 -c $ROOT/src/*.c -o /dev/null 2>&1; then :; fi
 ok=1
 for f in "$ROOT"/src/*.c; do
   $CC $CFLAGS -DCHDSP_STRICT_TYPES=1 -c "$f" -o "$ROOT/build/$(basename $f).o" 2>&1 || ok=0
@@ -35,6 +34,9 @@ $CC $CFLAGS -DCHDSP_STRICT_TYPES=1 "$HERE/check_modules.c" "$ROOT"/src/*.c "$FIX
     -o "$ROOT/build/chk" -lm 2>&1 || rc_all=1
 "$ROOT/build/chk" || rc_all=1
 
+echo; echo "### 3b. 负编译检查(硬闸门,已按 critic BLOCKER 重做)"
+bash "$HERE/check_negcompile.sh" || rc_all=1
+
 echo; echo "### 4. 杀伤矩阵(硬闸门)"
 bash "$HERE/run_kill_matrix.sh" || rc_all=1
 
@@ -46,7 +48,7 @@ $CC $CFLAGS -DCHDSP_STRICT_TYPES=1 "$HERE/emit_bitexact.c" "$ROOT"/src/*.c "$FIX
 echo; echo "### 6. 强类型开关的数值中立性(硬闸门)"
 $CC $CFLAGS -DCHDSP_STRICT_TYPES=0 "$HERE/emit_bitexact.c" "$ROOT"/src/*.c "$FIXED/chdsp_fixed.c" \
     -o "$ROOT/build/emit0" -lm 2>&1 || rc_all=1
-( cd "$ROOT/build" && ./emit0 && mv bitexact_bq_out.txt s0.txt && ./emit >/dev/null )
+( cd "$ROOT/build" && ./emit0 && mv bitexact_bq_out.txt s0.txt && ./emit >/dev/null ) || rc_all=1
 if diff -q "$ROOT/build/s0.txt" "$ROOT/build/bitexact_bq_out.txt" >/dev/null 2>&1; then
   echo "  STRICT=1 vs 0:逐位 SAME ✓"
   sed '5000s/.*/999999/' "$ROOT/build/s0.txt" > "$ROOT/build/forced.txt"
