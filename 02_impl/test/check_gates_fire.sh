@@ -105,6 +105,7 @@ ensure_green(){ local key="$1" desc="$2" cmd="$3"
   GREEN_DONE[$key]=1
   local out rc
   out=$( ( cd "$BASE/02_impl" && eval "$cmd" ) 2>&1 ); rc=$?
+  printf '%s' "$out" > "$TMPROOT/green_$key.txt"     # 供 want 非平凡校验(见 expect_red)
   if [ $rc -eq 0 ]; then
     echo "  [PASS] base:$key  基线上「$desc」是绿的 ⇒ 下面的红可归因于变异"; pass=$((pass+1))
   else
@@ -116,26 +117,56 @@ ensure_green(){ local key="$1" desc="$2" cmd="$3"
     fail=$((fail+1)); fi }
 
 # 闸门必须【因为它自己的失败特征】而变红
-expect_red(){ local tag="$1" desc="$2" cmd="$3" w="$4" want="${5:-}"
+# ============================================================================
+# ⛔ 整改 2026-08-04 · critic 02impl r4 MAJOR-1(新增):**判定顺序错了**
+# ----------------------------------------------------------------------------
+# 原写法把 DISQ 判在 want 【之前】,且扫的是**整段输出**
+# ⇒ 只要输出里任何一处出现 "no such file",哪怕闸门**确实**因它自己那条特征而红,
+#   也会被判成"没跑起来" ⇒ **把真的响了的闸门判成假的**。
+# ⇒ critic 实证:r4 干净树上 G10 就是这样被误判的(它手工单跑同一变异,闸门确实响了、理由也对)。
+# ⇒ 而它判 MAJOR 的理由值得抄下来:
+#   **「一个在正常情况下就误报的闸门,会训练所有人不看它 —— 那正好抵消这轮整改的全部收益。」**
+#
+# 正确顺序(语义上也更对:DISQ 的作用是【解释为什么没命中 want】,⛔ 不是【否决已经命中的 want】):
+#   ① 命中 want ⇒ PASS(命中自己那条特征 = 真的响了)
+#   ② 否则命中 DISQ ⇒ 判「跑不起来」
+#   ③ 否则 ⇒ 判「红了但不是它那条特征」
+#
+# ⭐ 而 critic 指出的另一处残口一并补上:want 没有被校验为【非平凡】。
+#   写 want="." ⇒ 非空、通过自检、命中任何输出 ⇒ 白名单被架空。
+#   ⇒ 判别法选**语义正确的那个**,不是 critic 给的那个一行版:
+#     **失败特征串,不得出现在【通过的那一跑】的输出里。**
+#     (critic 的 `printf '' | grep -qE "$want"` 只能抓 "" 与 ".*",抓不住 "."。)
+# ============================================================================
+expect_red(){ local tag="$1" desc="$2" cmd="$3" w="$4" want="${5:-}" gkey="${6:-}"
   local out rc
-  # ⭐ 器械自检(照抄 phase_a_flip 的形状):没有失败特征串 ⇒ 判据退化回「任何非 0」
-  #   ⇒ 那正是本次 BLOCKER 的病 ⇒ **本条闸门无意义,判 FAIL,⛔ 不得当作通过**。
+  # ⭐ 器械自检 ①(照抄 phase_a_flip 的形状):没有失败特征串 ⇒ 判据退化回「任何非 0」
   if [ -z "$want" ]; then
     echo "  [FAIL] $tag  ⛔ 本闸门没有声明失败特征串(want)⇒ 判据退化成「任何非 0」"
     echo "         ⇒ 器械失效 ⇒ 本条元检查无意义(⛔ 不得当作通过)"
     fail=$((fail+1)); return; fi
+  # ⭐ 器械自检 ②:want 必须【非平凡】—— 它不得出现在基线(通过的那一跑)的输出里
+  if [ -n "$gkey" ] && [ -f "$TMPROOT/green_$gkey.txt" ]; then
+    if grep -qE "$want" "$TMPROOT/green_$gkey.txt"; then
+      echo "  [FAIL] $tag  ⛔ 失败特征串 /$want/ **在基线(通过)输出里就能命中**"
+      echo "         ⇒ 它区分不了通过与失败 ⇒ 白名单被架空(如 want=\".\")"
+      echo "         ⇒ 器械失效 ⇒ ⛔ 不得当作通过"
+      fail=$((fail+1)); return; fi
+  fi
   out=$( ( cd "$w/02_impl" && eval "$cmd" ) 2>&1 ); rc=$?
   if [ $rc -eq 0 ]; then
     echo "  [FAIL] $tag  $desc ⇒ ⛔ 闸门**没有响**"; fail=$((fail+1)); return; fi
+  # ① want 优先(白名单):命中自己那条特征 = 真的响了
+  if printf '%s' "$out" | grep -qE "$want"; then
+    echo "  [PASS] $tag  $desc ⇒ 闸门确实变红(命中 /$want/)"; pass=$((pass+1)); return; fi
+  # ② 没命中 want,再看是不是根本没跑起来
   if printf '%s' "$out" | grep -qE "$DISQ"; then
     echo "  [FAIL] $tag  $desc ⇒ ⛔ 非 0 的原因是【命令没跑起来】,不是闸门响了"
     printf '%s' "$out" | grep -E "$DISQ" | head -2 | sed 's/^/         /'
     fail=$((fail+1)); return; fi
-  if printf '%s' "$out" | grep -qE "$want"; then
-    echo "  [PASS] $tag  $desc ⇒ 闸门确实变红(命中 /$want/)"; pass=$((pass+1))
-  else
-    echo "  [FAIL] $tag  $desc ⇒ ⛔ 红了,但**不是它自己那条失败特征**(/$want/ 未命中)"
-    printf '%s' "$out" | tail -3 | sed 's/^/         /'; fail=$((fail+1)); fi }
+  # ③ 跑起来了、红了,但不是它那条特征
+  echo "  [FAIL] $tag  $desc ⇒ ⛔ 红了,但**不是它自己那条失败特征**(/$want/ 未命中)"
+  printf '%s' "$out" | tail -3 | sed 's/^/         /'; fail=$((fail+1)); }
 
 echo "元检查:每一道闸门真的会响吗(硬闸门)"
 echo "  ⛔ 判据 = 【非 0】∧【不是"跑不起来"】∧【命中该闸门自己的失败特征】,三者缺一不可"
@@ -149,21 +180,21 @@ ensure_green compile_bq "严格编译 chdsp_biquad.c" "$CC -std=gnu99 -O2 -I src
 W=$TMPROOT/a; mkwork $W
 mutate $W/02_impl/src/chdsp_config.h 's/^#  define CHDSP_OUT_FIR_TAPS        256/#  define CHDSP_OUT_FIR_TAPS        1024/' &&
 expect_red G1 "把 FIR 抽头改成超预算的 1024 ⇒ 编译期断言应拦住" \
-  "$CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint -c src/chdsp_biquad.c -o /dev/null" $W "size of array .chdsp_static_assert"
+  "$CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint -c src/chdsp_biquad.c -o /dev/null" $W "size of array .chdsp_static_assert" compile_bq
 
 # ---------------------------------------------------------------- 第 2 环:魔数扫描
 ensure_green no_magic "魔数扫描" "bash test/check_no_magic.sh"
 W=$TMPROOT/b; mkwork $W
 mutate $W/02_impl/src/chdsp_delay.h 's|^#define CHDSP_DELAY_H|#define CHDSP_DELAY_H\nstatic const int chdsp_magic_probe = 512;|' &&
 expect_red G2 "在非 config 头里写入魔数 512 ⇒ 魔数扫描应拦住" \
-  "bash test/check_no_magic.sh" $W "⛔|FAIL|魔数"
+  "bash test/check_no_magic.sh" $W "处魔数 ⇒ FAIL|\\[⛔\\]" no_magic
 
 # ---------------------------------------------------------------- 第 3b 环:负编译 · 前置存活自检臂
 ensure_green negcompile "负编译检查" "bash test/check_negcompile.sh"
 W=$TMPROOT/c; mkwork $W
 mutate $W/01_design/fixedpoint/chdsp_fixed.h 's/chdsp_apply_gain/chdsp_apply_gain_X/g' &&
 expect_red G3 "把被测接口改名 ⇒ 负编译的【前置存活自检】应拦住" \
-  "bash test/check_negcompile.sh" $W "前置自检失败|⛔ FAIL"
+  "bash test/check_negcompile.sh" $W "前置自检失败|⛔ FAIL" negcompile
 
 # ---------------------------------------------------------------- 第 3b 环:负编译 · 诊断内容判据臂
 # ⭐ 这一条测的是 critic 真正预警的场景:接口还在,但**量纲缺口被真的打开了**。
@@ -172,21 +203,21 @@ W=$TMPROOT/c2; mkwork $W
 mutate $W/01_design/fixedpoint/chdsp_fixed.h \
   's/chdsp_apply_gain(chdsp_smp_q4_27_t x, chdsp_gain_q4_27_t g/chdsp_apply_gain(chdsp_smp_q4_27_t x, chdsp_db_q23_8_t g/' &&
 expect_red G3b "让 apply_gain 改收 dB(真的打开量纲缺口,符号仍在)⇒ 负编译应拦住" \
-  "bash test/check_negcompile.sh" $W "FAIL|⛔ FAIL"
+  "bash test/check_negcompile.sh" $W "\\[FAIL\\]|⇒ ⛔ FAIL" negcompile
 
 # ---------------------------------------------------------------- 第 3 环:模块自验
 ensure_green modules "模块自验" "$CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint test/check_modules.c src/*.c ../01_design/fixedpoint/chdsp_fixed.c -o $TMPROOT/gbase_m -lm && $TMPROOT/gbase_m"
 W=$TMPROOT/d; mkwork $W
 mutate $W/02_impl/test/check_modules.c 's/p2 == 1 \&\& p4 == 0/p2 == 0 \&\& p4 == 0/' &&
 expect_red G4 "把一条断言改成错的 ⇒ 模块自验应变红并非 0 退出" \
-  "$CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint test/check_modules.c src/*.c ../01_design/fixedpoint/chdsp_fixed.c -o $TMPROOT/g4 -lm && $TMPROOT/g4" $W "\\[FAIL\\]"
+  "$CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint test/check_modules.c src/*.c ../01_design/fixedpoint/chdsp_fixed.c -o $TMPROOT/g4 -lm && $TMPROOT/g4" $W "\\[FAIL\\]" modules
 
 # ---------------------------------------------------------------- 第 4 环:杀伤矩阵 · 阴性对照臂
 ensure_green killmatrix "杀伤矩阵" "bash test/run_kill_matrix.sh"
 W=$TMPROOT/e; mkwork $W
 mutate $W/02_impl/src/chdsp_biquad.c 's|^    return ((n % 4) == 2) ? 1 : 0;.*|    return 0;|' &&
 expect_red G5 "把 LR 极性规则改坏 ⇒ 杀伤矩阵的【阴性对照】应变红" \
-  "bash test/run_kill_matrix.sh" $W "阴性对照失败|存活|⛔"
+  "bash test/run_kill_matrix.sh" $W "阴性对照失败" killmatrix
 
 # ---------------------------------------------------------------- 第 4 环:杀伤矩阵 · 存活检测臂 ⭐⭐
 # ⛔ 这是前任版本最大的漏洞:G5 只证明"好版本自己红了会被发现",
@@ -202,7 +233,7 @@ if mutate $W/02_impl/test/run_kill_matrix.sh \
     fail=$((fail+1))
   else
     expect_red G6 "注入一个必然存活的变异(被测物零消费者)⇒ 杀伤矩阵应报存活并变红" \
-      "bash test/run_kill_matrix.sh" $W "存活"
+      "bash test/run_kill_matrix.sh" $W "存活" killmatrix
   fi
 fi
 
@@ -218,7 +249,7 @@ EOF
 then
   mutate $W/02_impl/src/chdsp_biquad.c \
     's|^    return chdsp_biquad_df1(&b->cur, &b->st, x, sat);|    return chdsp_smp_from_raw(chdsp_smp_raw(chdsp_biquad_df1(\&b->cur, \&b->st, x, sat)) + 1);|' &&
-  expect_red G7 "只扰动 C 轨的 biquad 输出(+1 LSB)⇒ 实现一致性核(A 轨)应变红" "$BITEXACT_CMD" $W "\\[FAIL\\]|不同|DIFF"
+  expect_red G7 "只扰动 C 轨的 biquad 输出(+1 LSB)⇒ 实现一致性核(A 轨)应变红" "$BITEXACT_CMD" $W "\\[FAIL\\]|未通过" bitexact
 fi
 
 # ---------------------------------------------------------------- 第 6 环:强类型开关的数值中立性
@@ -230,7 +261,7 @@ ensure_green neutral "强类型中立性" "$NEUTRAL_CMD"
 W=$TMPROOT/h2; mkwork $W
 if mutate $W/02_impl/src/chdsp_biquad.c \
      's|^    if (b->bypass) { return x; }.*|    if (b->bypass) { return x; }\n#if !CHDSP_STRICT_TYPES\n    x = chdsp_smp_from_raw(chdsp_smp_raw(x) + 1);   /* 元检查注入:只在 STRICT=0 下扰动 */\n#endif|'; then
-  expect_red G8 "注入只在 STRICT=0 下生效的扰动 ⇒ 强类型中立性应变红" "$NEUTRAL_CMD" $W "differ|DIFF|不同|不一致"
+  expect_red G8 "注入只在 STRICT=0 下生效的扰动 ⇒ 强类型中立性应变红" "$NEUTRAL_CMD" $W "differ|DIFF|不同|不一致" neutral
 fi
 
 # ---------------------------------------------------------------- 第 3c 环:变异自证 ⭐⭐
@@ -253,7 +284,7 @@ else
   if mutate "$CH" "${L_HPF2}d" && \
      mutate "$CH" "${L_ANC}a\\    chdsp_bq_chain_process(\&ch->hpf, out, out, n, \&ch->sat);"; then
     expect_red G10 "把 HPF_AFTER_DYN 改回前任的错误形态(挪了但仍在动态之前)⇒ 变异自证应变红" \
-      "bash test/check_mutants_valid.sh" $W "\\[FAIL\\]|杀伤率作废" "\\[FAIL\\]|不同|DIFF"
+      "bash test/check_mutants_valid.sh" $W "\\[FAIL\\]|杀伤率作废" mutvalid
   fi
 fi
 
@@ -267,7 +298,7 @@ W=$TMPROOT/k; mkwork $W
 if mutate $W/02_impl/src/chdsp_fir.c \
      's/^#if CHDSP_BROKEN_FIR_NOBYPASS$/#if CHDSP_BROKEN_FIR_NOBYPASS || CHDSP_BROKEN_NO_HYST/'; then
   expect_red G11 "让一个变异顺手注入第二个缺陷 ⇒ 变异自证的【断言②】应变红" \
-    "bash test/check_mutants_valid.sh" $W "未声明的连带变化|\\[FAIL\\]" "differ|DIFF|不同|不一致"
+    "bash test/check_mutants_valid.sh" $W "未声明的连带变化|\\[FAIL\\]" mutvalid
 fi
 
 # ---------------------------------------------------------------- 总聚合:run_all.sh 自己会不会红 ⭐
@@ -278,7 +309,7 @@ ensure_green runall "总闸门 run_all.sh" "CHDSP_GATES_META=1 bash test/run_all
 W=$TMPROOT/i; mkwork $W
 mutate $W/02_impl/test/check_modules.c 's/p2 == 1 \&\& p4 == 0/p2 == 0 \&\& p4 == 0/' &&
 expect_red G9 "弄坏一条模块自验断言 ⇒ **run_all.sh 整体**应非 0 退出(聚合不吞错)" \
-  "CHDSP_GATES_META=1 bash test/run_all.sh" $W "总闸门: FAIL"
+  "CHDSP_GATES_META=1 bash test/run_all.sh" $W "总闸门: FAIL" runall
 
 echo
 echo "  合计: PASS=$pass  FAIL=$fail"
