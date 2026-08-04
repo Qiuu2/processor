@@ -112,6 +112,14 @@ static int f64_to_fixed(double x, int fracbits, int32_t *out)
 int chdsp_coef_from_f64(double x, chdsp_coef_q4_27_t *out)
 {
     int32_t r;
+    /* ⭐ 显式用常数守界(整改 2026-08-04 · critic m-6 · D6-ao 接线审计)
+     * 原先只靠 f64_to_fixed 的 int32 边界,而它**碰巧**等价于 |x| < 16
+     * (因为 16·2^27 = 2^31 恰好越过 INT32_MAX)⇒ §3.4「对 |x| ≥ 16 返回非 0」
+     * 是**碰巧成立**,而 CHDSP_COEF_ABS_MAX_INT 全库【零消费者】。
+     * ⇒ 现在改成:那个常数**真的**是拦截依据 —— 改它就改行为。 */
+    if (!(x > -(double)CHDSP_COEF_ABS_MAX_INT && x < (double)CHDSP_COEF_ABS_MAX_INT)) {
+        return -1;
+    }
     if (f64_to_fixed(x, CHDSP_COEF_FRACBITS, &r) != 0) { return -1; }
     *out = CHDSP_MK(chdsp_coef_q4_27_t, r);
     return 0;

@@ -94,6 +94,12 @@ typedef struct {
     chdsp_limiter_t     prot;
     /* 遥测 */
     chdsp_sat_t         sat;
+    /** ⭐ C-B 的落地点(整改 2026-08-04 · critic m-6 · D6-ao):
+     *  **链内(非输出端)饱和 = 设计缺陷,不是运行工况**(前置件 §4.3 消费者 C-B)。
+     *  D3 输出的是 smp(Q4.27),**链上没有合法削波点** ⇒ 本通道任何饱和都是链内饱和。
+     *  ⇒ `CHDSP_DEBUG_ASSERT=1` 时逐帧累计,供 D14 bring-up 与自验断言消费。
+     *  ⛔ 计数而不 abort:abort 会让「饱和行为」本身无法被测(CHK-1 正要测它)。 */
+    uint32_t            internal_sat_frames;
 } chdsp_in_ch_t;
 
 /**
@@ -101,6 +107,10 @@ typedef struct {
  * @param look_buf   保护限幅前视缓冲
  * @return 0 = 成功(⛔ 非 0 调用方必须处理)
  */
+/** 链内饱和帧数(C-B)。⛔ 出货构建下应恒为 0;非 0 = 增益结构有缺陷,不是"偶尔削一下"。 */
+static inline uint32_t chdsp_in_ch_internal_sat_frames(const chdsp_in_ch_t *ch)
+{ return ch->internal_sat_frames; }
+
 int  chdsp_in_ch_init(chdsp_in_ch_t *ch, chdsp_smp_q4_27_t *delay_buf, uint32_t delay_cap,
                       chdsp_smp_q4_27_t *look_buf, uint32_t look_cap);
 void chdsp_in_ch_reset(chdsp_in_ch_t *ch);

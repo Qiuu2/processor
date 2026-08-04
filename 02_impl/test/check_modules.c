@@ -684,6 +684,53 @@ int main(void)
             "⭐ HPF 在动态之前 ⇒ 隆隆不顶开门 ⇒ 输出被压(⛔ HPF 在后会顶开门)");
     }
 
+    /* ================= m-6 接线审计的机械形式 ================= */
+    printf("\n接线(critic m-6 · D6-ao)\n");
+    {   /* CHK-M6a ⭐ `CHDSP_COEF_ABS_MAX_INT` 现在**真的**是拦截依据,不是碰巧
+         * 原先只靠 f64_to_fixed 的 int32 边界,而 16·2^27 = 2^31 恰好越过 INT32_MAX
+         * ⇒ §3.4「对 |x| ≥ 16 返回非 0」是**碰巧成立**,那个常数零消费者。 */
+        chdsp_coef_q4_27_t c;
+        int lo = chdsp_coef_from_f64(15.9999999, &c);      /* 界内 */
+        int at = chdsp_coef_from_f64(16.0, &c);            /* 恰好在界上 ⇒ 须拒 */
+        int hi = chdsp_coef_from_f64(16.0000001, &c);      /* 界外 */
+        int ng = chdsp_coef_from_f64(-16.0, &c);           /* 负向同样 */
+        printf("      15.9999999→%d(期 0) 16.0→%d(期 −1) 16.0000001→%d(期 −1) −16.0→%d(期 −1)\n",
+               lo, at, hi, ng);
+        OKC("CHK-M6a", lo == 0 && at == -1 && hi == -1 && ng == -1,
+            "⭐ |x| < CHDSP_COEF_ABS_MAX_INT 是**显式**判据(⛔ 不再靠 int32 边界碰巧等价)");
+    }
+    {   /* CHK-M6b ⭐ C-B 接线:链内饱和被记到遥测上(⛔ 不是"定义了个字段") */
+        chdsp_in_ch_t ich; chdsp_biquad_coef_t pc;
+        chdsp_io_q0_31_t in[CHDSP_FRAME_SAMPLES];
+        chdsp_smp_q4_27_t out[CHDSP_FRAME_SAMPLES];
+        int i; uint32_t sat_hot, sat_cold;
+        /* —— 阳性:满量程 + 最大 trim + 一段 +15 dB PEQ ⇒ 必然越过 Q4.27 的 ±16 —— */
+        (void)chdsp_in_ch_init(&ich, g_dly_in, sizeof(g_dly_in)/sizeof(g_dly_in[0]),
+                               g_look_in, sizeof(g_look_in)/sizeof(g_look_in[0]));
+        ich.trim = chdsp_db_to_gain(chdsp_db(24));
+        (void)chdsp_bq_design(CHDSP_FT_PEAKING, 1000.0, 1.0, 15.0, &pc);
+        ich.peq.n = 1u; chdsp_bq_set_coef_now(&ich.peq_sec[0], &pc); ich.peq_sec[0].bypass = 0u;
+        for (i = 0; i < CHDSP_FRAME_SAMPLES; i++) {
+            in[i] = chdsp_io_from_raw((int32_t)(2147483647.0 *
+                        sin(2.0 * M_PI * 1000.0 * i / CHDSP_FS_HZ)));
+        }
+        chdsp_in_ch_process(&ich, in, out, CHDSP_FRAME_SAMPLES);
+        sat_hot = chdsp_in_ch_internal_sat_frames(&ich);
+        /* —— 阴性:同一条链,标称 −20 dBFS、单位增益、无提升 —— */
+        (void)chdsp_in_ch_init(&ich, g_dly_in, sizeof(g_dly_in)/sizeof(g_dly_in[0]),
+                               g_look_in, sizeof(g_look_in)/sizeof(g_look_in[0]));
+        for (i = 0; i < CHDSP_FRAME_SAMPLES; i++) {
+            in[i] = chdsp_io_from_raw((int32_t)(0.1 * 2147483647.0 *
+                        sin(2.0 * M_PI * 1000.0 * i / CHDSP_FS_HZ)));
+        }
+        chdsp_in_ch_process(&ich, in, out, CHDSP_FRAME_SAMPLES);
+        sat_cold = chdsp_in_ch_internal_sat_frames(&ich);
+        printf("      满量程+24dB trim+15dB PEQ ⇒ 链内饱和帧 %u;标称 −20 dBFS 单位增益 ⇒ %u\n",
+               (unsigned)sat_hot, (unsigned)sat_cold);
+        OKC("CHK-M6b", sat_hot > 0u && sat_cold == 0u,
+            "⭐ C-B 真的接上了:链内饱和被记录,而正常工作点下恒 0(⛔ 两个方向都测)");
+    }
+
     /* ================= C 第二批(r8):分频补全 ================= */
     printf("\n分频补全(C 第二批 r8:奇数阶 + Bessel)\n");
     {   /* CHK-X1 ⭐ Y7 闭合:Bessel 全族系数装得进 Q4.27

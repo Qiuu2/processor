@@ -95,6 +95,11 @@ void chdsp_in_ch_process(chdsp_in_ch_t *ch, const chdsp_io_q0_31_t *in,
         out[i] = chdsp_delay_process1(&ch->delay, out[i]);
         out[i] = chdsp_limiter_process1(&ch->prot, out[i], &ch->sat, 0);
     }
+#if CHDSP_DEBUG_ASSERT
+    /* ⭐ C-B 接线(critic m-6):D3 链上没有合法削波点 ⇒ 任何饱和都是【链内饱和】= 设计缺陷。
+     * ⛔ 计数不 abort —— abort 会让饱和行为本身无法被测。消费者:D14 bring-up + 自验。 */
+    if (chdsp_sat_tripped(&ch->sat)) { ch->internal_sat_frames++; }
+#endif
 }
 
 /* ---------------------------------------------------------------- D4 */

@@ -70,13 +70,20 @@
  * ---------------------------------------------------------------------------
  *  · 溢出策略 = **饱和**,禁回绕。回绕 = 符号翻转 = 满量程爆音。
  *  · 舍入策略 = **就近舍入(RTN)**,禁截断。截断在 DF1 递归里产生的 DC 偏置被
- *    该节的 |1/A(1)| 放大(20 Hz HPF:|1/A(1)| ≈ 1.0e5 ⇒ −68.6 dBFS 直流)。
+ *    该节的 |1/A(1)| 放大(20 Hz BW HPF:A(1)=1+a1+a2=6.8412e−6 ⇒ |1/A(1)| = **1.4617e5**
+ *    ⇒ 半 LSB(2^−28)经它 = **−65.3 dBFS** 直流)。
+ *    〔整改 2026-08-04 · critic m-5:原写「≈1.0e5 ⇒ −68.6 dBFS」——**那个 1.0e5 无出处**。
+ *      (results_design_bounds §C 的 1.4617e5 是 max|1/A|,与本处的 |1/A(1)| 是不同的量,
+ *       只是数值恰好相同。)⇒ 方向不变(真值更坏 3.3 dB),但这是承重论证里的无源数。〕
  *  · biquad 结构 = **DF1**,禁 DF2/DF2T。理由是量的:DF2 内节点峰值增益
  *    max|1/A| 在 PEQ 20 Hz/Q=20/+15 dB 处达 **135.1 dB(5.71e6)⇒ 需额外 23 bit 整数位**,
  *    32-bit 装不下 [L2/宿主仿真]。
  *  · **二阶误差反馈(EF)为必选,不是可选优化。** 取 C(z)=A(z) ⇒ 噪声传函 ≡ 1。
  *    实测(定点仿真,8 个算例,Q4.27):有 EF 一律 −173.3x dBFS(与 q²/12 预测差 ≤0.02 dB),
- *    与该节 NG(40–91 dB)无关;无 EF 则最坏 −84.75 dBFS ⇒ **连 PRD 的 >106 dB 都不过**。
+ *    与该节 NG(40–91 dB)无关;无 EF 则最坏 **−84.44 dBFS** ⇒ **连 PRD 的 >106 dB 都不过**。
+ *    〔整改 2026-08-04 · critic m-4:原写 −84.75,那是**临时脚本**的数;
+ *      归档 C 轨实测(results_r3_detail/out_CHDSP_BROKEN_NOEF.txt:50)是 −84.44。
+ *      ⛔ 只用有 deps 行的那份。〕
  *  · 0 dB 的 PEQ 节在 DF1 下是**逐位恒等**(b≡a ⇒ 累加器低位恒 0),
  *    旁路它的理由是**省算力**,⛔ 不是省噪声(此处曾有一条我自己写下并当场被证伪的断言)。
  */
@@ -176,7 +183,12 @@ CHDSP_DEFTYPE(chdsp_db_q23_8_t,   int32_t);
  * ⚠ 这里有两个不同的量,**不许混为一谈**(r2 的 CHK-11b 就是踩了这一脚):
  *
  *  (a)【类型范围上界,构造上不可超越】|X|≤2^31 ∧ |C|≤2^31 ⇒ |X·C| ≤ 2^62;
- *      DF1+EF 一节最多 7 项 ⇒ |acc| < 7·2^62 ⇒ **64.81 bit ⇒ 需 66 bit 有符号**。
+ *      DF1+EF 一节 = **5 个大项 + 2 个小项**(⛔ 不是「7 个每项 ≤2^62」):
+ *        · 5 个 x/y 乘积项:各 |X·C| ≤ 2^31·2^31 = 2^62
+ *        · 2 个 EF 修正项 :**经 >>27 之后 ≤ 2^31**,比大项小 31 bit ⇒ 可忽略
+ *      ⇒ 真界 = 5·2^62 + 2·2^31 = 2^64.322 ⇒ **需 66 bit 有符号**。
+ *      〔整改 2026-08-04 · critic m-7:原按「7·2^62 = 2^64.807」推。
+ *        **结论 66 bit 不变**,但按「7 项」外推会高估 —— 下次有人加项时会错。〕
  *      [L2/宿主实测 CHK-3:log2 = 64.807]
  *  (b)【本项目参数范围内的实测占用】最坏合法配置(低架 20 Hz S=1 +15 dB,
  *      满量程方波激励)实测 **58.005 bit** [L2/宿主实测 CHK-11]。
@@ -246,6 +258,9 @@ static inline int32_t chdsp_sat_i64_to_i32(int64_t v, chdsp_sat_t *st)
 #endif
 }
 
+/* ⚠ D6-ao 接线审计(2026-08-04 · critic m-6):本函数**全库零消费者**。
+ *   保留理由:它是「饱和加」的规范写法,D3/D4 的求和/混音落地时会用到(矩阵求和尚未 C 化)。
+ *   ⛔ 在有第一个消费者之前,它**未被任何测试覆盖** —— 不得假定它对。 */
 static inline int32_t chdsp_sat_add_i32(int32_t a, int32_t b, chdsp_sat_t *st)
 { return chdsp_sat_i64_to_i32((int64_t)a + (int64_t)b, st); }
 
@@ -265,6 +280,7 @@ static inline void chdsp_acc_msub(chdsp_acc_t *a, chdsp_smp_q4_27_t x, chdsp_coe
 { CHDSP_RAW(*a) -= (chdsp_acc_raw_t)CHDSP_RAW(x) * (chdsp_acc_raw_t)CHDSP_RAW(c); }
 
 /** 直接把一个链内样本加进累加器(等价于乘 1.0,但不花一次乘法)。 */
+/* ⚠ D6-ao 接线审计(2026-08-04 · critic m-6):本函数**全库零消费者**。同上,未被覆盖。 */
 static inline void chdsp_acc_add_smp(chdsp_acc_t *a, chdsp_smp_q4_27_t x)
 { CHDSP_RAW(*a) += ((chdsp_acc_raw_t)CHDSP_RAW(x)) << CHDSP_COEF_FRACBITS; }
 
@@ -304,7 +320,8 @@ static inline chdsp_smp_q4_27_t chdsp_acc_to_smp(chdsp_acc_t a, chdsp_sat_t *st)
  * ========================================================================== */
 
 /** codec → 链内。右移 CHDSP_HEADROOM_BITS。**无损**:codec 为 24-bit,
- *  Q4.27 仍在 ADC LSB 之下留 3 bit(2^−27 = 2^−23/16)。 */
+ *  Q4.27 仍在 ADC LSB 之下留 **4** bit(2^−27 = 2^−23/16 ⇒ 16 = 2^4)。
+ *  〔整改 2026-08-04 · critic m-3:原写 3 bit,与文档 §2.2 的 4 bit 矛盾;**正确是 4**。〕 */
 static inline chdsp_smp_q4_27_t chdsp_io_to_smp(chdsp_io_q0_31_t x)
 { return CHDSP_MK(chdsp_smp_q4_27_t, (int32_t)(CHDSP_RAW(x) >> CHDSP_HEADROOM_BITS)); }
 
