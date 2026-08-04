@@ -158,8 +158,10 @@ chdsp_gain_q4_27_t chdsp_comp_gain1(chdsp_comp_t *c, chdsp_smp_q4_27_t sc,
         int64_t t = (int64_t)ov + (int64_t)W / 2;
         int64_t sq = (t * t) >> CHDSP_DB_FRACBITS;      /* Q23.8 */
         int64_t den = 2 * (int64_t)W;
-        int32_t v = (den != 0) ? (int32_t)(sq / den * 1) : 0;
-        /* v 现为 (ov+W/2)²/(2W) 的 Q23.8 值;再乘斜率并取负 */
+        /* ⚠ sq 是 Q8 的 dB²,den 是 Q8 的 dB ⇒ 直接相除得到【整数 dB】,丢了 Q8 标度。
+         *   必须先左移 CHDSP_DB_FRACBITS 再除,结果才是 Q8 的 dB。
+         *   (本行原写 `sq/den`,由 CHK-Y4 抓出:拐点上沿出现 4.625 dB 跳变) */
+        int32_t v = (den != 0) ? (int32_t)((sq << CHDSP_DB_FRACBITS) / den) : 0;
         gdb = -db_mul_slope(v, c->slope);
     } else {
         gdb = -db_mul_slope(ov, c->slope);

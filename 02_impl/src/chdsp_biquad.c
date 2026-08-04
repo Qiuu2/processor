@@ -14,6 +14,14 @@
 #  define M_PI 3.14159265358979323846
 #endif
 
+/* ⛔ 仅供自验的坏版本开关(出货构建须全 0,由 CHK-B0 硬闸门核) */
+#ifndef CHDSP_BROKEN_BQ_NORAMP     /* 1 = 忽略斜坡,系数直接跳变 */
+#  define CHDSP_BROKEN_BQ_NORAMP 0
+#endif
+#ifndef CHDSP_BROKEN_BQ_TIE_FREE   /* 1 = HPF/LPF 改自由量化(不用结构约束) */
+#  define CHDSP_BROKEN_BQ_TIE_FREE 0
+#endif
+
 /* ==========================================================================
  * 1. 运行时
  * ========================================================================== */
@@ -75,7 +83,11 @@ static void ramp_step(chdsp_bq_t *b)
 chdsp_smp_q4_27_t chdsp_bq_process1(chdsp_bq_t *b, chdsp_smp_q4_27_t x, chdsp_sat_t *sat)
 {
     if (b->bypass) { return x; }                 /* 逐位透传 */
+#if !CHDSP_BROKEN_BQ_NORAMP
     if (b->ramp_left) { ramp_step(b); }
+#else
+    if (b->ramp_left) { b->cur = b->target; b->ramp_left = 0u; }  /* ⛔ 坏版本:直接跳变 */
+#endif
     return chdsp_biquad_df1(&b->cur, &b->st, x, sat);
 }
 
@@ -157,14 +169,24 @@ int chdsp_bq_design(chdsp_filter_type_t type, double f0, double q, double gdb,
     }
     case CHDSP_FT_HPF: {
         alpha = s / (2.0 * q); a0 = 1.0 + alpha;
+#if CHDSP_BROKEN_BQ_TIE_FREE
+        return pack(((1.0 + c) / 2.0) / a0, (-(1.0 + c)) / a0, ((1.0 + c) / 2.0) / a0,
+                    (-2.0 * c) / a0, (1.0 - alpha) / a0, out);   /* ⛔ 自由量化 */
+#else
         /* ⭐ 结构约束量化:只量化 b0,b1=−2b0,b2=b0 ⇒ DC 零点在量化后仍精确 */
         return chdsp_coef_hplp_from_f64(((1.0 + c) / 2.0) / a0,
                                         (-2.0 * c) / a0, (1.0 - alpha) / a0, 1, out);
+#endif
     }
     case CHDSP_FT_LPF: {
         alpha = s / (2.0 * q); a0 = 1.0 + alpha;
+#if CHDSP_BROKEN_BQ_TIE_FREE
+        return pack(((1.0 - c) / 2.0) / a0, (1.0 - c) / a0, ((1.0 - c) / 2.0) / a0,
+                    (-2.0 * c) / a0, (1.0 - alpha) / a0, out);   /* ⛔ 自由量化 */
+#else
         return chdsp_coef_hplp_from_f64(((1.0 - c) / 2.0) / a0,
                                         (-2.0 * c) / a0, (1.0 - alpha) / a0, 0, out);
+#endif
     }
     case CHDSP_FT_NOTCH: {
         alpha = s / (2.0 * q); a0 = 1.0 + alpha;

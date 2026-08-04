@@ -269,6 +269,7 @@ class NHS:
         self.skip_plan = None               # 人为跳槽(B9 场景)
         self.log = []                       # 每槽快照
         self.p0_block_log = []      # ★ r26 纯遥测:P0 拦下的候选留痕
+        self.preempt_log = []       # ★ r85 纯遥测:每次抢占时【被抢走那个槽的深度】
         self.c8_log = []            # C8-② 判决留痕
         self.probes = {}            # C8-② 在测探针:slot_idx -> dict
         self.ext_reg = []           # C8-② 外部音登记:[(f, 到期墙钟)]
@@ -1003,6 +1004,10 @@ class NHS:
                               and s.st != NotchSlot.FREE], key=lambda s: s.t_last_hit)
                 if pre:
                     self.ctr['preempt'] = self.ctr.get('preempt', 0) + 1
+                    # ★ r85 纯遥测:抢占把槽的深度清零重来 ⇒ 记下被抢时它已压到多深
+                    self.preempt_log.append(dict(seq=self.slot_seq,
+                                                f_old=float(pre[0].f), depth_old=float(pre[0].depth),
+                                                target_old=float(pre[0].target), f_new=float(f)))
                     self.events.append((self.slot_seq, 'preempt', round(f, 1)))
                     free = pre[:1]
             if not free:

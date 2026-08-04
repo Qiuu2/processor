@@ -9,6 +9,10 @@
 #ifndef CHDSP_BROKEN_FIR_ASYM
 #  define CHDSP_BROKEN_FIR_ASYM 0
 #endif
+/* ⛔ 坏版本:关闭时不透传(仍走一次量化)⇒ 破坏「关 = 逐位透传」的契约 */
+#ifndef CHDSP_BROKEN_FIR_NOBYPASS
+#  define CHDSP_BROKEN_FIR_NOBYPASS 0
+#endif
 
 int chdsp_fir_init(chdsp_fir_t *f, const chdsp_coef_q4_27_t *taps,
                    chdsp_smp_q4_27_t *state, uint16_t n)
@@ -32,7 +36,12 @@ chdsp_smp_q4_27_t chdsp_fir_process1(chdsp_fir_t *f, chdsp_smp_q4_27_t x, chdsp_
 {
     chdsp_acc_t acc;
     uint16_t k, idx;
+#if CHDSP_BROKEN_FIR_NOBYPASS
+    if (f->n == 0u) { return x; }
+    if (!f->enabled) { return chdsp_smp_from_raw(chdsp_smp_raw(x) & ~1); }  /* ⛔ 改动了样本 */
+#else
     if (f->n == 0u || !f->enabled) { return x; }
+#endif
     f->z[f->w] = x;
     f->w = (uint16_t)((f->w + 1u < f->n) ? (f->w + 1u) : 0u);
     chdsp_acc_clear(&acc);
