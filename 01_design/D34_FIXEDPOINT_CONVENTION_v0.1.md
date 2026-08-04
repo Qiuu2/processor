@@ -73,7 +73,12 @@
 >
 > **⚠ 另记一条给 lead 路由(不在我职责内,但它是我噪声预算的锚)**:
 > ADAU1979 动态范围 **min 103 dB / typ 109 dB(A 计权)**[L2/厂家],
-> 而 PRD §一.1 要求 **动态范围 > 106 dB**。⇒ **最坏档器件不满足对外规格**。
+> 而 PRD §一.1 要求 **动态范围 > 106 dB**。
+> ⇒ **至少最坏档不满足;typ 档是否满足取决于 PRD 的计权口径,见 W1-A(⚠ 未过门)。**
+> 〔整改 2026-08-04 · critic m-8:原写「最坏档器件不满足对外规格」——**比手上证据乐观**。
+>  同日 W1-A v0.57 的结论更强:PRD 未声明计权口径 ⇒ **不可判**;而最可能的读法下
+>  整机 typ 107.8 dB(A) ⇒ 不计权 104.8–105.8 ⇒ **typ 档也不过**。
+>  ⛔ 不得给出比证据更乐观的定性。⚠ 本件只作记录,该冲突的合并归 lead(critic P-4)。〕
 > 该判断属器件选型(architect / platform-fw),此处只如实记录。
 
 ---
@@ -217,7 +222,13 @@ fs = 48 kHz,参数范围见 §9 台账。全族归一化系数扫描结果:
 
 ### 4.2 规定
 - **每一个** int64/int128 → int32 的窄化点必须饱和到 [INT32_MIN, INT32_MAX]
-- 目标侧硬件支持:`MRF = SAT MRF`(两补码分数),溢出可由 `STKY.MOS` 粘滞位读出
+- 目标侧硬件支持:`MRF = SAT MRF`,溢出可由 `STKY.MOS` 粘滞位读出
+  **[L4/待 CCES 实测]**〔整改 2026-08-04 · critic MAJOR-3〕
+  > ⚠ 厂家原文(Core PR, Table 3-5)的六个饱和值都是**格式边界**
+  > (分数 → MR1F/MR0F 满位;整数 → MR0F 满位),**不是**「右移 27 之后再钳到 int32」。
+  > ⇒ 与本件需要的窄化饱和**不是直接对应关系**,不得当成免费。
+  > ⚠ 且本行原写「两补码**分数**」,而 §5.5 明写按**整数模式** ⇒ **本件内部两处表述互相矛盾**,
+  >   已并入 §10-X4 的待定工作点。
   [L2/厂家 SHARC+ Core PR §Multiply Register Instruction Types / Arithmetic Status]
 - 每次饱和 ⇒ `sat_count++` 且 `sat_sticky = 1`
 
@@ -275,7 +286,19 @@ HW Ref §38 "A 32-bit fixed-point operation generates 80-bit results (64-bit res
 ### 5.2 舍入:就近舍入(RTN),禁截断
 两补码丢弃低位 = 向 −∞ 取整 ⇒ **每次量化引入 −0.5 LSB 的确定性直流偏置**,
 该偏置在 DF1 递归里被本节的 |1/A(1)| 放大(20 Hz Butterworth HPF:|1/A(1)| ≈ 1.0e5)。
-硬件支持:`MRF = RND MRF` 对 MR1F/MR0F 边界做就近舍入,**是指令修饰符,不额外花周期**
+硬件支持:`MRF = RND MRF` —— **[L4/待 CCES 实测]**,⛔ 不得计入任何算力结论
+〔整改 2026-08-04 · critic MAJOR-3〕
+> **厂家原文逐字**(`knowledge_base/adsp21569/bsp/sw_reference/SHARC+ Core Programming Reference` §Round MRx Instruction):
+> > "The RND operation (MRF = RND MRF) **applies only to fractional results, integer results are not effected**.
+> >  This operation performs a round to nearest of the 80-bit MRF value **at bit 32** …"
+>
+> **⇒ 两条独立的对不上**:
+> ① **模式**:本件 §5.5 明写按**整数模式**,而 `RND` **在整数模式下不生效**
+>    ⇒「舍入是免费修饰符」这句**在本件自选的模式下不成立**。
+> ② **舍入点**:`RND` 舍在 **bit 32**,而本件需要的重量化点是 **bit 27**
+>    (`CHDSP_ACC_TO_SMP_SHIFT`);即使切到分数模式,舍入点仍不是 27。
+> ⇒ 目标侧要拿到本件规定的 RTN,须**显式做 80-bit 移位 + 舍入 + 饱和序列**,**那是要花周期的**。
+> ⇒ 与 §10-X1「本件零算力结论」对齐:本行不再是算力依据。
 [L2/厂家 Core PR §Round MRx Instruction]。
 
 **实测**[L2/宿主实测 CHK-2b]:
@@ -327,7 +350,11 @@ DF1 的输出量化误差 E 经 `1/A(z)` 到达输出 ⇒ 噪声增益 `NG = Σ|
 > **⇒ EF 关时最坏 −84.44 dBFS ——【连 PRD 的 >106 dB 动态范围都不过】。**
 > **⇒ 因此 EF 不是优化项,是及格线。**
 
-**代价**:2 乘 + 2 移位 + 2 状态字 / 节 / 样本(约 +40% 的 biquad 内循环 op 数)。
+**代价**:2 乘 + 2 移位 + 2 状态字 / 节 / 样本。
+〔整改 2026-08-04 · critic MAJOR-3 ③:原句尾带「约 +40% 的 biquad 内循环 op 数」——
+ **那是一条没有 L 标的算力结论**,与 §10-X1「本件零算力结论,全部待 W1-C」直接冲突。
+ ⇒ **二选一,不得并存 ⇒ 本件选择删除它**(⛔ 不是补个 L 标留着):
+ op 数与周期数不是一回事,而本件没有任何定点口径的周期锚点。算力归 D13/W1-C。〕
 **第二轨复核**:`ref_fixed.py`(python 独立重写,不 import C)四个算例给 −173.34…−173.37,与 C 轨一致。
 
 ### 5.5 重量化点与移位量
