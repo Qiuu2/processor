@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+"""
+r20 —— 【余量记账】:把 results_d34_r19.txt 里每一条数值判据的「实测 vs 判据线」算出来。
+⛔ 门禁状态:未过门。
+
+═══════════════════════════════════════════════════════════════════════════
+⭐⭐ 它为什么现在做(lead 2026-08-05 派,理由是我自己刚立的那条的推论)
+═══════════════════════════════════════════════════════════════════════════
+我三十分钟前刚立:
+  【一个修法把某条检查的余量吃掉了,即使它仍是绿的,那也是"这次修法的代价",须当场记账。】
+  ⚠ 而我差点没看见它 —— 它是在【逐行 diff】里冒出来的,不是在红绿里。
+⇒ ⇒ 而那条纪律【只对未来生效】:
+   本套件里的判据,它们的余量【此前从未被记过账】。
+⇒ ⇒ ∴ 推论(lead 指出):我们一整天看的都是红绿 ⇒ **那一整类到现在一条都没被看过。**
+
+⛔ 边界(lead 明写,逐条遵守):
+  · 只算余量。⛔ 不改任何判据、⛔ 不改任何被测物。本脚本【只读】结果件。
+  · 判据非数值型(布尔 / 集合 / 存在性)⇒ 如实标 **不适用**,
+    ⛔ 而不是标 0 —— 两者在表里长得很像,而后者会让人以为它最危险。
+
+⭐ 而【余量的口径】本身要先定,否则这张表会自己犯今天抓了一天的那个错:
+  主口径 = **距离**(判据线 − 实测,按判据自己的单位,正 = 还有余量)
+  ⚠ **倍数只在【比值有物理意义】时给** —— 对 dB 量 ⛔ 不给倍数:
+     dB 已经是对数,两个 dB 数相除没有物理含义(那正是「31.14 dB 余量 10×」栽过的那个错)。
+"""
+import io
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+SRC = os.path.join(HERE, "results_d34_r19.txt")
+
+# ─────────────────────────────────────────────────────────────────────────
+# 判据台账:(tag, 类型, 实测, 判据线, 方向, 单位, 是否可给倍数, 备注)
+#   方向 '<=' = 实测须不大于判据线;'>=' = 实测须不小于
+#   ⚠ 每一格的【实测】都来自 results_d34_r19.txt 的对应行(逐条可对)
+# ─────────────────────────────────────────────────────────────────────────
+NA = None
+LEDGER = [
+    ("EXP-1a",  31.14,   3.0,   ">=", "dB",   False, ""),
+    ("EXP-1b",  0.002,   0.1,   "<=", "dB",   False, ""),
+    ("EXP-1c",  NA,      1e-9,  "<=", "dB",   False, "⚠ 实测值未印在结果件里(只印了结论句)"),
+    ("EXP-2a",  10.41,   6.0,   ">=", "dB",   False, ""),
+    ("EXP-2c",  NA,      NA,    NA,   NA,     False, "存在性判据(存在非空门限区间)⇒ 余量不适用"),
+    ("EXP-2d",  NA,      NA,    NA,   NA,     False, "单调性判据(布尔)⇒ 余量不适用"),
+    ("EXP-3a",  6.34e-11, 1e-6, "<=", "dB",   False, ""),
+    ("EXP-3b",  0.0036,  0.05,  "<=", "dB",   False, ""),
+    ("EXP-3c",  -6000.0, -120.0,"<=", "dB",   False,
+     "⛔⛔ 这条的『余量 5880 dB』是【假的】:−6000 是 20·log10(1e-300) 的数值地板"
+     "(精确 0 被 +1e-300 保护)⇒ 它是【器械的地板】不是【被测物的值】"),
+    ("EXP-3p",  NA,      20.0,  ">=", "dB",   False,
+     "⛔ 被测量(深谷深度)已判为【网格伪影】并撤回 ⇒ 判据仍在而其实测值不得报出 ⇒ 余量不可计"),
+    ("EXP-3d",  NA,      0.05,  "<=", "dB",   False, "⚠ 结果件只印『越界 0 档』,未印四档各自的偏离值"),
+    ("EXP-4a",  0.0005,  0.05,  "<=", "样本", True,  ""),
+    ("EXP-4d",  0.57,    10.0,  "<=", "%",    True,  ""),
+    ("EXP-4c",  14.323,  12.0,  ">=", "ms",   True,  "判据方向特殊:它要证【已超预算】⇒ 超得越多越坐实"),
+    ("EXP-5",   -158.88, -140.0,"<=", "dBFS", False, "⚠ 该判据只覆盖『各节增益=1』这一维"),
+    ("EXP-5b",  0.0,     0.01,  "<=", "dB",   False, "实测差 = |−163.81 − (−163.81)| = 0.00"),
+    ("EXP-5c",  -54.38,  -106.0,"<=", "dBFS", False, "⛔ 常驻 FAIL ⇒ 余量为【负】"),
+    ("EXP-6a",  5.2229,  5.6234,"<=", "倍",   True,  "max|b| vs 解析上界 A²"),
+    ("EXP-6b",  5.2229,  11.2148,"<=","倍",   True,  ""),
+    ("EXP-6c",  5.2229,  16.0,  "<=", "倍",   True,  "Q4.27 的整数部分上限"),
+    ("EXP-7a",  NA,      NA,    NA,   NA,     False,
+     "计数型(越界处数 == 0)⇒ 判据线就是 0 ⇒ **余量【不适用】,⛔ 不是 0** —— 标 0 会让它在表里看起来最危险"),
+    ("EXP-7b",  NA,      0.99,  ">=", "比",   True,  "⚠ 结果件未印紧度实测值,而这条断言的正是『界是紧的』"),
+    ("EXP-7c",  18.0618, 18.089,"<=", "dB",   False, "解析硬包络 vs 扫描包络"),
+    ("EXP-8c",  0.738,   1.0,   "<=", "ms",   True,  "取两配置的较大者"),
+    ("EXP-9a",  1022.7,  10.0,  ">=", "倍",   True,
+     "⛔⛔ 它建立在 **WORST 的群延迟数值**上,而本件已裁定该数值【不得引用】"
+     "(r19 实证:换一格网格它动 4.6×)⇒ 这个『余量 102×』随网格漂,⛔ 不构成稳健余量"),
+    ("r10-2trkREF", 0.1785, 0.5,"<=", "样本", True,  ""),
+    ("EXP-10",  5.658,   12.0,  "<=", "ms",   True,  ""),
+    ("EXP-10c", 8.02,    3.0,   ">=", "倍",   True,  ""),
+    ("EXP-11",  105.2,   100.0, ">=", "Hz",   True,  "区间判据 [100, 300];此处记【距下界】(上界 300 远)"),
+    ("EXP-12",  7.194,   5.0,   ">=", "ms",   True,  ""),
+    ("EXP-13",  14.3,    1.0,   ">=", "s",    True,  ""),
+    ("META-1",  NA,      NA,    NA,   NA,     False, "集合包含判据 ⇒ 余量不适用"),
+]
+
+print("=" * 100)
+print("check_r20_margins —— 25 条数值判据的【余量记账】(⛔ 只读 results_d34_r19.txt,不改任何东西)")
+print("⭐ 主口径 = 距离(判据线 − 实测,按判据自己的单位);⚠ 倍数只在比值有物理意义时给")
+print("⛔ 非数值判据标【不适用】,⛔ 不标 0 —— 后者会让人以为它最危险")
+print("=" * 100)
+
+# 前提自检:台账里的每个 tag 必须真的出现在结果件里(⛔ 否则这张表在给不存在的检查记账)
+if not os.path.exists(SRC):
+    sys.stderr.write(f"⛔ 找不到 {SRC}\n")
+    sys.exit(2)
+txt = io.open(SRC, encoding="utf-8").read()
+missing = [t for t, *_ in LEDGER if f"] {t} " not in txt and f"] {t}\t" not in txt
+           and f"] {t}   " not in txt and t not in txt]
+if missing:
+    sys.stderr.write(f"⛔ 台账里的这些标识在结果件里找不到: {missing}\n")
+    sys.exit(2)
+print(f"  前提自检:台账 {len(LEDGER)} 条标识全部出现在 results_d34_r19.txt ✓\n")
+
+rows = []
+for tag, meas, lim, direc, unit, ratio_ok, note in LEDGER:
+    if direc is None:
+        rows.append((tag, "不适用", None, note))
+        continue
+    if meas is None:
+        rows.append((tag, "不可计", None, note or "实测值未在结果件中印出"))
+        continue
+    dist = (lim - meas) if direc == "<=" else (meas - lim)
+    r = None
+    if ratio_ok and meas != 0 and lim != 0 and meas > 0 and lim > 0:
+        r = (lim / meas) if direc == "<=" else (meas / lim)
+    rows.append((tag, f"{dist:+.4g} {unit}", r, note))
+
+print(f"  {'检查':<14}{'余量(距离)':>18}{'倍数':>10}   备注")
+print("  " + "-" * 96)
+for tag, dist, r, note in rows:
+    rs = f"{r:.2f}×" if r else ("—" if dist in ("不适用", "不可计") else "⛔ dB 量不给")
+    print(f"  {tag:<14}{dist:>18}{rs:>10}   {note[:60]}")
+
+# ── ⭐ 产出不是上表,是【余量最薄的那几条】────────────────────────────────
+print("\n" + "=" * 100)
+print("⭐⭐ 产出:余量最薄的那几条 —— 它们是下一次任何小改动【最先被推过线】的")
+print("=" * 100)
+thin = []
+for tag, meas, lim, direc, unit, ratio_ok, note in LEDGER:
+    if direc is None or meas is None:
+        continue
+    dist = (lim - meas) if direc == "<=" else (meas - lim)
+    rel = None
+    if ratio_ok and meas > 0 and lim > 0:
+        rel = (lim / meas) if direc == "<=" else (meas / lim)
+    thin.append((tag, dist, rel, unit, note))
+# 排序口径:有倍数的按倍数升序;⛔ dB 量不与它们混排(单位不可比)
+with_ratio = sorted([t for t in thin if t[2] is not None], key=lambda x: x[2])
+print("\n  【A】比值有意义的(按余量倍数升序 ⇒ 越靠前越薄):")
+for tag, dist, rel, unit, note in with_ratio:
+    flag = " ⛔ **最薄**" if rel < 1.5 else (" ⚠" if rel < 3 else "")
+    print(f"    {tag:<14} {rel:6.2f}×   (距离 {dist:+.4g} {unit}){flag}")
+print("\n  【B】dB / dBFS 量(⛔ 不给倍数,按距离升序;⚠ 距离小 ≠ 更危险 —— dB 的「一个单位」在不同量上不等价):")
+for tag, dist, rel, unit, note in sorted([t for t in thin if t[2] is None], key=lambda x: x[1]):
+    print(f"    {tag:<14} 距离 {dist:+9.4g} {unit}"
+          + ("   ⛔ 已越线" if dist < 0 else ""))
+print("\n" + "=" * 100)
+print("⚠ 本脚本【只记账,不判定】⇒ 无退出码语义上的成败;它的产出是上面两张单子。")
+print("=" * 100)
