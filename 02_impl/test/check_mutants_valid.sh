@@ -134,6 +134,32 @@ declare -A CLAIM=(
   [CHDSP_BROKEN_FIR_NOBYPASS]=P_FIR_NOBYPASS
   [CHDSP_BROKEN_BUTTER_COS]=P_BUTTER_COS
   [CHDSP_BROKEN_BESSEL_RBJ]=P_BESSEL_RBJ
+  [CHDSP_BROKEN_XO_UNIT]=P_XO_UNIT
+)
+
+# ---------------------------------------------------------------------------
+# ⭐⭐ 断言 ②:它**没声称要改的**那些行为,逐位没变
+# ---------------------------------------------------------------------------
+# 缘起(lead 转 critic 在设计侧 d34_analysis.py 查出的两条):
+#   ① 一个名叫「系数退化到 16-bit」的变异,**顺手把结构约束量化也关了**
+#      ⇒ 拆开跑:16bit ∧ 关约束 = FAIL 6;只 16bit = FAIL 4(EXP-3c/4a 不再被杀)
+#      ⇒ **那两条杀伤记在了错的原因上。**
+#   ② docstring 宣称 4 个 broken 模式,只实现了 2 个 ⇒ 另两个跑起来一个字节都没变,
+#      而结果头**照印**「坏版本开关: xo_order」⇒ 归档件看起来完全像「该变异存活」。
+#
+# ⇒ 这是形态⑤的**镜像**:
+#     形态⑤ = 变异**没实现**它声称的缺陷;
+#     本条   = 变异**实现了它没声称的**缺陷。
+#   ⇒ 两者都产出【假的杀伤记录】,而假杀伤是隐形的。
+#
+# ⇒ 规则:除 CLAIM 的那条探针外,其余探针**必须逐位不变**;
+#   确有**物理上不可分割**的连带效应时,须在 ALSO 里**显式声明并写明理由**
+#   ⇒ ⛔ 声明是留痕,不是豁免:任何**未声明**的连带变化一律 FAIL。
+declare -A ALSO=(
+  [CHDSP_BROKEN_TRUNC]="P_NOEF"
+)
+declare -A ALSO_WHY=(
+  [CHDSP_BROKEN_TRUNC]="舍入模式**就是量化器的一部分**,而 P_NOEF 测的正是量化误差功率 ⇒ 同一处改动的第二个观测面,不是第二个缺陷"
 )
 for M in "${!CLAIM[@]}"; do
   TAG="${CLAIM[$M]}"
@@ -150,12 +176,35 @@ for M in "${!CLAIM[@]}"; do
   if [ -z "$mv" ]; then
     echo "  [FAIL] $M  ⛔ 变异版探针未输出 $TAG"; fail=$((fail+1)); continue
   fi
-  printf "  %-30s %-18s 好=%-22s 变异=%-22s " "$M" "$TAG" "$gv" "$mv"
+  printf "  %-30s %-18s 好=%-22s 变异=%-22s\n" "$M" "$TAG" "$gv" "$mv"
+  # ---- 断言 ①:声称要改的,确实变了 ----
   if [ "$gv" != "$mv" ]; then
-    echo ""; echo "  [PASS] $M  ⇒ 声称改变的量确实变了 —— 变异名副其实"; pass=$((pass+1))
+    echo "  [PASS] $M ①  ⇒ 声称改变的量确实变了 —— 变异名副其实"; pass=$((pass+1))
   else
-    echo ""; echo "  [FAIL] $M  ⛔ **读数没变** ⇒ 该变异没做到它声称的事"
-    echo "         ⇒ ⛔ 不许进杀伤矩阵;若它在矩阵里"被杀死",那是一条【假的杀伤记录】"
+    echo "  [FAIL] $M ①  ⛔ **读数没变** ⇒ 该变异没做到它声称的事(形态⑤)"
+    echo "         ⇒ ⛔ 不许进杀伤矩阵;若它在矩阵里「被杀死」,那是一条【假的杀伤记录】"
+    fail=$((fail+1))
+  fi
+  # ---- 断言 ②:没声称要改的,逐位没变 ----
+  allowed=" $TAG ${ALSO[$M]:-} "
+  stray=""
+  while read -r _p tag val; do
+    [ "$_p" = "PROBE" ] || continue
+    case "$allowed" in *" $tag "*) continue ;; esac
+    gval=$(grep "^PROBE $tag " "$B/good.txt" | awk '{print $3}')
+    [ "$gval" = "$val" ] || stray="$stray $tag(好=$gval 变异=$val)"
+  done < "$B/o_$M.txt"
+  if [ -z "$stray" ]; then
+    if [ -n "${ALSO[$M]:-}" ]; then
+      echo "  [PASS] $M ②  ⇒ 其余探针逐位未变(已声明连带:${ALSO[$M]} —— ${ALSO_WHY[$M]})"
+    else
+      echo "  [PASS] $M ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷"
+    fi
+    pass=$((pass+1))
+  else
+    echo "  [FAIL] $M ②  ⛔ **未声明的连带变化**:$stray"
+    echo "         ⇒ 该变异注入了【不止一个】缺陷 ⇒ 杀伤会归错因(critic 在设计侧抓到的同型)"
+    echo "         ⇒ ⛔ 不许进杀伤矩阵:要么拆成两个变异,要么在 ALSO 里声明并写明理由"
     fail=$((fail+1))
   fi
 done

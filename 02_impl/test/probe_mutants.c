@@ -277,5 +277,15 @@ int main(void)
         printf("PROBE P_BESSEL_RBJ %ld\n", acc);
     }
 
+    /* ---- P_XO_UNIT:极性规则算在【阶数 n】还是【dB/oct】上 --------------------
+     * 声称改变的行为:四个 LR 档位的极性判定。读数 = 四个 flip 值打包成一个整数。 */
+    {
+        long v = 0; int i; static const int32_t NS[4] = { 2, 4, 6, 8 };
+        for (i = 0; i < 4; i++) {
+            v = v * 10 + (chdsp_xover_needs_polarity_flip(1, chdsp_xo_order(NS[i])) + 2);
+        }
+        printf("PROBE P_XO_UNIT %ld\n", v);
+    }
+
     return 0;
 }

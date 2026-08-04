@@ -27,6 +27,9 @@
 #ifndef CHDSP_BROKEN_BESSEL_RBJ    /* 1 = Bessel 退回逐节 RBJ(高阶高通会错到 90 dB) */
 #  define CHDSP_BROKEN_BESSEL_RBJ 0
 #endif
+#ifndef CHDSP_BROKEN_XO_UNIT       /* 1 = 极性规则算在 dB/oct 上(复现 2026-08-04 那条单位事故) */
+#  define CHDSP_BROKEN_XO_UNIT 0
+#endif
 
 /* ==========================================================================
  * 1. 运行时
@@ -241,10 +244,23 @@ static double butter_q(int order, int k)
 #endif
 }
 
-int chdsp_xover_needs_polarity_flip(int lr, int order)
+int chdsp_xover_needs_polarity_flip(int lr, chdsp_xo_order_t order_n)
 {
+    const int32_t n = chdsp_xo_order_n(order_n);
+    /* ⛔ 量程守卫(2026-08-04 新增):本函数原先**没有非法输入这个取值** ——
+     *   任何整数都会得到一个"看起来合理"的 0/1。喂进 dB/oct(12/24/36/48)
+     *   会全部得到 0 ⇒ LR2/LR6 判成同相 ⇒ 分频点深谷。
+     *   ⇒ 现在:n 必须落在 LR 合法阶数 {2,4,6,8};否则返回 −1。
+     *   ⚠ STRICT_TYPES=1 下传错单位是**编译错误**;本守卫是 STRICT_TYPES=0 的兜底。 */
+    if (n < 2 || n > 8 || (n % 2) != 0) { return -1; }
     if (!lr) { return 0; }                       /* 非 LR ⇒ 不由本函数管 */
-    return ((order % 4) == 2) ? 1 : 0;           /* mod 4 == 2 ⇒ 须反相 */
+#if CHDSP_BROKEN_XO_UNIT
+    /* ⛔ 坏版本:把 mod 4 算在 **dB/oct** 上(= 设计件表头那个记法)
+     *   ⇒ 12/24/36/48 mod 4 全 = 0 ⇒ 全判同相 ⇒ LR2/LR6 深谷 */
+    return (((n * 6) % 4) == 2) ? 1 : 0;
+#else
+    return ((n % 4) == 2) ? 1 : 0;               /* n mod 4 == 2 ⇒ 须反相 */
+#endif
 }
 
 int chdsp_bq_design_xover(int lr, int order, int highpass, double fc,

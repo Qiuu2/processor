@@ -115,7 +115,7 @@ expect_red G4 "把一条断言改成错的 ⇒ 模块自验应变红并非 0 退
 
 # ---------------------------------------------------------------- 第 4 环:杀伤矩阵 · 阴性对照臂
 W=/tmp/gates_e; mkwork $W
-mutate $W/02_impl/src/chdsp_biquad.c 's|^    return ((order % 4) == 2) ? 1 : 0;.*|    return 0;|' &&
+mutate $W/02_impl/src/chdsp_biquad.c 's|^    return ((n % 4) == 2) ? 1 : 0;.*|    return 0;|' &&
 expect_red G5 "把 LR 极性规则改坏 ⇒ 杀伤矩阵的【阴性对照】应变红" \
   "bash test/run_kill_matrix.sh" $W
 
@@ -189,6 +189,19 @@ else
   fi
 fi
 
+# ---------------------------------------------------------------- 第 3c 环:自证【断言②】⭐⭐
+# ⭐ 阳性对照必须复现 critic 在设计侧抓到的那一条:**一个变异注入了两个缺陷**
+#    (`qsec()` 里名叫「系数退化到 16-bit」的变异顺手把结构约束量化也关了
+#     ⇒ 两条杀伤记在了错的原因上)。
+#    做法:让 CHDSP_BROKEN_NO_HYST **顺手**也改掉 FIR 的透传行为
+#    ⇒ 它会动到未声明的 P_FIR_NOBYPASS ⇒ 断言② 必须变红。
+W=/tmp/gates_k; mkwork $W
+if mutate $W/02_impl/src/chdsp_fir.c \
+     's/^#if CHDSP_BROKEN_FIR_NOBYPASS$/#if CHDSP_BROKEN_FIR_NOBYPASS || CHDSP_BROKEN_NO_HYST/'; then
+  expect_red G11 "让一个变异顺手注入第二个缺陷 ⇒ 变异自证的【断言②】应变红" \
+    "bash test/check_mutants_valid.sh" $W
+fi
+
 # ---------------------------------------------------------------- 总聚合:run_all.sh 自己会不会红 ⭐
 # ⛔ 每一环都会红 ≠ 总闸门会红。fixedpoint/run_r3.sh 就正是"环红了、总闸门仍 exit 0"。
 #    ⇒ 这一条测的是【聚合】本身。
@@ -199,7 +212,7 @@ expect_red G9 "弄坏一条模块自验断言 ⇒ **run_all.sh 整体**应非 0 
   "CHDSP_GATES_META=1 bash test/run_all.sh" $W
 
 rm -rf /tmp/gates_a /tmp/gates_b /tmp/gates_c /tmp/gates_c2 /tmp/gates_d /tmp/gates_e \
-       /tmp/gates_f /tmp/gates_g /tmp/gates_g2 /tmp/gates_h /tmp/gates_h2 /tmp/gates_i /tmp/gates_j
+       /tmp/gates_f /tmp/gates_g /tmp/gates_g2 /tmp/gates_h /tmp/gates_h2 /tmp/gates_i /tmp/gates_j /tmp/gates_k
 echo
 echo "  合计: PASS=$pass  FAIL=$fail"
 [ $fail -eq 0 ] && { echo "  ⇒ 全部闸门(含总聚合)确实会响 ⇒ PASS"; exit 0; } \

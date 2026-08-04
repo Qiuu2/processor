@@ -44,6 +44,30 @@ static double rndn(void)
 static chdsp_smp_q4_27_t smp_f(double v)
 { return chdsp_smp_from_raw((int32_t)floor(v * ldexp(1.0, CHDSP_SMP_FRACBITS) + 0.5)); }
 
+/* 级联在频率 f 处的复频响(设计期 double,仅自验用)。⛔ 不转写被测公式,只读被测物产出的系数。 */
+static void casc_h(const chdsp_biquad_coef_t *sec, int n, double f, double *re, double *im)
+{
+    double w = 2.0 * M_PI * f / (double)CHDSP_FS_HZ;
+    double hr = 1.0, hi = 0.0;
+    int i, t;
+    for (i = 0; i < n; i++) {
+        double bc[3], ac[3], br = 0.0, bi = 0.0, ar = 0.0, ai = 0.0, dr, di, dd, nr, ni;
+        bc[0] = chdsp_coef_to_f64(sec[i].b0); bc[1] = chdsp_coef_to_f64(sec[i].b1);
+        bc[2] = chdsp_coef_to_f64(sec[i].b2);
+        ac[0] = 1.0; ac[1] = chdsp_coef_to_f64(sec[i].a1); ac[2] = chdsp_coef_to_f64(sec[i].a2);
+        for (t = 0; t < 3; t++) {
+            double cw = cos(-w * t), sw = sin(-w * t);
+            br += bc[t] * cw; bi += bc[t] * sw;
+            ar += ac[t] * cw; ai += ac[t] * sw;
+        }
+        dd = ar * ar + ai * ai;
+        dr = (br * ar + bi * ai) / dd; di = (bi * ar - br * ai) / dd;
+        nr = hr * dr - hi * di; ni = hr * di + hi * dr;
+        hr = nr; hi = ni;
+    }
+    *re = hr; *im = hi;
+}
+
 /* 静态缓冲(⛔ 尺寸全部走 config 常量,不写字面量) */
 static chdsp_smp_q4_27_t g_dly_in[CHDSP_IN_DELAY_MAX_SAMPLES + CHDSP_FRAME_SAMPLES];
 static chdsp_smp_q4_27_t g_look_in[CHDSP_FRAME_SAMPLES * 4];
@@ -117,14 +141,87 @@ int main(void)
         OKC("CHK-B2", nz_hp == 0 && nz_lp == 0,
             "结构约束量化使 DC/Nyquist 零点在量化后恒精确(0 处破坏)");
     }
-    {   /* CHK-B3 LR 极性规则 */
-        int p2 = chdsp_xover_needs_polarity_flip(1, 2);
-        int p4 = chdsp_xover_needs_polarity_flip(1, 4);
-        int p6 = chdsp_xover_needs_polarity_flip(1, 6);
-        int p8 = chdsp_xover_needs_polarity_flip(1, 8);
-        printf("      LR2=%d LR4=%d LR6=%d LR8=%d (1=须反相)\n", p2, p4, p6, p8);
+    {   /* CHK-B3 LR 极性规则 —— ⛔ 按【阶数 n】,不是 dB/oct */
+        int p2 = chdsp_xover_needs_polarity_flip(1, chdsp_xo_order(2));
+        int p4 = chdsp_xover_needs_polarity_flip(1, chdsp_xo_order(4));
+        int p6 = chdsp_xover_needs_polarity_flip(1, chdsp_xo_order(6));
+        int p8 = chdsp_xover_needs_polarity_flip(1, chdsp_xo_order(8));
+        printf("      n=2:%d n=4:%d n=6:%d n=8:%d (1=须反相)\n", p2, p4, p6, p8);
         OKC("CHK-B3", p2 == 1 && p4 == 0 && p6 == 1 && p8 == 0,
-            "阶数 mod 4 == 2 ⇒ 须反相;== 0 ⇒ 同相");
+            "**n** mod 4 == 2 ⇒ 须反相;== 0 ⇒ 同相");
+    }
+    {   /* CHK-B3u ⭐⭐ 单位守卫:喂 dB/oct 必须【当场非法】,⛔ 不许返回一个合理的 0
+         * 事故形态:设计件把 12/24/36/48 叫「阶数」,而 mod 4 算的是 2/4/6/8。
+         *   实现方按参数值套 ⇒ 12/24/36/48 mod 4 全 = 0 ⇒ **全判同相**
+         *   ⇒ LR2/LR6 分频点深谷。
+         * ⚠ STRICT_TYPES=1 下这根本编译不过(见负编译 N8);本条守的是 =0 的兜底。 */
+        int s12 = chdsp_xover_needs_polarity_flip(1, chdsp_xo_order(12));
+        int s24 = chdsp_xover_needs_polarity_flip(1, chdsp_xo_order(24));
+        int s36 = chdsp_xover_needs_polarity_flip(1, chdsp_xo_order(36));
+        int s48 = chdsp_xover_needs_polarity_flip(1, chdsp_xo_order(48));
+        printf("      误喂 dB/oct:12→%d 24→%d 36→%d 48→%d(期望全 −1 = 非法)\n",
+               s12, s24, s36, s48);
+        OKC("CHK-B3u", s12 == -1 && s24 == -1 && s36 == -1 && s48 == -1,
+            "⭐ 误把 dB/oct 当阶数 ⇒ 返回 −1(⛔ 改动前它返回 0 = 全判同相)");
+    }
+    {   /* CHK-B3c dB/oct ↔ 阶数 换算,以及非法斜率 */
+        int ok = 1, i;
+        static const int32_t SL[4] = { 12, 24, 36, 48 };
+        static const int32_t NN[4] = {  2,  4,  6,  8 };
+        for (i = 0; i < 4; i++) {
+            if (chdsp_xo_order_n(chdsp_xo_order_from_slope(chdsp_xo_slope(SL[i]))) != NN[i]) { ok = 0; }
+            if (chdsp_xo_slope_db_oct(chdsp_xo_slope_from_order(chdsp_xo_order(NN[i]))) != SL[i]) { ok = 0; }
+        }
+        printf("      12/24/36/48 dB/oct ⇒ n = %d/%d/%d/%d;非 6 倍数(如 10)⇒ n = %d\n",
+               chdsp_xo_order_n(chdsp_xo_order_from_slope(chdsp_xo_slope(12))),
+               chdsp_xo_order_n(chdsp_xo_order_from_slope(chdsp_xo_slope(24))),
+               chdsp_xo_order_n(chdsp_xo_order_from_slope(chdsp_xo_slope(36))),
+               chdsp_xo_order_n(chdsp_xo_order_from_slope(chdsp_xo_slope(48))),
+               chdsp_xo_order_n(chdsp_xo_order_from_slope(chdsp_xo_slope(10))));
+        OKC("CHK-B3c", ok == 1
+            && chdsp_xo_order_n(chdsp_xo_order_from_slope(chdsp_xo_slope(10))) == 0,
+            "dB/oct ↔ 阶数 双向换算正确;非 6 倍数 ⇒ n=0(非法,下游会拒)");
+    }
+    {   /* CHK-B3s ⭐⭐ **会拦人的那条**:对四个档位各跑一次,断言分频点求和幅度。
+         * ⛔ 不是打印,是进退出码。
+         * ① 用规则给的极性 ⇒ 求和必须平坦(|sum| ≈ 0 dB)
+         * ② 阳性对照:用**相反**极性 ⇒ 必须出现深谷 ⇒ 证明本条有分辨力
+         *   (若两种极性都平坦,这条检查就是恒真的,PASS 不构成证据)
+         * ⚠ LR2 是我们唯一能装进延迟预算的低延迟档(1.576 ms),而它恰好落在
+         *   「须反相」那一档 ⇒ 一旦读反,唯一的低延迟出路带着一个深谷。 */
+        static const int32_t NS[4] = { 2, 4, 6, 8 };
+        const double FC = 1000.0;
+        chdsp_biquad_coef_t hp[CHDSP_OUT_XO_SECTIONS], lp[CHDSP_OUT_XO_SECTIONS];
+        uint16_t nh, nl; int i, bad_flat = 0, bad_ctrl = 0;
+        double worst_flat = 0.0, best_notch = 0.0;
+        for (i = 0; i < 4; i++) {
+            chdsp_xo_order_t n = chdsp_xo_order(NS[i]);
+            int flip = chdsp_xover_needs_polarity_flip(1, n);
+            double hr, hi, lr_, li, sr, si, mag_ok, mag_bad;
+            if (flip < 0) { bad_flat++; continue; }
+            if (chdsp_bq_design_xover2(CHDSP_XO_LINKWITZ_RILEY, NS[i], 1, FC, hp, &nh) != CHDSP_BQ_OK ||
+                chdsp_bq_design_xover2(CHDSP_XO_LINKWITZ_RILEY, NS[i], 0, FC, lp, &nl) != CHDSP_BQ_OK) {
+                bad_flat++; continue;
+            }
+            casc_h(hp, (int)nh, FC, &hr, &hi);
+            casc_h(lp, (int)nl, FC, &lr_, &li);
+            /* 规则给的极性 */
+            sr = lr_ + (flip ? -hr : hr); si = li + (flip ? -hi : hi);
+            mag_ok = 20.0 * log10(sqrt(sr * sr + si * si) + 1e-300);
+            /* 阳性对照:相反极性 */
+            sr = lr_ + (flip ? hr : -hr); si = li + (flip ? hi : -hi);
+            mag_bad = 20.0 * log10(sqrt(sr * sr + si * si) + 1e-300);
+            printf("      LR%d(n=%d,%s):规则极性 %+7.3f dB | 反着来 %+8.2f dB\n",
+                   NS[i] * 6, NS[i], flip ? "须反相" : "同相", mag_ok, mag_bad);
+            if (fabs(mag_ok) > 0.1) { bad_flat++; }
+            if (fabs(mag_ok) > worst_flat) { worst_flat = fabs(mag_ok); }
+            if (mag_bad > -20.0) { bad_ctrl++; }
+            if (i == 0 || mag_bad > best_notch) { best_notch = mag_bad; }
+        }
+        OKC("CHK-B3s", bad_flat == 0,
+            "⭐ 四个档位按【规则给的极性】求和均平坦(最坏 |偏离| ≤0.1 dB)");
+        OKC("CHK-B3s+", bad_ctrl == 0,
+            "⭐ 阳性对照:极性反着来 ⇒ 四档全部出现 ≥20 dB 深谷 ⇒ 上一条不是恒真");
     }
     {   /* CHK-B4 系数斜坡:①中间系数恒在稳定三角内 ②输出无跳变 */
         chdsp_bq_t b; chdsp_biquad_coef_t c0, c1; chdsp_sat_t sat;
@@ -365,7 +462,7 @@ int main(void)
         b.spk_peak = g_spk_p; b.spk_peak_cap = sizeof(g_spk_p)/sizeof(g_spk_p[0]);
         b.fir_state = g_fir_z; b.fir_h = g_fir_h; b.fir_taps = 0u;
         (void)chdsp_out_ch_init(&ch, &b);
-        ch.xo_polarity_flip = (int8_t)chdsp_xover_needs_polarity_flip(1, 2);
+        ch.xo_polarity_flip = (int8_t)chdsp_xover_needs_polarity_flip(1, chdsp_xo_order(2));
         {
             chdsp_io_q0_31_t o[CHDSP_FRAME_SAMPLES];
             chdsp_smp_q4_27_t in[CHDSP_FRAME_SAMPLES];

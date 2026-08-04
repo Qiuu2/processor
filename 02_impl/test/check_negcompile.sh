@@ -130,11 +130,21 @@ void f(void){ chdsp_slope_q16_15_t s = chdsp_slope_from_raw(1); chdsp_db_q23_8_t
 EOF
 run_neg N7 'incompatible type' "斜率(Q16.15)当 dB(Q23.8)用"
 
+# ---- N8(2026-08-04 新增):把【斜率 dB/oct】当【阶数 n】传给极性函数 ----
+# ⛔ 这正是 lead 急件那条事故:12/24/36/48 mod 4 全 = 0 ⇒ 全判同相 ⇒ LR2/LR6 深谷。
+#    ⇒ 现在它是**编译错误**,不是一个"看起来合理的 0"。
+mk <<EOF
+$HDR
+void f(void){ chdsp_xo_slope_t s = chdsp_xo_slope(12);
+              (void)chdsp_xover_needs_polarity_flip(1, s); }
+EOF
+run_neg N8 'incompatible type|expected .chdsp_xo_order_t' "把斜率(dB/oct)当阶数 n 传给极性函数"
+
 echo
 echo "  --- (C) 机制对照臂:同样七个负例在 STRICT_TYPES=0 下必须【全部编译通过】 ---"
 echo "      ⇒ 证明上面的失败来自【强类型】,不是片段本身写错(critic 补造的对照,原样纳入)"
 ctrl_bad=0
-declare -a SNIP=(N1 N2 N3 N4 N6 N7)   # N5 的移位在裸整数下本就合法,单列说明
+declare -a SNIP=(N1 N2 N3 N4 N6 N7 N8)   # N5 的移位在裸整数下本就合法,单列说明
 for tag in "${SNIP[@]}"; do
   case $tag in
     N1) mk <<EOF
@@ -172,6 +182,12 @@ EOF
 $HDR
 void f(void){ chdsp_slope_q16_15_t s = chdsp_slope_from_raw(1); chdsp_db_q23_8_t d;
               d = s; (void)d; }
+EOF
+;;
+    N8) mk <<EOF
+$HDR
+void f(void){ chdsp_xo_slope_t s = chdsp_xo_slope(12);
+              (void)chdsp_xover_needs_polarity_flip(1, s); }
 EOF
 ;;
   esac

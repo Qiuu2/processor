@@ -44,6 +44,7 @@ MUTS=(
   CHDSP_BROKEN_HPF_AFTER_DYN  # chain:D3 把 HPF 放到动态之后
   CHDSP_BROKEN_BUTTER_COS     # biquad(r8):butter_q 退回 cos 式 ⇒ 奇数阶 BW 静默算错
   CHDSP_BROKEN_BESSEL_RBJ     # biquad(r8):Bessel 退回逐节 RBJ ⇒ 高阶高通错到 90 dB
+  CHDSP_BROKEN_XO_UNIT        # biquad(r9):极性 mod 4 算在 dB/oct 上 ⇒ LR2/LR6 深谷
 )
 
 echo "================================================================"

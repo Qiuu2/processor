@@ -126,8 +126,65 @@ int chdsp_bq_design(chdsp_filter_type_t type, double f0_hz, double q_or_s,
 int chdsp_bq_design_xover(int lr, int order, int highpass, double fc_hz,
                           chdsp_biquad_coef_t *out, uint16_t *n_out);
 
-/** LR 分频器的该阶数是否需要把一支反相后再求和。⛔ 非 LR 类型返回 0。 */
-int chdsp_xover_needs_polarity_flip(int lr, int order);
+/* ==========================================================================
+ * 2a. ⛔⛔ 分频「阶数 n」与「斜率 dB/oct」是两个量 —— 用类型把它们分开
+ * ==========================================================================
+ * 事故形态(2026-08-04,lead 急件 / critic 设计侧):
+ *   设计件 §4③ 的表头把 **12/24/36/48** 叫「LR 阶数」,而下一行「阶数 mod 4」
+ *   算的是 **2/4/6/8**。§0 只写「阶数 mod 4 == 0 ⇒ 同相」,**不说是哪个「阶数」**。
+ *   而参数字典里的 `xo_slope` 值域正是 {12,24,36,48} dB/oct
+ *   ⇒ 实现方按参数值直接套 ⇒ 12/24/36/48 mod 4 **全 = 0** ⇒ **全判同相**
+ *   ⇒ LR2 / LR6 在分频点出现深谷(实测 65.86 / 56.32 dB)。
+ *
+ * ⚠ 实证(本文件改动前):
+ *     chdsp_xover_needs_polarity_flip(1, 12/24/36/48) = 0, 0, 0, 0
+ *     chdsp_xover_needs_polarity_flip(1,  2/ 4/ 6/ 8) = 1, 0, 1, 0   ← 正确答案
+ *
+ * ⭐ 而**设计函数**(chdsp_bq_design_xover/xover2)早就有 `order > 8 ⇒ ERR_ORDER`
+ *   ⇒ 喂 dB/oct 会**当场硬失败**,是安全的。
+ *   **只有极性函数没有量程守卫,而它恰恰返回一个"看起来合理"的布尔值。**
+ *   ⇒ 教训:**返回 bool 的函数最危险 —— 它没有"非法输入"这个取值。**
+ *
+ * ⇒ 修法(D-1「用接口不允许来防,不用文档提醒来防」,复用本项目已有的强类型机制):
+ *   ① 两个量各自成类型 ⇒ 传错**编译不过**(STRICT_TYPES=1);
+ *   ② 标识符自带单位:`_n` vs `_db_oct`,⛔ 不许有叫「order」而值域是 dB/oct 的东西;
+ *   ③ 运行期量程守卫(STRICT_TYPES=0 下的兜底):非法 ⇒ 返回 −1,⛔ 不是 0。
+ */
+/** 分频**阶数 n**(2/4/6/8…)。⛔ 不是 dB/oct。 */
+CHDSP_DEFTYPE(chdsp_xo_order_t, int32_t);
+/** 分频**斜率 dB/oct**(12/24/36/48)。⛔ 不是阶数。 */
+CHDSP_DEFTYPE(chdsp_xo_slope_t, int32_t);
+
+static inline chdsp_xo_order_t chdsp_xo_order(int32_t n)
+{ return CHDSP_MK(chdsp_xo_order_t, n); }
+static inline int32_t chdsp_xo_order_n(chdsp_xo_order_t o)
+{ return CHDSP_RAW(o); }
+static inline chdsp_xo_slope_t chdsp_xo_slope(int32_t db_oct)
+{ return CHDSP_MK(chdsp_xo_slope_t, db_oct); }
+static inline int32_t chdsp_xo_slope_db_oct(chdsp_xo_slope_t s)
+{ return CHDSP_RAW(s); }
+
+/** dB/oct → 阶数(6 dB/oct = 1 阶)。非 6 的倍数 ⇒ 返回 n = 0(非法,下游会拒)。 */
+static inline chdsp_xo_order_t chdsp_xo_order_from_slope(chdsp_xo_slope_t s)
+{
+    int32_t d = CHDSP_RAW(s);
+    return CHDSP_MK(chdsp_xo_order_t, ((d > 0) && (d % 6 == 0)) ? (d / 6) : 0);
+}
+static inline chdsp_xo_slope_t chdsp_xo_slope_from_order(chdsp_xo_order_t o)
+{ return CHDSP_MK(chdsp_xo_slope_t, CHDSP_RAW(o) * 6); }
+
+/**
+ * LR 分频器的该**阶数 n** 是否需要把一支反相后再求和。
+ * @param lr       非 0 = Linkwitz-Riley;0 = 其它类型(BW/Bessel)⇒ 恒返回 0
+ * @param order_n  **阶数 n**(2/4/6/8),⛔ 不是 dB/oct
+ * @return 1 = 须反相;0 = 同相;**−1 = 参数非法(⛔ 调用方必须处理,不得当 0 用)**
+ *
+ * ⚠ 规则 `n mod 4 == 2 ⇒ 反相` **只对 LR 成立**:
+ *   LR = BW² 是全通求和分频,选对极性后求和精确平坦(实测 0.0000 dB)。
+ *   **Bessel 不是**(两个相位都不平坦,最好 1.686 dB)⇒ 本函数对非 LR 返回 0 是正确行为。
+ *   **BW 奇数阶求和恒平坦**(0.0000 dB,与极性无关)。
+ */
+int chdsp_xover_needs_polarity_flip(int lr, chdsp_xo_order_t order_n);
 
 /* ==========================================================================
  * 2b. 分频类型(C 第二批,r8)—— 补齐参数表 §4③ 已列出但实现拿不出来的档位
