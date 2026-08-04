@@ -357,9 +357,22 @@ for nm, blocks in chains:
 fl_all = NOISE_PER_SECTION_DBFS + 10*math.log10(tot_n)
 print(f"    {'D3+D4 合计':12s} 量化器 {tot_n:3d} 个  ⇒ 噪声底 {fl_all:8.2f} dBFS")
 print(f"    对 PRD 动态范围 >106 dB(⇒ ≤ −106 dBFS)余量 = {abs(fl_all)-106:.1f} dB")
-OK("EXP-5", fl_all <= -140.0, f"全链噪声底 {fl_all:.2f} dBFS ≤ −140(判据)")
+OK("EXP-5", fl_all <= -140.0, f"全链噪声底 {fl_all:.2f} dBFS ≤ −140(判据)"
+                              f"  ⚠ **仅在各节增益=1 前提下**")
 print("    ⚠ 增益/门/压限/延时不引入新量化器:增益并入相邻节的累加器;")
 print("      门与压限只做增益相乘(1 次窄化,已计入其上游节);延时是纯搬运。")
+print()
+print("    ⛔⛔ 适用范围(2026-08-04 整改 · critic MAJOR-2 · channel-dsp 实例 #2)")
+print("      上面的模型是【直接功率相加】,**只在各节增益 = 1 时成立**。")
+print("      第 k 节的噪声要经第 k+1…N 节的传函才到链末,而 D34 §6.2-4 **明文允许**")
+print("      用户把 8 段 PEQ 全部 +15 dB 叠在同一频率。级联复算(含级间增益):")
+print("        ① 各节增益=1          ⇒ −164.32 dBFS(模型精确)")
+print("        ④ 8 段全 +15 dB 同频  ⇒ **−91.64 dBFS**(差 +72.68 dB)")
+print("        ④′ 同配置的 D3 输入链 ⇒ **−76.97 dBFS**(差 +85.59 dB)")
+print("      ⇒ ④ 突破 PRD 的 −106 dBFS 达 14.36 dB、突破设计目标 −120 达 28.36 dB。")
+print("      ⇒ ⛔ 本 EXP-5 的判据【不覆盖】级间增益这一维;该维的复算件 = ")
+print("         d34_chain/check_noise_chain_r5.py + results_noise_chain_r5.txt")
+print("      ⇒ 处置属 D3/D4 的增益结构设计(大增益放链尾/限制累计增益),不是改格式。")
 
 # ---------------------------------------------------------------- EXP-6
 print("\nEXP-6  按竞品 Q 口径(0.02~50)重扫 PEQ 系数上界 —— 闭台账 C2")

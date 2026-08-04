@@ -1,8 +1,11 @@
 # 评审锁(D6-s)—— 每行一个路径前缀,列在这里的文件在 critic 评审窗口内【不得 commit】
 # 由 .git/hooks/pre-commit 强制。⛔ 这不是提醒,是拦截。⛔ 不得用 --no-verify 绕过。
 #
-# ⚠ 只锁【没有并发写者】的件。有并发写者的(如 02_impl/,channel-dsp-2 正在整改),
-#    改用「critic 钉一个 commit SHA 评审那个快照」——冻结工作树会把整改也一起冻住。
-01_design/D3D4_CHANNEL_CHAIN_v0.1.md
-01_design/D3D4_CONSTANT_LEDGER_v0.1.md
-01_design/d34_chain/
+# ⚠ 只锁【没有并发写者】的件。有并发写者的(如 02_impl/)改用「critic 钉 tag 评审快照」
+#    —— 冻结工作树会把整改一起冻住。
+#
+# ⚠⚠ lead 的操作教训(2026-08-04):**verdict 出具 = 评审窗口关闭 = 必须当场释放锁**。
+#     lead 锁了 D3D4_CHANNEL_CHAIN 后,verdict 已出却忘了释放,又在该文件上派了整改活
+#     ⇒ 钩子把自己派的活拦下了。⇒ 锁的生命周期必须与 verdict 绑定,不能靠记得。
+#
+# 当前锁:无(D3/D4 verdict 已于 2026-08-04 出具,窗口关闭)
