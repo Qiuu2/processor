@@ -122,6 +122,29 @@ CHDSP_STATIC_ASSERT(CHDSP_IN_DELAY_MAX_SAMPLES % CHDSP_FRAME_SAMPLES == 0, in_de
 CHDSP_STATIC_ASSERT(CHDSP_OUT_DELAY_MAX_SAMPLES % CHDSP_FRAME_SAMPLES == 0, out_delay_frame_aligned);
 
 /* ==========================================================================
+ * 5b. ⭐⭐ 系数格式 Q4.27 的【解析硬包络】—— 守的是【增益】,不是 S
+ * ==========================================================================
+ * 解析界(D34_FIXEDPOINT_CONVENTION §3.2.0):
+ *   峰型 max|b| ≤ max(2, A²) ｜ 架式 max|b| ≤ 2A² ｜ HPF/LPF ≤ 2,A = 10^(G/40)
+ *   ⇒ 全族 max|b| ≤ 2·10^(G_max/20)  —— **只依赖 G_max,与 Q、S、频率完全无关**
+ *   ⇒ Q4.27(|c| < 16)要求 2·10^(G/20) < 16 ⇒ **G_max < 20·log₁₀8 = 18.0618 dB**
+ *
+ * ⚠⚠ **一处必须纠正的历史表述**:`chdsp_fixed.h` 的注释仍写
+ *    「参数范围一旦放宽(**S>1** 或 |G|>15 dB),该界立即失效」——
+ *    **`S>1` 那一半已被 D34 §3.2.2 亲手证伪**:S 从 1.0→2.0 只把 max|b| 从
+ *    11.2148 推到 11.2292(+0.0144),**几乎不起作用**;真正的驱动量只有增益。
+ *    ⇒ **若照那句去守 S,就会守着一个几乎无关的量,而真正会翻掉 Q4.27 的
+ *      增益包络没有人守**(团队纪律 D6-r:锁错字串的 lint 比没有 lint 更坏)。
+ *    ⇒ 本文件按【解析界】守增益。`chdsp_fixed.h` 的那句待评审窗口结束后订正
+ *      (D6-s:评审期内不改被审件;整改件见 01_design/fix_queue_r1/)。
+ */
+/** 解析硬包络,毫 dB。2·10^(G/20) = 16 ⇒ G = 20·log10(8) = 18.06180 dB */
+#define CHDSP_COEF_GAIN_ENVELOPE_MDB   18061
+/** 产品参数量程建议上限(留 3 dB 余量),⛔ 须与 D2 参数字典锁死 */
+#define CHDSP_PARAM_GAIN_MAX_MDB       15000
+CHDSP_STATIC_ASSERT(CHDSP_PARAM_GAIN_MAX_MDB < CHDSP_COEF_GAIN_ENVELOPE_MDB, gain_within_envelope);
+
+/* ==========================================================================
  * 6. ⚠ 待定项与硬件约束 —— 标在代码里,⛔ 不许默认
  * ========================================================================== */
 

@@ -79,6 +79,19 @@ void chdsp_bq_chain_reset(chdsp_bq_chain_t *c);
  * 全部返回 0 = 成功,非 0 = 失败(系数超 Q4.27 范围 / 参数非法)。
  * ⛔ 失败必须由调用方处理 —— 这是 D-1 的执行点,不是警告。
  */
+/** 设计期错误码。⭐ **必须可区分** —— 检查要断言「预期的那条具体失败」,
+ *  ⛔ 不是"任何失败"。(critic 对 check_negcompile 的 BLOCKER 同源:
+ *     `expect_fail` 只问"编译是否失败" ⇒ 任何错误都算过 ⇒ 被测物拿走也 PASS。) */
+typedef enum {
+    CHDSP_BQ_OK              =  0,
+    CHDSP_BQ_ERR_FREQ        = -1,  /**< f0 ≤ 0 或 ≥ Nyquist */
+    CHDSP_BQ_ERR_Q           = -2,  /**< Q/S ≤ 0 或使 α 为 NaN */
+    CHDSP_BQ_ERR_GAIN_ENV    = -3,  /**< ⭐ 增益超 Q4.27 的解析硬包络(18.0618 dB) */
+    CHDSP_BQ_ERR_COEF_RANGE  = -4,  /**< 某个系数实际超 Q4.27(兜底,理论上被 -3 提前拦住) */
+    CHDSP_BQ_ERR_TYPE        = -5,
+    CHDSP_BQ_ERR_ORDER       = -6
+} chdsp_bq_err_t;
+
 typedef enum {
     CHDSP_FT_PEAKING = 0,
     CHDSP_FT_LOWSHELF,

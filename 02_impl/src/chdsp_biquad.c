@@ -121,7 +121,15 @@ static int pack(double b0, double b1, double b2, double a1, double a2,
     e |= chdsp_coef_from_f64(b2, &o->b2);
     e |= chdsp_coef_from_f64(a1, &o->a1);
     e |= chdsp_coef_from_f64(a2, &o->a2);
-    return e;
+    return e ? CHDSP_BQ_ERR_COEF_RANGE : CHDSP_BQ_OK;
+}
+
+/** ⭐ 主动守【增益包络】—— 解析界只依赖 G_max,与 Q/S/频率无关。
+ *  ⛔ 不守 S:S 从 1.0→2.0 只动 +0.0144,是几乎无关的量(D34 §3.2.2 实测)。 */
+static int gain_within_envelope(double gdb)
+{
+    double a = (gdb >= 0.0) ? gdb : -gdb;
+    return (a * 1000.0 < (double)CHDSP_COEF_GAIN_ENVELOPE_MDB) ? 1 : 0;
 }
 
 int chdsp_bq_design(chdsp_filter_type_t type, double f0, double q, double gdb,
@@ -129,8 +137,13 @@ int chdsp_bq_design(chdsp_filter_type_t type, double f0, double q, double gdb,
 {
     double w0, c, s, alpha, A, a0;
 
-    if (!(f0 > 0.0) || f0 >= (double)CHDSP_FS_HZ * 0.5) { return -1; }
-    if (!(q > 0.0)) { return -1; }
+    if (!(f0 > 0.0) || f0 >= (double)CHDSP_FS_HZ * 0.5) { return CHDSP_BQ_ERR_FREQ; }
+    if (!(q > 0.0)) { return CHDSP_BQ_ERR_Q; }
+    /* ⭐ 只有带增益的族受包络约束;HPF/LPF/NOTCH/ALLPASS 的解析界恒 ≤2,与增益无关 */
+    if ((type == CHDSP_FT_PEAKING || type == CHDSP_FT_LOWSHELF || type == CHDSP_FT_HIGHSHELF)
+        && !gain_within_envelope(gdb)) {
+        return CHDSP_BQ_ERR_GAIN_ENV;
+    }
 
     w0 = 2.0 * M_PI * f0 / (double)CHDSP_FS_HZ;
     c = cos(w0); s = sin(w0);
@@ -146,7 +159,7 @@ int chdsp_bq_design(chdsp_filter_type_t type, double f0, double q, double gdb,
     case CHDSP_FT_LOWSHELF: {
         double t;
         alpha = s / 2.0 * sqrt((A + 1.0 / A) * (1.0 / q - 1.0) + 2.0);
-        if (!(alpha == alpha)) { return -1; }                 /* NaN ⇒ S 非法 */
+        if (!(alpha == alpha)) { return CHDSP_BQ_ERR_Q; }     /* NaN ⇒ S 非法 */
         t = 2.0 * sqrt(A) * alpha;
         a0 = (A + 1.0) + (A - 1.0) * c + t;
         return pack(A * ((A + 1.0) - (A - 1.0) * c + t) / a0,
@@ -158,7 +171,7 @@ int chdsp_bq_design(chdsp_filter_type_t type, double f0, double q, double gdb,
     case CHDSP_FT_HIGHSHELF: {
         double t;
         alpha = s / 2.0 * sqrt((A + 1.0 / A) * (1.0 / q - 1.0) + 2.0);
-        if (!(alpha == alpha)) { return -1; }
+        if (!(alpha == alpha)) { return CHDSP_BQ_ERR_Q; }
         t = 2.0 * sqrt(A) * alpha;
         a0 = (A + 1.0) - (A - 1.0) * c + t;
         return pack(A * ((A + 1.0) + (A - 1.0) * c + t) / a0,
@@ -198,7 +211,7 @@ int chdsp_bq_design(chdsp_filter_type_t type, double f0, double q, double gdb,
         return pack((1.0 - alpha) / a0, (-2.0 * c) / a0, 1.0,
                     (-2.0 * c) / a0, (1.0 - alpha) / a0, out);
     }
-    default: return -1;
+    default: return CHDSP_BQ_ERR_TYPE;
     }
 }
 
@@ -219,7 +232,7 @@ int chdsp_bq_design_xover(int lr, int order, int highpass, double fc,
     uint16_t n = 0u;
     int i, e = 0;
 
-    if (order <= 0 || (order % 2) != 0 || order > 8) { return -1; }
+    if (order <= 0 || (order % 2) != 0 || order > 8) { return CHDSP_BQ_ERR_ORDER; }
 
     if (lr) {
         /* LR{order} = (Butterworth order/2 阶)² */
@@ -239,7 +252,7 @@ int chdsp_bq_design_xover(int lr, int order, int highpass, double fc,
             e |= chdsp_bq_design(t, fc, 1.0, 0.0, &out[n]); n++;
             e |= chdsp_bq_design(t, fc, 1.0, 0.0, &out[n]); n++;
         } else {
-            return -1;
+            return CHDSP_BQ_ERR_ORDER;
         }
     } else {
         for (i = 0; i < order / 2; i++) {

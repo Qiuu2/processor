@@ -65,14 +65,36 @@ int main(void)
 
     /* ================= biquad ================= */
     printf("biquad\n");
-    {   /* CHK-B1 系数范围硬失败 */
+    {   /* CHK-B1 ⭐ 断言【具体那条错误码】,⛔ 不是"非 0"
+         * 缘起:critic 判 check_negcompile 为 BLOCKER —— 它的 expect_fail 只问
+         *   「编译是否失败」⇒ 任何错误都算 PASS ⇒ 把被测物整个拿走也 5/5 PASS。
+         * ⇒ 同一个原理施于本处:只断言「返回非 0」会让【任何一种失败】冒充【预期的失败】。 */
         chdsp_biquad_coef_t c;
-        int ok_in  = chdsp_bq_design(CHDSP_FT_PEAKING, 1000.0, 1.0, 15.0, &c);
-        int ok_out = chdsp_bq_design(CHDSP_FT_HIGHSHELF, 20.0, 1.0, 24.0, &c);
-        int bad_f  = chdsp_bq_design(CHDSP_FT_PEAKING, 30000.0, 1.0, 0.0, &c);
-        printf("      设计返回: +15dB peak=%d  +24dB 高架=%d  f0=30kHz=%d\n", ok_in, ok_out, bad_f);
-        OKC("CHK-B1", ok_in == 0 && ok_out != 0 && bad_f != 0,
-            "界内成功 / +24dB 架式超 Q4.27 硬失败 / f0≥Nyquist 硬失败");
+        int r_ok   = chdsp_bq_design(CHDSP_FT_PEAKING,   1000.0, 1.0,  15.0, &c);
+        int r_gain = chdsp_bq_design(CHDSP_FT_HIGHSHELF,   20.0, 1.0,  24.0, &c);
+        int r_freq = chdsp_bq_design(CHDSP_FT_PEAKING,  30000.0, 1.0,   0.0, &c);
+        int r_q    = chdsp_bq_design(CHDSP_FT_PEAKING,   1000.0, 0.0,   0.0, &c);
+        int r_type = chdsp_bq_design(CHDSP_FT_COUNT,     1000.0, 1.0,   0.0, &c);
+        printf("      +15dB peak=%d(期 %d) +24dB 架式=%d(期 %d) f0=30k=%d(期 %d) Q=0=%d(期 %d) 非法类型=%d(期 %d)\n",
+               r_ok, CHDSP_BQ_OK, r_gain, CHDSP_BQ_ERR_GAIN_ENV, r_freq, CHDSP_BQ_ERR_FREQ,
+               r_q, CHDSP_BQ_ERR_Q, r_type, CHDSP_BQ_ERR_TYPE);
+        OKC("CHK-B1", r_ok == CHDSP_BQ_OK && r_gain == CHDSP_BQ_ERR_GAIN_ENV
+                      && r_freq == CHDSP_BQ_ERR_FREQ && r_q == CHDSP_BQ_ERR_Q
+                      && r_type == CHDSP_BQ_ERR_TYPE,
+            "⭐ 五种情形各自返回【它自己那条】错误码(⛔ 不是「非 0 即算过」)");
+    }
+    {   /* CHK-B1b ⭐ 守的是【增益】不是【S】—— 直接证伪那句过时表述 */
+        chdsp_biquad_coef_t c;
+        int s_big = chdsp_bq_design(CHDSP_FT_HIGHSHELF, 20.0, 2.0, 15.0, &c);   /* S=2 > 1 */
+        int s_ok  = chdsp_bq_design(CHDSP_FT_HIGHSHELF, 20.0, 1.0, 15.0, &c);
+        int g_18  = chdsp_bq_design(CHDSP_FT_HIGHSHELF, 20.0, 1.0, 18.1, &c);   /* 超包络 */
+        int g_17  = chdsp_bq_design(CHDSP_FT_HIGHSHELF, 20.0, 1.0, 17.9, &c);   /* 界内 */
+        printf("      S=2.0@+15dB=%d  S=1.0@+15dB=%d  |  G=+18.1dB=%d  G=+17.9dB=%d\n",
+               s_big, s_ok, g_18, g_17);
+        OKC("CHK-B1b", s_big == CHDSP_BQ_OK && s_ok == CHDSP_BQ_OK
+                       && g_18 == CHDSP_BQ_ERR_GAIN_ENV && g_17 == CHDSP_BQ_OK,
+            "⭐ S>1 不触发拦截(它几乎不影响界);增益跨 18.0618 dB 才触发 "
+            "⇒ 直接证伪 chdsp_fixed.h:446 那句「S>1 ⇒ 界失效」");
     }
     {   /* CHK-B2 HPF/LPF 结构约束量化 ⇒ DC/Nyquist 零点精确(扫 fc) */
         int i, nz_hp = 0, nz_lp = 0, N = 400;
