@@ -87,7 +87,8 @@ append_mut(){ local f="$1"; local before after
 # ============================================================================
 
 # 取消资格串:命中这些说明【命令根本没跑起来】,不是【闸门响了】
-DISQ='No such file|command not found|没有那个文件|fatal error:|Permission denied|cannot execute'
+# ⚠ 可用环境变量覆盖 —— 仅供【证明 DISQ 宽窄不影响判定】的实验用(见文件末尾说明)
+DISQ="${DISQ_OVERRIDE:-No such file|command not found|没有那个文件|fatal error:|Permission denied|cannot execute}"
 
 # ⛔ 整改 2026-08-04:原来这些工作目录是**写死的 /tmp/gates_***。
 #   而本脚本现在可以被**递归调用**(run_all 第 0 环 → 本脚本 → ensure_green 跑嵌套 run_all → …)
