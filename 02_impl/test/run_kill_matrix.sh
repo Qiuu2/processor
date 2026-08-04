@@ -62,6 +62,7 @@ MUTS=(
   CHDSP_BROKEN_GATE_ENUM          # dynamics(r12):安全状态挪离 0 ⇒ 全 0 初始化落错侧
   CHDSP_BROKEN_COEF_NOCONST       # fixed(r12):系数界退回只靠 int32 边界
   CHDSP_BROKEN_AFC_AFTER_NOTCH    # chain(r13):hook_afc 挪到陷波之后 ⇒ 请求晚一块生效
+  CHDSP_BROKEN_BESSEL_FREEQ       # biquad(r15):Bessel 退回自由量化 ⇒ 绕过 CHK-5f 守卫
 )
 
 echo "================================================================"

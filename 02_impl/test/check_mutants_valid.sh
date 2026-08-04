@@ -159,6 +159,7 @@ declare -A CLAIM=(
   [CHDSP_BROKEN_SMOOTH_FIXED]=P_SMOOTH_FIXED
   [CHDSP_BROKEN_GATE_ENUM]=P_GATE_ENUM
   [CHDSP_BROKEN_COEF_NOCONST]=P_COEF_NOCONST
+  [CHDSP_BROKEN_BESSEL_FREEQ]=P_BESSEL_FREEQ
 )
 
 # ---------------------------------------------------------------------------

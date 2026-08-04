@@ -48,6 +48,9 @@
 #ifndef CHDSP_BROKEN_FIRSTORDER    /* 1 = 一阶节系数写错 ⇒ max|b| 越 1 */
 #  define CHDSP_BROKEN_FIRSTORDER 0
 #endif
+#ifndef CHDSP_BROKEN_BESSEL_FREEQ  /* 1 = Bessel 退回自由量化(绕过 CHK-5f 立的守卫) */
+#  define CHDSP_BROKEN_BESSEL_FREEQ 0
+#endif
 
 /* ==========================================================================
  * 1. 运行时
@@ -476,7 +479,32 @@ static int design_bessel(int order, int highpass, double fc_hz,
 #endif
         b0 *= g; b1 *= g; b2 *= g;
         if (n >= CHDSP_OUT_XO_SECTIONS) { return CHDSP_BQ_ERR_ORDER; }
-        e |= pack(b0, b1, b2, a1, a2, &out[n]);
+        /* ⭐⭐ 整改 2026-08-05(r15 自查):Bessel 原先走 pack() = **自由量化**,
+         * 而 BW/LR 的 HPF/LPF 走 chdsp_coef_hplp_from_f64() = **结构约束量化**。
+         * ⇒ 那道守卫是 r2 的 CHK-5f 立的(自由量化在 251/500 个 fc 上破坏 DC 零点,
+         *   最坏单节 −59.26 dB),而**我写的 Bessel 绕过了它**。
+         * ⇒ 实测后果目前很轻(级联 DC 泄漏最坏 −171.56 dB,比 PRD 底噪低 65.6 dB),
+         *   **但"轻"是当前参数范围的性质,不是结构保证** —— 与 butter_q 那条
+         *   「碰巧正确的实现在扩展那一刻变错」同型。⇒ 按结构修,不按"目前够小"放过。
+         * ⭐ 而它**可以**走那条路:Bessel 的零点全在 z = ∓1,双二阶节恰是 b1=∓2b0、b2=b0,
+         *   与 HPF/LPF 同构 ⇒ 接口直接适用。 */
+#if CHDSP_BROKEN_BESSEL_FREEQ
+        e |= pack(b0, b1, b2, a1, a2, &out[n]);   /* ⛔ 坏版本:退回自由量化 */
+#else
+        if (b2 == 0.0) {
+            /* 一阶节:b1 = ±b0 ⇒ 只量化 b0,b1 由它导出(同一原理,手写) */
+            chdsp_coef_q4_27_t qb0;
+            if (chdsp_coef_from_f64(b0, &qb0) != 0) { return CHDSP_BQ_ERR_COEF_RANGE; }
+            out[n].b0 = qb0;
+            out[n].b1 = chdsp_coef_from_raw((b1 >= 0.0) ? chdsp_coef_raw(qb0)
+                                                        : -chdsp_coef_raw(qb0));
+            out[n].b2 = chdsp_coef_from_raw(0);
+            if (chdsp_coef_from_f64(a1, &out[n].a1) != 0) { return CHDSP_BQ_ERR_COEF_RANGE; }
+            out[n].a2 = chdsp_coef_from_raw(0);
+        } else {
+            e |= chdsp_coef_hplp_from_f64(b0, a1, a2, highpass, &out[n]);
+        }
+#endif
         n++;
     }
     *n_out = n;

@@ -1144,6 +1144,33 @@ int main(void)
         OKC("CHK-X4", bad == 0,
             "⭐ F-4 回归:butter_q 改 sin **没有动偶数阶**(逐位同集合)");
     }
+    {   /* CHK-X7 ⭐ Bessel 量化后零点必须**精确 0** —— 它现在走结构约束量化
+         * 缘起(r15 自查):Bessel 原先走 pack() 自由量化,**绕过了 CHK-5f 立的守卫**。
+         * ⚠ 实测后果当时很轻(级联 DC 泄漏 −171.56 dB),**但"轻"是当前参数范围的性质,
+         *   不是结构保证** ⇒ 按结构修,⛔ 不按"目前够小"放过。 */
+        chdsp_biquad_coef_t sec[CHDSP_OUT_XO_SECTIONS];
+        uint16_t n; int order, hp, i, k, bad = 0, tot = 0;
+        for (order = 1; order <= 8; order++) {
+            for (hp = 0; hp < 2; hp++) {
+                for (k = 0; k < 25; k++) {
+                    double fc = 20.0 * pow(1000.0, (double)k / 24.0);
+                    if (chdsp_bq_design_xover2(CHDSP_XO_BESSEL, order, hp, fc, sec, &n)
+                        != CHDSP_BQ_OK) { continue; }
+                    for (i = 0; i < (int)n; i++) {
+                        double b0 = chdsp_coef_to_f64(sec[i].b0);
+                        double b1 = chdsp_coef_to_f64(sec[i].b1);
+                        double b2 = chdsp_coef_to_f64(sec[i].b2);
+                        double z = hp ? (b0 + b1 + b2) : (b0 - b1 + b2);
+                        tot++;
+                        if (z != 0.0) { bad++; }
+                    }
+                }
+            }
+        }
+        printf("      Bessel 1..8 阶 × LP/HP × 25 个 fc:零点非 0 的节数 = %d / %d\n", bad, tot);
+        OKC("CHK-X7", bad == 0 && tot > 100,
+            "⭐ Bessel 量化后零点由**构造**保证精确(⛔ 不再靠「目前泄漏够小」)");
+    }
     {   /* CHK-X5 LR 奇数阶必须被拒(LR = BW²,奇数阶数学上不存在,这不是缺口) */
         chdsp_biquad_coef_t sec[CHDSP_OUT_XO_SECTIONS]; uint16_t n;
         int e3 = chdsp_bq_design_xover2(CHDSP_XO_LINKWITZ_RILEY, 3, 0, 1000.0, sec, &n);

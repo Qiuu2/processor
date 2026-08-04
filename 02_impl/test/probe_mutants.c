@@ -440,5 +440,22 @@ int main(void)
                chdsp_coef_from_f64(-16.0, &c) * 10 + chdsp_coef_from_f64(16.0, &c));
     }
 
+    /* ---- P_BESSEL_FREEQ:Bessel 走结构约束量化还是自由量化 ---------------------
+     * 声称改变的行为:量化后零点是否仍精确。读数 = 零点非 0 的节数。 */
+    {
+        chdsp_biquad_coef_t sec[CHDSP_OUT_XO_SECTIONS]; uint16_t n; int order, hp, i, k, bad = 0;
+        for (order = 1; order <= 8; order++) for (hp = 0; hp < 2; hp++) for (k = 0; k < 25; k++) {
+            double fc = 20.0 * pow(1000.0, (double)k / 24.0);
+            if (chdsp_bq_design_xover2(CHDSP_XO_BESSEL, order, hp, fc, sec, &n) != CHDSP_BQ_OK)
+                { continue; }
+            for (i = 0; i < (int)n; i++) {
+                double b0 = chdsp_coef_to_f64(sec[i].b0), b1 = chdsp_coef_to_f64(sec[i].b1),
+                       b2 = chdsp_coef_to_f64(sec[i].b2);
+                if ((hp ? (b0 + b1 + b2) : (b0 - b1 + b2)) != 0.0) { bad++; }
+            }
+        }
+        printf("PROBE P_BESSEL_FREEQ %d\n", bad);
+    }
+
     return 0;
 }
