@@ -17,7 +17,9 @@
 - **未闭项**:①模拟前端增益结构定稿后回核定点约定 §1.3 ②D2 参数字典对齐(增益 ±15 dB 硬上限)
   ③目标侧分数/整数乘法模式待 W1-C ④极限环长时扫描未做(D14)
   ⑤ 12 ms 延迟规格**口径未定义**(宽带 vs 任意频点群延迟)—— 已报 lead
-- **任务三(D3/D4 C 化)已落**:`02_impl/{src,test,ref}` + `results_impl_r1.txt`
+- **任务三(D3/D4 C 化)已落**:`02_impl/{src,test,ref}` + **`results_impl_rN.txt`**
+  (N = 轮次,由 `review/02impl-rN` tag 自动导出;⚠ 2026-08-05 前它写死叫 `results_impl_r1.txt`
+   而当时已是**第 11 轮** ⇒ critic 02impl-r11 MAJOR-1。**轮次沿革见 `CHANNEL_DSP_HANDOFF.md §0.2`**)
   六道闸门全过:严格编译 / 魔数扫描 / 模块自验 28 条 / **杀伤矩阵 16-16** / 第二轨逐位 / 强类型中立性
 - **下一步**:等 critic;或按 lead 指示继续。
 
