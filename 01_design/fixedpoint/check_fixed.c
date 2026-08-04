@@ -603,6 +603,57 @@ int main(void)
             }
         }
 
+        /* ================================================================
+         * CHK-5g(整改 2026-08-04 · critic MAJOR-5)
+         * ----------------------------------------------------------------
+         * §9.3 表里那格「LR8 高通(4 节)DC 增益 = 精确 0(结构约束下)」**标错了**:
+         * 产出它的 CHK-5d 走的是 `to_fixed_bq()` = **自由量化**,而且 fc 取单点 80 Hz
+         * —— 正是 §9.1 自认「r1 的精确 0 确实是巧合」的那个点。
+         * ⇒ **「本件强制的结构约束量化在 LR8 四节级联下表现如何」这件事实际【未测】。**
+         * ⇒ 而 §9.2 的 500 点扫描只做**单节**。
+         *
+         * ⚠ 并且 D6-c:CHK-5d 的 fc 是**单点**,而 §9.2 已证 251/500 的 fc 会破坏零点
+         *   ⇒ **单点 fc 的级联检查在构造上就有一半概率给出"好消息"。**
+         * ⇒ 本条:走 `chdsp_coef_hplp_from_f64()`(结构约束),**扫 fc**,报级联 DC/Nyquist。
+         * ================================================================ */
+        {
+            const int NF = 400;
+            int i, bad_dc = 0, bad_ny = 0, nfail_free = 0;
+            double worst_dc = 0.0, worst_ny = 0.0, at_dc = 0.0;
+            for (i = 0; i < NF; i++) {
+                double fc = 20.0 * pow(1000.0, (double)i / (double)(NF - 1));
+                bq_f64 hp = rbj_hpf(fc, 0.7071), lp = rbj_lpf(fc, 0.7071);
+                chdsp_biquad_coef_t hq, lq; bq_f64 hqf, lqf;
+                double dc_h, ny_l;
+                /* ⭐ 结构约束量化(本件强制的那条路径) */
+                if (chdsp_coef_hplp_from_f64(hp.b0, hp.a1, hp.a2, 1, &hq) != 0) { continue; }
+                if (chdsp_coef_hplp_from_f64(lp.b0, lp.a1, lp.a2, 0, &lq) != 0) { continue; }
+                fixed_bq_to_f64(&hq, &hqf); fixed_bq_to_f64(&lq, &lqf);
+                dc_h = (hqf.b0 + hqf.b1 + hqf.b2) / (1.0 + hqf.a1 + hqf.a2);
+                ny_l = (lqf.b0 - lqf.b1 + lqf.b2) / (1.0 - lqf.a1 + lqf.a2);
+                if (dc_h != 0.0) { bad_dc++; if (fabs(dc_h) > worst_dc) { worst_dc = fabs(dc_h); at_dc = fc; } }
+                if (ny_l != 0.0) { bad_ny++; if (fabs(ny_l) > worst_ny) { worst_ny = fabs(ny_l); } }
+                /* 同一 fc 上的**自由量化**对照:应当有相当比例非 0(⇒ 本条不是恒真) */
+                {
+                    chdsp_biquad_coef_t hf; bq_f64 hff;
+                    if (to_fixed_bq(hp, &hf) == 0) {
+                        fixed_bq_to_f64(&hf, &hff);
+                        if ((hff.b0 + hff.b1 + hff.b2) != 0.0) { nfail_free++; }
+                    }
+                }
+            }
+            printf("      LR8 四节级联 · **结构约束量化** · 扫 %d 个 fc:\n", NF);
+            printf("        DC 零点非 0 的 fc 数 = %d / %d(最坏 %.3e @ %.1f Hz)\n",
+                   bad_dc, NF, worst_dc, at_dc);
+            printf("        Nyquist 零点非 0 的 fc 数 = %d / %d(最坏 %.3e)\n", bad_ny, NF, worst_ny);
+            printf("        阳性对照:同一批 fc 走**自由量化**,DC 非 0 的 fc 数 = %d / %d\n",
+                   nfail_free, NF);
+            OK("CHK-5g", bad_dc == 0 && bad_ny == 0,
+               "⭐ 结构约束量化在 LR8 四节级联下,全扫描域 DC/Nyquist 恒精确 0");
+            OK("CHK-5g+", nfail_free > NF / 10,
+               "⭐ 阳性对照:自由量化在同一批 fc 上大量破坏零点 ⇒ 上一条不是恒真(D6-c:⛔ 不用单点 fc)");
+        }
+
         /* CHK-5f(r2 增补):r1 里自由量化恰好给出精确 0 —— 是巧合还是保证? */
         {
             int i, free_nz_hp = 0, free_nz_lp = 0, tied_nz = 0, NPT = 500;
