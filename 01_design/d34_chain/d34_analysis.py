@@ -31,7 +31,8 @@ for a in sys.argv[1:]:
 #   实测 `--broken=不存在的名字` 会跑完全程、退出 0,并在结果头照印那个名字
 #   ⇒ 正是 critic 点名的那种"看起来像该变异存活"的归档件。
 #   ⇒ D6-ap:一个只输出不阻断的检查不是检查。未知变异名必须**当场中止**。
-_KNOWN_BROKEN = ('polarity', 'qcoef', 'freeq', 'qcoef_and_freeq', 'hpf_order', 'xo_order')
+_KNOWN_BROKEN = ('polarity', 'qcoef', 'freeq', 'qcoef_and_freeq', 'hpf_order', 'xo_order',
+                 'noisemodel_nointer', 'noisemodel_countbug')
 if BROKEN and BROKEN not in _KNOWN_BROKEN:
     sys.stderr.write(f"⛔ 未知的 --broken 名: {BROKEN!r};已实现的变异 = {_KNOWN_BROKEN}\n"
                      f"⛔ ⛔ 拒绝当作出货构建跑完 —— 那会产出一份看起来像"
@@ -455,14 +456,32 @@ print("      用户把 8 段 PEQ 全部 +15 dB 叠在同一频率(D34_FIXEDPOINT
 #      一个只输出不阻断的检查不是检查(D6-ap)。本轮把它接成判定项。
 def noise_floor_interstage(secs, n_tail_unity=0, NW=4096):
     """链末噪声底 dBFS。第 k 节输出处有一个量化器,其噪声经第 k+1…N 节的 |H|²。
-    n_tail_unity = 位于链尾、其后无任何增益的附加量化器个数。"""
+    n_tail_unity = 位于链尾、其后无任何增益的附加量化器个数。
+
+    ⭐ 两个变异(Y12,2026-08-05):**噪声模型这一维此前没有任何变异**
+      ⇒ ∴ EXP-5b/5c 当时【无证伪证据】,而我在设计件 Y12 里如实写了"不得声称该维已被覆盖"。
+      ⛔ 而本轮补的目的是【让这一维真的被覆盖】,不是凑变异数
+        ⇒ 两个变异各只注入**一个**缺陷,且各自有**声明的靶子**(见 run_killmatrix.py 的 TARGET/LOST)。"""
     wv = np.pi*(np.arange(NW)+0.5)/NW
     p1 = 10**(NOISE_PER_SECTION_DBFS/10.0)
     tot = 0.0
-    for k in range(len(secs)):
+    n_sec = len(secs)
+    if BROKEN == 'noisemodel_countbug':
+        # ⛔ 缺陷 = **少数一个量化器**(漏掉最后一节输出处的那个)。
+        #   靶子 = EXP-5b(它比对"含级间增益的模型"与"直接功率相加"在各节增益=1 时是否逐位相等)
+        #   ⇒ 9 个变 8 个 ⇒ −164.32 vs 模型 −163.81 ⇒ 差 0.51 dB > 判据 0.01 ⇒ EXP-5b 必红
+        n_sec = max(len(secs) - 1, 0)
+    for k in range(n_sec):
         g = np.ones_like(wv)
-        for j in range(k+1, len(secs)):
-            g *= np.abs(sec_H(secs[j], wv))**2
+        if BROKEN != 'noisemodel_nointer':
+            # ⛔ 缺陷 = **拿掉级间传函**(第 k 节的噪声不再经其后各节)⇒ 模型退化回直接功率相加。
+            #   靶子 = EXP-5c:拿掉这一项后,最坏合法配置算出来与各节增益=1 相同(−163.81)
+            #   ⇒ 它会从 FAIL **翻成 PASS** ⇒ 见 run_killmatrix.py 的【declared lost】
+            #   ⭐ 而这正是一条【常驻 FAIL】能有的证伪证据形态:
+            #     它已经是 FAIL,⛔ 不可能再"被杀死";可证的是**它不是恒 FAIL** ——
+            #     存在一个缺陷使它翻绿 ⇒ 它确实依赖那个被测的量。
+            for j in range(k+1, len(secs)):
+                g *= np.abs(sec_H(secs[j], wv))**2
         tot += p1*float(np.mean(g))
     return 10*math.log10(tot + p1*n_tail_unity)
 

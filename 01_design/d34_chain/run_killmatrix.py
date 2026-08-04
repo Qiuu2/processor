@@ -92,13 +92,23 @@ for m in MUTANTS:
     f, t, _ = run(m)
     killed = sorted(f - base_fails)
     lost = sorted(base_fails - f)
-    if not killed:
+    exp_lost, why = EXPECTED_LOST.get(m, (set(), ""))
+    lost_undeclared = [x for x in lost if x not in exp_lost]
+    lost_declared = [x for x in lost if x in exp_lost]
+    note = ""
+    # ⛔ 未杀死【且】没有任何声明内的基线翻绿 ⇒ 存活
+    if not killed and not lost_declared:
         rc = 1
-    note = f"  ⛔ 变异未被杀死(存活)" if not killed else ""
-    if lost:
-        note += f"  ⛔ 基线中的 {lost} 在本变异下反而 PASS ⇒ 变异改动了它不该改的东西"
+        note += "  \u26d4 \u53d8\u5f02\u672a\u88ab\u6740\u6b7b\uff08\u5b58\u6d3b\uff09"
+    if lost_undeclared:
+        note += f"  \u26d4 \u57fa\u7ebf\u4e2d\u7684 {lost_undeclared} \u5728\u672c\u53d8\u5f02\u4e0b\u53cd\u800c PASS \u21d2 \u53d8\u5f02\u6539\u52a8\u4e86\u5b83\u4e0d\u8be5\u6539\u7684\u4e1c\u897f"
         rc = 1
-    print(f"{m:<18s} {' '.join(killed) if killed else '(无)':<46s} {t}{note}")
+    if lost_declared:
+        note += f"  \u2b50 \u58f0\u660e\u5185\u7684\u57fa\u7ebf\u7ffb\u7eff {lost_declared} \u21d2 \u8bb0\u4e3a\u8be5\u57fa\u7ebf\u9879\u7684\u3010\u8bc1\u4f2a\u8bc1\u636e\u3011"
+    _kills = ' '.join(killed) if killed else '(\u65e0)'
+    print(f"{m:<20s} {_kills:<46s} {t}{note}")
+    if lost_declared:
+        print(f"{'':<20s} \u21b3 {why}")
 
 print("-" * 88)
 print("\n⚠ 未知变异名闸门(critic BLOCKER-2 修法④,r16 补做):")
@@ -119,6 +129,18 @@ ok_meta = (base_rc != 2)
 print(f"  [{'PASS' if ok_meta else 'FAIL'}] 基线跑批退出码 = {base_rc}(⛔ 不得为 2;2 = 登记项不见了)")
 if not ok_meta:
     rc = 1
+
+# ---- 基线项的证伪证据汇总(⛔ 每条基线项都必须有,否则它可能是恒 FAIL)----
+print()
+print("⭐ 基线项的证伪证据(⛔ 常驻 FAIL 不能靠『被杀死』证明自己有分辨力)")
+for tag in sorted(BASELINE_EXPECTED):
+    provers = [m for m, (ls, _) in EXPECTED_LOST.items() if tag in ls]
+    if provers:
+        print(f"  [PASS] {tag:<10s} 存在使它【翻绿】的变异:{provers} ⇒ 它不是恒 FAIL")
+    else:
+        print(f"  [FAIL] {tag:<10s} ⛔ **没有任何变异能让它翻绿** ⇒ 无法排除它是恒 FAIL")
+        print(f"         ⇒ ⛔ 不得声称『该维已被变异覆盖』(设计件 Y12)")
+        rc = 1
 
 print("=" * 88)
 print(f"退出码 = {rc}")
