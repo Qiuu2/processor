@@ -1,7 +1,30 @@
 #!/usr/bin/env bash
 # r1 验证跑批。⛔ 门禁状态:未过门。
 # 纪律:①输出路径带轮次后缀,不复用 ②先清 build 产物 ③结果自带 deps 行
+#
+# ============================================================================
+# ⭐ 2026-08-04 整改 · channel-dsp 实例 #2 · 闭 critic MAJOR-1
+# ----------------------------------------------------------------------------
+# critic 的判定(成立):
+#   ①「变异存活」的报警分支**不可达**:
+#        grep ... | grep -v ... | sed ...  || echo "⛔ 该变异存活!"
+#      管道退出码 = 最后一个命令(sed)的退出码 = 恒 0 ⇒ `||` 后面永远不执行。
+#      而 PREREG_FP_r1.txt:115 把「变异存活 ⇒ 该条作废」写成了**正式的证伪条件**
+#      ⇒ 该证伪条件在交付件里没有任何能触发的东西(D6-v:没有 owner 的证伪条件 =
+#        没有证伪条件)。本轮三个变异恰好都被杀死,所以没出事;**下一次新增变异时,
+#        存活会表现为"标题下面空一行"。**
+#   ② GOOD / NEG / REF 三个退出码**只被打印,不被消费**(脚本经 tee 退出,恒 0)
+#      ⇒ D6-ap:「这个检查失败时会阻止什么?」答案是"什么也不阻止"。
+#
+# 本次整改:
+#   · 变异存活 ⇒ 显式计数 + 记入 rc_all(不再靠管道退出码)
+#   · 阴性对照有 FAIL ⇒ 记入 rc_all
+#   · GOOD / NEG / REF 全部记入 rc_all
+#   · 脚本以 rc_all 退出(⛔ 不再恒 0);tee 的退出码用 PIPESTATUS 绕开
+# ⇒ 自查:「本脚本失败时会阻止什么?」⇒ 非 0 退出 ⇒ 阻止本轮结果被当作通过。
+# ============================================================================
 set -u
+rc_all=0
 HERE="$(cd "$(dirname "$0")" && pwd)"
 cd "$HERE"
 CC="${CC:-gcc}"
@@ -52,7 +75,17 @@ for BR in CHDSP_BROKEN_WRAP CHDSP_BROKEN_TRUNC CHDSP_BROKEN_NOEF; do
   ( cd build_r3 && ./kill_$BR ) > build_r3/kill_$BR.txt 2>&1
   echo "  ---- 变异 $BR ----"
   echo "    被杀死的 CHK(不含 CHK-0 的构建自检):"
-  grep -E '^\s*\[FAIL\]' build_r3/kill_$BR.txt | grep -v 'CHK-0' | sed 's/^/      /' || echo "      ⛔ 无 —— 该变异存活!"
+  # ⛔ 整改(critic MAJOR-1):不得再用 `管道 || echo` —— 管道退出码恒 0,报警永不触发。
+  #    改为**显式计数**,并把结论记进 rc_all(⇒ 存活会真的阻止本脚本通过)。
+  n_kill=$(grep -E '^\s*\[FAIL\]' build_r3/kill_$BR.txt | grep -vc 'CHK-0')
+  if [ "$n_kill" -gt 0 ]; then
+    grep -E '^\s*\[FAIL\]' build_r3/kill_$BR.txt | grep -v 'CHK-0' | sed 's/^/      /'
+    echo "    ⇒ 该变异被 $n_kill 条 CHK 杀死 ✓"
+  else
+    echo "      ⛔ 无 —— **该变异存活!**"
+    echo "      ⇒ 命中 PREREG_FP_r1.txt:115 的证伪条件:对应 CHK 不依赖被测物,该条作废"
+    rc_all=1
+  fi
 done
 # 阴性对照:好模块 + 好判据,不应有 FAIL
 $CC $CFLAGS -DCHDSP_STRICT_TYPES=1 -DCHDSP_CHECK_FORCE_GOOD_ASSERT=1 \
@@ -60,7 +93,9 @@ $CC $CFLAGS -DCHDSP_STRICT_TYPES=1 -DCHDSP_CHECK_FORCE_GOOD_ASSERT=1 \
 ( cd build_r3 && ./kill_none ) > build_r3/kill_none.txt 2>&1
 echo "  ---- 阴性对照(无变异)----"
 if grep -qE '^\s*\[FAIL\]' build_r3/kill_none.txt; then
-  echo "    ⛔ 无变异时也有 FAIL:"; grep -E '^\s*\[FAIL\]' build_r3/kill_none.txt | sed 's/^/      /'
+  echo "    ⛔ 无变异时也有 FAIL ⇒ 上面的杀死**不可归因于变异**:"
+  grep -E '^\s*\[FAIL\]' build_r3/kill_none.txt | sed 's/^/      /'
+  rc_all=1
 else
   echo "    无 FAIL ✓ ⇒ 上面的杀死确实由变异引起,不是检查本身红的"
 fi
@@ -78,8 +113,12 @@ if [ -f build_r3/bitexact_strict1.txt ] && [ -f build_r3/bitexact_strict0.txt ];
   sed '5000s/.*/999999/' build_r3/bitexact_strict0.txt > build_r3/bitexact_forced_bad.txt
   D2=$(diff -q build_r3/bitexact_strict1.txt build_r3/bitexact_forced_bad.txt >/dev/null 2>&1 && echo SAME || echo DIFF)
   echo "  阳性对照(强制把第 5000 行改成错值):逐位 $D2  ⇒ 比对器 $( [ "$D2" = DIFF ] && echo 认得出差异 || echo ⛔无分辨力 )"
+  # ⛔ 整改(critic MAJOR-1 / D6-ap):这两条原来只打印,不阻断
+  [ "$D"  = SAME ] || { echo "  ⛔ STRICT=1 与 =0 数值不一致"; rc_all=1; }
+  [ "$D2" = DIFF ] || { echo "  ⛔ 阳性对照失败:比对器无分辨力 ⇒ 上一行的 SAME 无意义"; rc_all=1; }
 else
   echo "  ⛔ 逐位输出文件缺失"
+  rc_all=1
 fi
 echo
 
@@ -95,7 +134,16 @@ echo
 
 echo "================================================================================"
 echo "汇总: 好版本=$GOOD(0=全过) 负向编译=$NEG 第二轨=$REF"
+# ⛔ 整改(critic MAJOR-1 ②):这三个退出码原来只被打印,不被消费。现在全部消费。
+[ "$GOOD" -eq 0 ] || { echo "⛔ 好版本(出货构建)有 FAIL"; rc_all=1; }
+[ "$NEG"  -eq 0 ] || { echo "⛔ 负向编译 CHK-10 未通过"; rc_all=1; }
+[ "$REF"  -eq 0 ] || { echo "⛔ 第二轨对表未通过"; rc_all=1; }
+if [ $rc_all -eq 0 ]; then echo "本轮: PASS(全部环节通过)"
+else echo "⛔ 本轮: FAIL —— 上面至少一环未通过,本轮结果不得被当作通过"; fi
 echo "================================================================================"
+exit $rc_all
 } 2>&1 | tee "$OUT"
+rc_all=${PIPESTATUS[0]}          # ⛔ tee 恒 0,必须用 PIPESTATUS 取回块的退出码
 
-echo "结果已写入 $HERE/$OUT" >&2
+echo "结果已写入 $HERE/$OUT (退出码 $rc_all)" >&2
+exit $rc_all

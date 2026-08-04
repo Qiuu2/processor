@@ -94,7 +94,8 @@ int main(void)
         OKC("CHK-B1b", s_big == CHDSP_BQ_OK && s_ok == CHDSP_BQ_OK
                        && g_18 == CHDSP_BQ_ERR_GAIN_ENV && g_17 == CHDSP_BQ_OK,
             "⭐ S>1 不触发拦截(它几乎不影响界);增益跨 18.0618 dB 才触发 "
-            "⇒ 直接证伪 chdsp_fixed.h:446 那句「S>1 ⇒ 界失效」");
+            "⇒ 机械守住『界的唯一驱动量是增益』(chdsp_fixed.h §12 已于 2026-08-04 "
+            "按 critic MAJOR-4 改正;本条是它的可执行形式,⛔ 不许再退回按 S 守)");
     }
     {   /* CHK-B2 HPF/LPF 结构约束量化 ⇒ DC/Nyquist 零点精确(扫 fc) */
         int i, nz_hp = 0, nz_lp = 0, N = 400;

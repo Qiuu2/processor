@@ -1,15 +1,13 @@
 ================================================================================
 results_impl_r1 —— D3/D4 C 实现 · 总闸门
 门禁状态: 未过门(未经独立 critic 评审)
-时间: 2026-08-04T12:13:05+08:00
-deps: chdsp_biquad.h@ff80d47541592394 chdsp_chain.h@8a1cb5f3dd191b6d chdsp_config.h@45607a497c0a4621 chdsp_delay.h@5fe962b7a355715a chdsp_detector.h@5174324e05b09f2f chdsp_dynamics.h@4b033e284d7a8056 chdsp_fir.h@0ceed3f2aac3eb73 chdsp_biquad.c@44b97720778fb724 chdsp_chain.c@f1495d880c6153d6 chdsp_delay.c@17491f0d34d4c0a3 chdsp_detector.c@e8085bea08eb4748 chdsp_dynamics.c@a82dfc1b12464ca8 chdsp_fir.c@a499834ca5626c38 
-      check_modules.c@dd19db6a4efa7ccd ref_modules.py@1178ad663dd1e18a
+时间: 2026-08-04T13:54:24+08:00
+deps: chdsp_biquad.h@90549b449a596efe chdsp_chain.h@8a1cb5f3dd191b6d chdsp_config.h@c4e3788447920f64 chdsp_delay.h@5fe962b7a355715a chdsp_detector.h@5174324e05b09f2f chdsp_dynamics.h@4b033e284d7a8056 chdsp_fir.h@0ceed3f2aac3eb73 chdsp_biquad.c@c56208f4457f32ce chdsp_chain.c@f1495d880c6153d6 chdsp_delay.c@17491f0d34d4c0a3 chdsp_detector.c@e8085bea08eb4748 chdsp_dynamics.c@a82dfc1b12464ca8 chdsp_fir.c@a499834ca5626c38 
+      check_modules.c@9990915f0a1875ca ref_modules.py@1178ad663dd1e18a
 编译器: gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
 ================================================================================
 
 ### 1. 严格编译(-Werror,强类型)
-gcc: fatal error: cannot specify ‘-o’ with ‘-c’, ‘-S’ or ‘-E’ with multiple files
-compilation terminated.
   全部模块 -Werror 通过 ✓
 
 ### 2. 魔数扫描(硬闸门)
@@ -23,8 +21,10 @@ check_modules  —  D3/D4 各模块自验(**全部硬闸门**)
 ================================================================
 
 biquad
-      设计返回: +15dB peak=0  +24dB 高架=-1  f0=30kHz=-1
-  [PASS] CHK-B1    界内成功 / +24dB 架式超 Q4.27 硬失败 / f0≥Nyquist 硬失败
+      +15dB peak=0(期 0) +24dB 架式=-3(期 -3) f0=30k=-1(期 -1) Q=0=-2(期 -2) 非法类型=-5(期 -5)
+  [PASS] CHK-B1    ⭐ 五种情形各自返回【它自己那条】错误码(⛔ 不是「非 0 即算过」)
+      S=2.0@+15dB=0  S=1.0@+15dB=0  |  G=+18.1dB=-3  G=+17.9dB=0
+  [PASS] CHK-B1b   ⭐ S>1 不触发拦截(它几乎不影响界);增益跨 18.0618 dB 才触发 ⇒ 直接证伪 chdsp_fixed.h:446 那句「S>1 ⇒ 界失效」
       fc 扫 400 点: HPF@DC 非零 0 处;LPF@Nyq 非零 0 处
   [PASS] CHK-B2    结构约束量化使 DC/Nyquist 零点在量化后恒精确(0 处破坏)
       LR2=1 LR4=0 LR6=1 LR8=0 (1=须反相)
@@ -89,9 +89,41 @@ chain
   [PASS] CHK-C3    ⭐ HPF 在动态之前 ⇒ 隆隆不顶开门 ⇒ 输出被压(⛔ HPF 在后会顶开门)
 
 ================================================================
-合计: PASS=28  FAIL=0
+合计: PASS=29  FAIL=0
 退出码 = 0  ⇒ **本文件的每条检查都是硬闸门**
 ================================================================
+
+### 3b. 负编译检查(硬闸门,已按 critic BLOCKER 重做)
+负编译检查(硬闸门)
+  --- (B) 前置存活自检:被测物必须真的在 ---
+    文件在 / 符号在 / 合法片段编得过 ✓
+
+  --- (A) 负例:必须因【预期的那条具体错误】失败 ---
+  [PASS] N1  io(Q0.31) 当 smp(Q4.27) 用  ⇒ 命中预期错误 /incompatible type|expected .chdsp_smp_q4_27_t/
+  [PASS] N2  coef 当 smp 用(同 Q 格式,不同量纲)  ⇒ 命中预期错误 /incompatible type|expected .chdsp_smp_q4_27_t/
+  [PASS] N3  跨定标裸相加(io + smp)  ⇒ 命中预期错误 /invalid operands/
+  [PASS] N4  dB 当线性增益用  ⇒ 命中预期错误 /incompatible type|expected .chdsp_gain_q4_27_t/
+  [PASS] N5  调用方自己写 (acc >> 27)  ⇒ 命中预期错误 /invalid operands|conversion to non-scalar/
+  [PASS] N6  功率域(Q8.54)当样本(Q4.27)用  ⇒ 命中预期错误 /incompatible type/
+  [PASS] N7  斜率(Q16.15)当 dB(Q23.8)用  ⇒ 命中预期错误 /incompatible type/
+
+  --- (C) 机制对照臂:同样七个负例在 STRICT_TYPES=0 下必须【全部编译通过】 ---
+      ⇒ 证明上面的失败来自【强类型】,不是片段本身写错(critic 补造的对照,原样纳入)
+    [对照 OK] N1 在 STRICT=0 下编译通过 ⇒ 该负例的失败确由强类型造成
+    [对照 OK] N2 在 STRICT=0 下编译通过 ⇒ 该负例的失败确由强类型造成
+    [对照 OK] N3 在 STRICT=0 下编译通过 ⇒ 该负例的失败确由强类型造成
+    [对照 OK] N4 在 STRICT=0 下编译通过 ⇒ 该负例的失败确由强类型造成
+    [对照 OK] N6 在 STRICT=0 下编译通过 ⇒ 该负例的失败确由强类型造成
+    [对照 OK] N7 在 STRICT=0 下编译通过 ⇒ 该负例的失败确由强类型造成
+    (N5 不列入对照:acc 右移在裸整数下本就合法,其失败-通过翻转正是预期)
+
+  --- 正当用法必须编译通过(护栏的第二个方向,D6-y) ---
+  [PASS] P1  同类型赋值
+  [PASS] P2  经转换函数
+  [PASS] P3  biquad 正常调用
+
+  合计: PASS=10  FAIL=0  对照失败=0
+  ⇒ PASS
 
 ### 4. 杀伤矩阵(硬闸门)
 ================================================================
