@@ -7,7 +7,24 @@
 ## 0. 当前断点(⛔ 恢复工作先读这行)
 - **在手工单**:`r76`(收口件头条表出处)与 `F71`(§4 天花板论证依据)的**原始数据独立复核**。
   派单人 = lead。缘由 = 独立 critic 在 W1P 收口件 verdict 明确声明「未回原始数据,不为这两处背书」。
-- **进度**:① **r76 已做完,已报 lead**(§3)。② **F71 已做完,已报 lead**(§5)。⇒ 派单两件都收口。
+- **第一件工单(复核)已收口**:① r76(§3)② F71(§5),两件都已报 lead 并由 lead 归档推送。
+- **⇒ 当前在手 = 第二件工单:D14(lead 2026-08-04 派)**,顺序 = ①素材库规格 → ②指标验收表 → ③bring-up 清单。
+  - ①**已出件**:`01_design/D14_MATERIAL_SPEC_v0.1.md`(未过门)。已报 lead。
+    ⚠ 该件引入**外部输入 7 条(X1–X7)**,全 [L4/网页转述],**一件原文未取到**
+    ⇒ 铁律六入库未完成,已在件内 §7 列台账并上报 lead 路由。
+  - ②**已出件**:`01_design/D14_ACCEPTANCE_TABLE_v0.1.md`(未过门)。已报 lead。
+  - ③**已出件**:`01_design/D14_BRINGUP_TRIAGE_v0.1.md`(未过门)。已报 lead。
+    ⛔ 它**不是**上板清单 —— 上板清单已存在(ITC 项目搬来),本件是它的**门禁核对**,结论 = 闸门未解除。
+
+## ⛔⛔ 0b. 本实例名号存疑(2026-08-04,我自己查出,待 lead 定名)
+```
+派单说「verification 首次上岗、从未 spawn 过」⇒ **与盘面不符**
+`04_platform/W1C_microbench/PROVENANCE.md` 首行:「产出方:verification teammate(首次上岗)· 2026-08-01」
+⇒ 2026-08-01 已有过一个 verification 实例,产出 W1-C 微基准 CCES 工程 + README_WINDOWS + PROVENANCE
+⇒ 而 `W1_HANDOFF §0` 实例名单表里【没有 verification 这一行】(既非现役也非退役)
+⇒ ∴ 本文件里所有「第 1 实例」字样**可能有误**,已上报 lead,待定名后统一改
+⚠ 对接手者:**先读 `04_platform/W1C_microbench/PROVENANCE.md`**,那是本角色的前序产出
+```
 
 ## 1. 纪律(本实例自持)
 - ⛔ 不 commit / 不 spawn 子 agent / 不联系其他 teammate(只报 lead)

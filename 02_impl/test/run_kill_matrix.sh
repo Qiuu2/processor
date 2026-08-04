@@ -47,6 +47,7 @@ MUTS=(
   CHDSP_BROKEN_XO_UNIT        # biquad(r9):极性 mod 4 算在 dB/oct 上 ⇒ LR2/LR6 深谷
   CHDSP_BROKEN_NOTCH_EVICT_FIXED  # notch(r10):回收时把固定槽也算进候选
   CHDSP_BROKEN_NOTCH_RESET_ALL    # notch(r10):复位动态槽时把固定槽也清掉
+  CHDSP_BROKEN_GUARD_BY_S         # biquad(r11):包络守卫退回按 S 守 ⇒ CHK-B1b 声称要防的回退
 )
 
 echo "================================================================"
@@ -106,6 +107,64 @@ for M in "${MUTS[@]}"; do
     survived=$((survived+1))
   fi
 done
+
+
+# ============================================================================
+# ⭐ 杀伤覆盖率(整改 2026-08-04 · critic 02impl MAJOR-5)
+# ----------------------------------------------------------------------------
+# critic 是**手工**数出「29 条检查里 14 条没有任何变异杀得死」的,而这个比例在 r2 变差
+# (14/29 → 21/40)——**没有任何机械手段在跟踪它**,所以变差了也没人知道。
+# ⇒ 本段把它变成可测量的:
+#     全部检查 tag  ∖  在任一变异下出现过 [FAIL] 的 tag  =  【无证伪证据】的检查
+# ⇒ 并做成**棘轮**:超过 config 里登记的上限即 FAIL。
+#   ⛔ 为什么是棘轮而不是"必须为 0":现在就要求 0 会让构建长期红,而红着的闸门没人看;
+#      棘轮**只允许变好**,新增检查若不配变异会当场把数顶上去 ⇒ 立刻可见。
+#   ⚠ 那个上限是【我登记的数】,不是判据 —— 它必须随整改单调下降,⛔ 不许往上调。
+# ============================================================================
+all_tags=$(grep -oE '^\s*\[(PASS|FAIL)\] +CHK-[A-Za-z0-9]+' "$BUILD/good.txt" \
+           | grep -oE 'CHK-[A-Za-z0-9]+' | sort -u)
+killed_tags=$(cat "$BUILD"/o_*.txt "$BUILD"/fo_*.txt 2>/dev/null \
+           | grep -oE '^\s*\[FAIL\] +CHK-[A-Za-z0-9]+' \
+           | grep -oE 'CHK-[A-Za-z0-9]+' | sort -u)
+
+# ---- 两类【正当】的无杀手,各自有理由,且都是【推导出来的/显式声明的】,⛔ 不是手工塞进来的 ----
+# (a) 回归项:critic MAJOR-4 已判定它们零分辨力 —— 那正是给它们加标注的理由。
+#     ⇒ 从 good.txt 里**按标注推导**,⛔ 不手工维护名单(手工名单会变成藏东西的地方)。
+#   ⚠ 只取每行【第一个】 CHK tag —— 标注里还写着"分辨力在 CHK-Y1c"之类的**替代条**,
+#     若把整行的 tag 都抓进来,会把那些**有分辨力的替代条**也一起豁免掉(首版就是这个错:
+#     6 条回归项被数成 12 条)。⇒ 豁免名单错误地变大 = 欠账被低估。
+regress_tags=$(grep -E '保留为回归项' "$BUILD/good.txt" \
+           | sed -nE 's/^[^C]*\b(CHK-[A-Za-z0-9]+).*/\1/p' | sort -u)
+# (b) 前提自检:它们断言的是【测试台自己有分辨力】,不是产品行为
+#     ⇒ 产品变异本就不该杀死它们。必须**显式声明 + 写明理由**(同自证的 ALSO 机制)。
+PRECOND="CHK-Y1c0 CHK-Y2b0 CHK-N5a"
+PRECOND_WHY="断言测试台的工作点落在有分辨力的区间(不是产品行为)⇒ 产品变异不该杀它们"
+precond_tags=$(echo "$PRECOND" | tr ' ' '\n' | grep -c . >/dev/null; echo "$PRECOND" | tr ' ' '\n' | sort -u)
+
+uncovered=$(comm -23 <(echo "$all_tags") <(echo "$killed_tags"))
+debt=$(comm -23 <(echo "$uncovered") <(printf '%s\n' $regress_tags $precond_tags | sort -u))
+n_all=$(echo "$all_tags" | grep -c .)
+n_unc=$(echo "$uncovered" | grep -c .)
+n_reg=$(echo "$regress_tags" | grep -c .)
+n_pre=$(echo "$PRECOND" | wc -w)
+n_debt=$(echo "$debt" | grep -c .)
+
+echo
+echo "================================================================"
+echo "杀伤覆盖率(MAJOR-5)—— ⛔ 三类分开,合成一个数会掩盖差别"
+echo "  检查总数 $n_all;无任何变异杀得死 $n_unc,其中:"
+echo "    · 回归项 $n_reg 条 —— critic MAJOR-4 已判零分辨力,加标注即为此(按标注自动推导)"
+echo "    · 前提自检 $n_pre 条 —— $PRECOND_WHY"
+echo "    · ⛔ **真欠账 $n_debt 条** —— 声称测产品行为,却没有任何变异能杀死它:"
+echo "$debt" | sed 's/^/         /'
+LIMIT=${CHDSP_KILL_UNCOVERED_MAX:-14}
+if [ "$n_debt" -gt "$LIMIT" ]; then
+  echo "  ⛔ 真欠账 $n_debt > 登记上限 $LIMIT ⇒ **覆盖率变差** ⇒ FAIL"
+  echo "     ⇒ 新增检查必须同时新增能杀死它的变异,⛔ 不得只加检查"
+  survived=$((survived+1))
+else
+  echo "  ⇒ 真欠账 $n_debt ≤ 登记上限 $LIMIT ✓(棘轮:只许降,⛔ 不许上调上限)"
+fi
 
 echo
 echo "================================================================"

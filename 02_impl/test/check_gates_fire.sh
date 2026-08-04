@@ -89,7 +89,14 @@ append_mut(){ local f="$1"; local before after
 # 取消资格串:命中这些说明【命令根本没跑起来】,不是【闸门响了】
 DISQ='No such file|command not found|没有那个文件|fatal error:|Permission denied|cannot execute'
 
-BASE=/tmp/gates_base
+# ⛔ 整改 2026-08-04:原来这些工作目录是**写死的 /tmp/gates_***。
+#   而本脚本现在可以被**递归调用**(run_all 第 0 环 → 本脚本 → ensure_green 跑嵌套 run_all → …)
+#   ⇒ 两次调用共用同一批路径,**内层的清理会删掉外层的基线树**
+#   ⇒ 外层随后 `cd $BASE/02_impl` 失败 ⇒ 阴性对照红,而红的原因与被测物无关。
+#   ⇒ 改为每次调用一个唯一根目录。⚠ 这与 D6-j 同族:输出路径不仅要唯一,还要**真的属于本次跑批**。
+TMPROOT="$(mktemp -d -t chdsp_gates.XXXXXX)"
+trap 'rm -rf "$TMPROOT"' EXIT
+BASE="$TMPROOT/base"
 declare -A GREEN_DONE=()
 
 # 阴性对照:同一条命令在【未变异】的基线树上必须绿。按命令去重。
@@ -139,21 +146,21 @@ echo
 
 # ---------------------------------------------------------------- 第 1 环:严格编译 + 编译期断言
 ensure_green compile_bq "严格编译 chdsp_biquad.c" "$CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint -c src/chdsp_biquad.c -o /dev/null"
-W=/tmp/gates_a; mkwork $W
+W=$TMPROOT/a; mkwork $W
 mutate $W/02_impl/src/chdsp_config.h 's/^#  define CHDSP_OUT_FIR_TAPS        256/#  define CHDSP_OUT_FIR_TAPS        1024/' &&
 expect_red G1 "把 FIR 抽头改成超预算的 1024 ⇒ 编译期断言应拦住" \
   "$CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint -c src/chdsp_biquad.c -o /dev/null" $W "size of array .chdsp_static_assert"
 
 # ---------------------------------------------------------------- 第 2 环:魔数扫描
 ensure_green no_magic "魔数扫描" "bash test/check_no_magic.sh"
-W=/tmp/gates_b; mkwork $W
+W=$TMPROOT/b; mkwork $W
 mutate $W/02_impl/src/chdsp_delay.h 's|^#define CHDSP_DELAY_H|#define CHDSP_DELAY_H\nstatic const int chdsp_magic_probe = 512;|' &&
 expect_red G2 "在非 config 头里写入魔数 512 ⇒ 魔数扫描应拦住" \
   "bash test/check_no_magic.sh" $W "⛔|FAIL|魔数"
 
 # ---------------------------------------------------------------- 第 3b 环:负编译 · 前置存活自检臂
 ensure_green negcompile "负编译检查" "bash test/check_negcompile.sh"
-W=/tmp/gates_c; mkwork $W
+W=$TMPROOT/c; mkwork $W
 mutate $W/01_design/fixedpoint/chdsp_fixed.h 's/chdsp_apply_gain/chdsp_apply_gain_X/g' &&
 expect_red G3 "把被测接口改名 ⇒ 负编译的【前置存活自检】应拦住" \
   "bash test/check_negcompile.sh" $W "前置自检失败|⛔ FAIL"
@@ -161,22 +168,22 @@ expect_red G3 "把被测接口改名 ⇒ 负编译的【前置存活自检】应
 # ---------------------------------------------------------------- 第 3b 环:负编译 · 诊断内容判据臂
 # ⭐ 这一条测的是 critic 真正预警的场景:接口还在,但**量纲缺口被真的打开了**。
 #    前置存活自检对它无能为力(符号都在)⇒ 只有 (A) 的诊断内容判据能抓。
-W=/tmp/gates_c2; mkwork $W
+W=$TMPROOT/c2; mkwork $W
 mutate $W/01_design/fixedpoint/chdsp_fixed.h \
   's/chdsp_apply_gain(chdsp_smp_q4_27_t x, chdsp_gain_q4_27_t g/chdsp_apply_gain(chdsp_smp_q4_27_t x, chdsp_db_q23_8_t g/' &&
 expect_red G3b "让 apply_gain 改收 dB(真的打开量纲缺口,符号仍在)⇒ 负编译应拦住" \
   "bash test/check_negcompile.sh" $W "FAIL|⛔ FAIL"
 
 # ---------------------------------------------------------------- 第 3 环:模块自验
-ensure_green modules "模块自验" "$CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint test/check_modules.c src/*.c ../01_design/fixedpoint/chdsp_fixed.c -o /tmp/gbase_m -lm && /tmp/gbase_m"
-W=/tmp/gates_d; mkwork $W
+ensure_green modules "模块自验" "$CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint test/check_modules.c src/*.c ../01_design/fixedpoint/chdsp_fixed.c -o $TMPROOT/gbase_m -lm && $TMPROOT/gbase_m"
+W=$TMPROOT/d; mkwork $W
 mutate $W/02_impl/test/check_modules.c 's/p2 == 1 \&\& p4 == 0/p2 == 0 \&\& p4 == 0/' &&
 expect_red G4 "把一条断言改成错的 ⇒ 模块自验应变红并非 0 退出" \
-  "$CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint test/check_modules.c src/*.c ../01_design/fixedpoint/chdsp_fixed.c -o /tmp/g4 -lm && /tmp/g4" $W "\\[FAIL\\]"
+  "$CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint test/check_modules.c src/*.c ../01_design/fixedpoint/chdsp_fixed.c -o $TMPROOT/g4 -lm && $TMPROOT/g4" $W "\\[FAIL\\]"
 
 # ---------------------------------------------------------------- 第 4 环:杀伤矩阵 · 阴性对照臂
 ensure_green killmatrix "杀伤矩阵" "bash test/run_kill_matrix.sh"
-W=/tmp/gates_e; mkwork $W
+W=$TMPROOT/e; mkwork $W
 mutate $W/02_impl/src/chdsp_biquad.c 's|^    return ((n % 4) == 2) ? 1 : 0;.*|    return 0;|' &&
 expect_red G5 "把 LR 极性规则改坏 ⇒ 杀伤矩阵的【阴性对照】应变红" \
   "bash test/run_kill_matrix.sh" $W "阴性对照失败|存活|⛔"
@@ -186,7 +193,7 @@ expect_red G5 "把 LR 极性规则改坏 ⇒ 杀伤矩阵的【阴性对照】�
 #    **没有证明"变异活下来了会被发现"** —— 而后者才是杀伤矩阵存在的理由。
 #    做法:往 MUTS 里注入一个在被测物中【零消费者】的宏 ⇒ 该"变异"与好版本逐位等价
 #    ⇒ 必然存活 ⇒ 杀伤矩阵必须因此变红。
-W=/tmp/gates_f; mkwork $W
+W=$TMPROOT/f; mkwork $W
 if mutate $W/02_impl/test/run_kill_matrix.sh \
      's/^MUTS=(/MUTS=(\n  CHDSP_BROKEN_META_NOOP      # 元检查注入:零消费者 ⇒ 必然存活/'; then
   n_use=$(grep -rc "CHDSP_BROKEN_META_NOOP" $W/02_impl/src/*.c $W/02_impl/src/*.h $W/02_impl/test/check_modules.c 2>/dev/null | awk -F: '{s+=$2} END{print s+0}')
@@ -203,7 +210,7 @@ fi
 # 扰动 C 实现(⛔ 不动 py 轨)⇒ 两轨必须对不上 ⇒ 第 5 环变红。
 BITEXACT_CMD="$CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint test/emit_bitexact.c src/*.c ../01_design/fixedpoint/chdsp_fixed.c -o build/emit -lm && cd build && ./emit && python3 ../ref/ref_modules.py"
 ensure_green bitexact "第二轨 bit-exact" "$BITEXACT_CMD"
-W=/tmp/gates_g2; mkwork $W
+W=$TMPROOT/g2; mkwork $W
 if append_mut $W/02_impl/src/chdsp_biquad.c <<'EOF'
 /* 元检查注入:只扰动 C 轨,py 轨不动 ⇒ 第二轨必须报出差异 */
 chdsp_smp_q4_27_t chdsp_meta_perturb(chdsp_smp_q4_27_t x);
@@ -220,7 +227,7 @@ NEUTRAL_CMD="$CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint -DCHDSP_STRICT
  && $CC -std=gnu99 -O2 -I src -I ../01_design/fixedpoint -DCHDSP_STRICT_TYPES=1 test/emit_bitexact.c src/*.c ../01_design/fixedpoint/chdsp_fixed.c -o build/emit1 -lm \
  && cd build && ./emit0 && mv bitexact_bq_out.txt s0.txt && ./emit1 && diff -q s0.txt bitexact_bq_out.txt"
 ensure_green neutral "强类型中立性" "$NEUTRAL_CMD"
-W=/tmp/gates_h2; mkwork $W
+W=$TMPROOT/h2; mkwork $W
 if mutate $W/02_impl/src/chdsp_biquad.c \
      's|^    if (b->bypass) { return x; }.*|    if (b->bypass) { return x; }\n#if !CHDSP_STRICT_TYPES\n    x = chdsp_smp_from_raw(chdsp_smp_raw(x) + 1);   /* 元检查注入:只在 STRICT=0 下扰动 */\n#endif|'; then
   expect_red G8 "注入只在 STRICT=0 下生效的扰动 ⇒ 强类型中立性应变红" "$NEUTRAL_CMD" $W "differ|DIFF|不同|不一致"
@@ -232,7 +239,7 @@ fi
 #    HPF 挪到 AEC 钩子之后,但**仍在门/压缩之前** ⇒ 它没做到"挪到动态之后"。
 #    ⇒ 变异自证必须因此变红。若不红,这道闸门就抓不住假杀伤。
 ensure_green mutvalid "变异自证" "bash test/check_mutants_valid.sh"
-W=/tmp/gates_j; mkwork $W
+W=$TMPROOT/j; mkwork $W
 CH=$W/02_impl/src/chdsp_chain.c
 # 第 2 处 `hpf` 调用 = `#if CHDSP_BROKEN_HPF_AFTER_DYN` 里那一处(真正"挪到动态之后"的)
 L_HPF2=$(grep -n 'chdsp_bq_chain_process(&ch->hpf' "$CH" | sed -n 2p | cut -d: -f1)
@@ -256,7 +263,7 @@ fi
 #     ⇒ 两条杀伤记在了错的原因上)。
 #    做法:让 CHDSP_BROKEN_NO_HYST **顺手**也改掉 FIR 的透传行为
 #    ⇒ 它会动到未声明的 P_FIR_NOBYPASS ⇒ 断言② 必须变红。
-W=/tmp/gates_k; mkwork $W
+W=$TMPROOT/k; mkwork $W
 if mutate $W/02_impl/src/chdsp_fir.c \
      's/^#if CHDSP_BROKEN_FIR_NOBYPASS$/#if CHDSP_BROKEN_FIR_NOBYPASS || CHDSP_BROKEN_NO_HYST/'; then
   expect_red G11 "让一个变异顺手注入第二个缺陷 ⇒ 变异自证的【断言②】应变红" \
@@ -268,13 +275,11 @@ fi
 #    ⇒ 这一条测的是【聚合】本身。
 #    CHDSP_GATES_META=1 让被调的 run_all.sh 跳过第 0 环,避免无限递归。
 ensure_green runall "总闸门 run_all.sh" "CHDSP_GATES_META=1 bash test/run_all.sh"
-W=/tmp/gates_i; mkwork $W
+W=$TMPROOT/i; mkwork $W
 mutate $W/02_impl/test/check_modules.c 's/p2 == 1 \&\& p4 == 0/p2 == 0 \&\& p4 == 0/' &&
 expect_red G9 "弄坏一条模块自验断言 ⇒ **run_all.sh 整体**应非 0 退出(聚合不吞错)" \
   "CHDSP_GATES_META=1 bash test/run_all.sh" $W "总闸门: FAIL"
 
-rm -rf $BASE /tmp/gates_a /tmp/gates_b /tmp/gates_c /tmp/gates_c2 /tmp/gates_d /tmp/gates_e \
-       /tmp/gates_f /tmp/gates_g /tmp/gates_g2 /tmp/gates_h /tmp/gates_h2 /tmp/gates_i /tmp/gates_j /tmp/gates_k
 echo
 echo "  合计: PASS=$pass  FAIL=$fail"
 [ $fail -eq 0 ] && { echo "  ⇒ 全部闸门(含总聚合)确实会响 ⇒ PASS"; exit 0; } \

@@ -30,6 +30,9 @@
 #ifndef CHDSP_BROKEN_XO_UNIT       /* 1 = 极性规则算在 dB/oct 上(复现 2026-08-04 那条单位事故) */
 #  define CHDSP_BROKEN_XO_UNIT 0
 #endif
+#ifndef CHDSP_BROKEN_GUARD_BY_S    /* 1 = 包络守卫【退回按 S 守】—— CHK-B1b 声称要防的那次回退 */
+#  define CHDSP_BROKEN_GUARD_BY_S 0
+#endif
 
 /* ==========================================================================
  * 1. 运行时
@@ -148,11 +151,22 @@ int chdsp_bq_design(chdsp_filter_type_t type, double f0, double q, double gdb,
 
     if (!(f0 > 0.0) || f0 >= (double)CHDSP_FS_HZ * 0.5) { return CHDSP_BQ_ERR_FREQ; }
     if (!(q > 0.0)) { return CHDSP_BQ_ERR_Q; }
+#if CHDSP_BROKEN_GUARD_BY_S
+    /* ⛔ 坏版本:**退回按 S 守** —— 即前任那句「参数范围一旦放宽(S>1 …),该界立即失效」
+     *   的实现形式:拦 S>1 的架式,而**增益完全不拦**。
+     * ⇒ 这正是 CHK-B1b 的打印串里写着「⛔ 不许再退回按 S 守」的那次回退。
+     * ⇒ 本变异存在的唯一目的:证明那句话不是一句话,而是**有测试拦得住的**。 */
+    (void)gain_within_envelope;   /* 坏版本下它被架空 —— 这正是本变异要制造的缺陷 */
+    if ((type == CHDSP_FT_LOWSHELF || type == CHDSP_FT_HIGHSHELF) && q > 1.0) {
+        return CHDSP_BQ_ERR_GAIN_ENV;
+    }
+#else
     /* ⭐ 只有带增益的族受包络约束;HPF/LPF/NOTCH/ALLPASS 的解析界恒 ≤2,与增益无关 */
     if ((type == CHDSP_FT_PEAKING || type == CHDSP_FT_LOWSHELF || type == CHDSP_FT_HIGHSHELF)
         && !gain_within_envelope(gdb)) {
         return CHDSP_BQ_ERR_GAIN_ENV;
     }
+#endif
 
     w0 = 2.0 * M_PI * f0 / (double)CHDSP_FS_HZ;
     c = cos(w0); s = sin(w0);

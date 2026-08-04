@@ -137,6 +137,7 @@ declare -A CLAIM=(
   [CHDSP_BROKEN_XO_UNIT]=P_XO_UNIT
   [CHDSP_BROKEN_NOTCH_EVICT_FIXED]=P_NOTCH_EVICT
   [CHDSP_BROKEN_NOTCH_RESET_ALL]=P_NOTCH_RESET
+  [CHDSP_BROKEN_GUARD_BY_S]=P_GUARD_BY_S
 )
 
 # ---------------------------------------------------------------------------

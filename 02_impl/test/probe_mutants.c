@@ -324,5 +324,19 @@ int main(void)
         printf("PROBE P_NOTCH_RESET %u\n", (unsigned)chdsp_notch_bank_used(&b));
     }
 
+    /* ---- P_GUARD_BY_S:包络守卫守的是【增益】还是【S】-----------------------
+     * 声称改变的行为:CHK-B1b 的四个工作点的返回码。
+     * 读数 = 四个返回码打包(好版本 = OK/OK/ERR_GAIN_ENV/OK)。 */
+    {
+        chdsp_biquad_coef_t c; long v = 0;
+        int r[4]; int i;
+        r[0] = chdsp_bq_design(CHDSP_FT_HIGHSHELF, 20.0, 2.0, 15.0, &c);  /* S=2 @+15dB */
+        r[1] = chdsp_bq_design(CHDSP_FT_HIGHSHELF, 20.0, 1.0, 15.0, &c);
+        r[2] = chdsp_bq_design(CHDSP_FT_HIGHSHELF, 20.0, 1.0, 18.1, &c);  /* 超包络 */
+        r[3] = chdsp_bq_design(CHDSP_FT_HIGHSHELF, 20.0, 1.0, 17.9, &c);
+        for (i = 0; i < 4; i++) { v = v * 10 + (long)(-r[i]); }
+        printf("PROBE P_GUARD_BY_S %ld\n", v);
+    }
+
     return 0;
 }
