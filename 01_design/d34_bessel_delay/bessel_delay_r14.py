@@ -50,18 +50,26 @@ def bilinear_sections(poles, zeros_at, fc):
     wa = c * math.tan(math.pi * fc / FS)
     pd = [(1 + (wa * p) / c) / (1 - (wa * p) / c) for p in poles]
     zd = [zeros_at] * len(pd)
+    # ⭐ 每节按 C 侧 design_bessel 的口径归一化:LP 在 z=1、HP 在 z=−1 处增益 1。
+    # ⛔ 首版漏了这一步 ⇒ b 恒为精确整数 {1,2,1} ⇒ **量化对 b 是空操作**
+    #   ⇒ r15 的零点完整性与 Bessel 的 Δτ 全是伪影。τ 本身不受影响(相位与常数增益无关),
+    #     但**定点比对必须有它**。⇒ 见 r15 §「测量有效性」。
+    zt = 1.0 if zeros_at < 0 else -1.0
     out, used = [], [False] * len(pd)
     for i, p in enumerate(pd):
         if used[i]:
             continue
         if abs(p.imag) < 1e-9:
             used[i] = True
-            out.append((1.0, -zeros_at, 0.0, 1.0, -p.real, 0.0))
+            g = abs((zt - p.real) / (zt - zeros_at))
+            out.append((g, -zeros_at * g, 0.0, 1.0, -p.real, 0.0))
         else:
             for j in range(i + 1, len(pd)):
                 if not used[j] and abs(pd[j] - p.conjugate()) < 1e-7:
                     used[i] = used[j] = True
-                    out.append((1.0, -2.0 * zeros_at, zeros_at ** 2,
+                    den = (zt - p.real) ** 2 + p.imag ** 2
+                    g = abs(den / ((zt - zeros_at) ** 2))
+                    out.append((g, -2.0 * zeros_at * g, (zeros_at ** 2) * g,
                                 1.0, -2.0 * p.real, abs(p) ** 2))
                     break
     _ = zd
