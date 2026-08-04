@@ -1,7 +1,7 @@
 ================================================================================
 results_impl_r1 —— D3/D4 C 实现 · 总闸门
 门禁状态: 未过门(未经独立 critic 评审)
-时间: 2026-08-04T15:03:18+08:00
+时间: 2026-08-04T15:08:14+08:00
 deps: chdsp_biquad.h@6d95dea5f8b3472b chdsp_chain.h@8a1cb5f3dd191b6d chdsp_config.h@c4e3788447920f64 chdsp_delay.h@5fe962b7a355715a chdsp_detector.h@5174324e05b09f2f chdsp_dynamics.h@4b033e284d7a8056 chdsp_fir.h@0ceed3f2aac3eb73 chdsp_biquad.c@3706c696f5b01031 chdsp_chain.c@f1495d880c6153d6 chdsp_delay.c@17491f0d34d4c0a3 chdsp_detector.c@e8085bea08eb4748 chdsp_dynamics.c@a82dfc1b12464ca8 chdsp_fir.c@a499834ca5626c38 
       check_modules.c@6735fd8f4155ce03 ref_modules.py@1178ad663dd1e18a
 编译器: gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
