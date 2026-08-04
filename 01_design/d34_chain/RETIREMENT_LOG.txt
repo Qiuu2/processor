@@ -26,8 +26,20 @@ critic 给的修法是「补一份 `PREREG_D34_r11_addendum.txt` **或** 一份 
 ```
 r7   PASS=21 FAIL=0  RETIRED=4    ← 设计件文件头原先写的"现行结果"
 r8   PASS=22 FAIL=3  RETIRED=4    FAIL: EXP-9b 9c 9d
-r9   PASS=24 FAIL=6  RETIRED=4    FAIL: EXP-9b 9c 9d 10a2 10b
+r9   PASS=24 FAIL=6  RETIRED=4    FAIL: EXP-9b 9c 9d 10a2 10b **r9-2track**
 r10  PASS=28 FAIL=5  RETIRED=5    FAIL: EXP-9b 9c 9d 10a2 10b
+
+⛔⛔ 更正(2026-08-05,r16):本表 r9 行原先漏列 `r9-2track`。
+   ⇒ r8–r10 的 FAIL 并集是 **6 条**,不是本件下文只处理的 5 条。
+   ⇒ 第 6 条 = `r9-2track`(两轨差 61653 样本),它**不属本件的处理范围**:
+     它没有被改判为 RETIRED,而是按 `PREREG_D34_r10_addendum §1` 预先写下的分支
+     在 r10 被**按配置拆成两条** —— `r10-2trkREF`(PASS,其数可报)
+     与 `r10-2trkWOR`(退役,WORST 数值不得报出,只报量级)。
+   ⇒ ⭐ 而它被漏掉的机理值得记:本件是【退役记录】,于是我是从"被退役的那些"去清点的
+     —— 一条**处置得最干净的** FAIL,恰恰因为它没被退役而不在任何退役名单里。
+     ⇒ 判别法:清点 FAIL 去向必须从**每轮结果文件的 [FAIL] 行**取并集。
+        (机械复核:`check_r16.py` 的 B-3)
+   ⚠ verdict 修法② 写的是「8 条」;盘面并集是 6 条 ⇒ 按盘面写,⛔ 不凑数。
 r11  PASS=28 FAIL=0  RETIRED=10   ← 上述五条在本轮被改判为 RETIRED
 r12  PASS=28 FAIL=0  RETIRED=10   ← **现行结果**
 ```
