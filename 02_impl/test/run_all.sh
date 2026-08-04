@@ -22,6 +22,28 @@ else
   ROUND_SRC="⚠ 未取到评审 tag ⇒ 用 CHDSP_ROUND 或占位 rx(⛔ 不假装知道轮次)"
 fi
 OUT="$ROOT/results_impl_$ROUND.txt"
+
+# ⛔⛔ 覆盖闸门(critic 02impl-r12 m-1,2026-08-05)——【窄了洞,没堵上】的那一半
+#   上一版把轮次接到评审 tag 上,消除了"永远叫 r1"那个洞;
+#   ⇒ 而 `| tee "$OUT"` 是**截断写**:两个评审 tag 之间若有**多个工作轮**,
+#     它们导出的 ROUND 相同 ⇒ 第二轮**静默覆盖**第一轮的归档件。
+#   ⇒ ⭐ 旧洞是"永远 r1",新洞是"两轮同名" —— 洞窄了很多,而**后果是同一个**:
+#     交付树上看不出曾经有过另一次跑批(尤其是红的那次)。
+#   ⇒ ∴ 已存在即**拒绝覆盖并非 0 退出**;要覆盖必须**显式**写 CHDSP_OVERWRITE=1。
+#   ⚠ 那个显式动作就是这条闸门的全部价值:它把【静默覆盖】变成【有意识的覆盖】。
+# ⭐ 而【探针跑批不产归档件】—— 这一条比"给探针开个例外"更干净:
+#   元检查(check_gates_fire.sh)会在真实树上递归调用本脚本当基线/阳性对照,
+#   那种跑批**本来就不该**写交付树的归档件。⇒ 它写到临时文件,⛔ 从而与覆盖闸门无关。
+#   ⚠ 若只是"给 CHDSP_GATES_META 开个例外",探针仍会覆盖归档件 —— 那正是本闸门要防的事。
+if [ "${CHDSP_GATES_META:-0}" = "1" ]; then
+  OUT="$(mktemp -t chdsp_metaprobe.XXXXXX)"
+elif [ -e "$OUT" ] && [ "${CHDSP_OVERWRITE:-0}" != "1" ]; then
+  echo "⛔ 归档件已存在:$OUT" >&2
+  echo "⛔ 拒绝覆盖 —— 覆盖会让上一次跑批(可能是红的)从交付树上消失。" >&2
+  echo "   ⇒ 若这是同一工作轮的重跑,请显式: CHDSP_OVERWRITE=1 bash test/run_all.sh" >&2
+  echo "   ⇒ 若这是新的一轮,请先让 lead 打 review/02impl-r<N> tag(轮次由 tag 导出)。" >&2
+  exit 3
+fi
 rm -rf "$ROOT/build" "$ROOT/build_kill"; mkdir -p "$ROOT/build"
 sha(){ sha256sum "$1"|cut -c1-16; }
 rc_all=0
