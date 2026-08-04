@@ -166,6 +166,29 @@ if mutate $W/02_impl/src/chdsp_biquad.c \
   expect_red G8 "注入只在 STRICT=0 下生效的扰动 ⇒ 强类型中立性应变红" "$NEUTRAL_CMD" $W
 fi
 
+# ---------------------------------------------------------------- 第 3c 环:变异自证 ⭐⭐
+# ⭐ 阳性对照必须**复现前任真实踩过的那个坑**,否则"16/16 自证全过"本身也只是一段文字:
+#    把 CHDSP_BROKEN_HPF_AFTER_DYN 改回**它最初的错误形态** ——
+#    HPF 挪到 AEC 钩子之后,但**仍在门/压缩之前** ⇒ 它没做到"挪到动态之后"。
+#    ⇒ 变异自证必须因此变红。若不红,这道闸门就抓不住假杀伤。
+W=/tmp/gates_j; mkwork $W
+CH=$W/02_impl/src/chdsp_chain.c
+# 第 2 处 `hpf` 调用 = `#if CHDSP_BROKEN_HPF_AFTER_DYN` 里那一处(真正"挪到动态之后"的)
+L_HPF2=$(grep -n 'chdsp_bq_chain_process(&ch->hpf' "$CH" | sed -n 2p | cut -d: -f1)
+L_ANC=$(grep -n 'chdsp_hook_run(&ch->hook_anc' "$CH" | head -1 | cut -d: -f1)
+if [ -z "$L_HPF2" ] || [ -z "$L_ANC" ] || [ "$L_HPF2" -le "$L_ANC" ]; then
+  echo "  ⛔ G10 前提不成立:定位失败(hpf2=$L_HPF2 anc=$L_ANC)⇒ 本条元检查无意义,FAIL"
+  fail=$((fail+1))
+else
+  # ① 先删【动态之后】那一处(行号大,先删不影响 ② 的行号)
+  # ② 再把同一调用插到 ANC 钩子之后 —— 仍在门/压缩【之前】= 前任的原始错误形态
+  if mutate "$CH" "${L_HPF2}d" && \
+     mutate "$CH" "${L_ANC}a\\    chdsp_bq_chain_process(\&ch->hpf, out, out, n, \&ch->sat);"; then
+    expect_red G10 "把 HPF_AFTER_DYN 改回前任的错误形态(挪了但仍在动态之前)⇒ 变异自证应变红" \
+      "bash test/check_mutants_valid.sh" $W
+  fi
+fi
+
 # ---------------------------------------------------------------- 总聚合:run_all.sh 自己会不会红 ⭐
 # ⛔ 每一环都会红 ≠ 总闸门会红。fixedpoint/run_r3.sh 就正是"环红了、总闸门仍 exit 0"。
 #    ⇒ 这一条测的是【聚合】本身。
@@ -176,7 +199,7 @@ expect_red G9 "弄坏一条模块自验断言 ⇒ **run_all.sh 整体**应非 0 
   "CHDSP_GATES_META=1 bash test/run_all.sh" $W
 
 rm -rf /tmp/gates_a /tmp/gates_b /tmp/gates_c /tmp/gates_c2 /tmp/gates_d /tmp/gates_e \
-       /tmp/gates_f /tmp/gates_g /tmp/gates_g2 /tmp/gates_h /tmp/gates_h2 /tmp/gates_i
+       /tmp/gates_f /tmp/gates_g /tmp/gates_g2 /tmp/gates_h /tmp/gates_h2 /tmp/gates_i /tmp/gates_j
 echo
 echo "  合计: PASS=$pass  FAIL=$fail"
 [ $fail -eq 0 ] && { echo "  ⇒ 全部闸门(含总聚合)确实会响 ⇒ PASS"; exit 0; } \
