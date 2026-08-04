@@ -1,0 +1,8 @@
+# 评审锁(D6-s)—— 每行一个路径前缀,列在这里的文件在 critic 评审窗口内【不得 commit】
+# 由 .git/hooks/pre-commit 强制。⛔ 这不是提醒,是拦截。⛔ 不得用 --no-verify 绕过。
+#
+# ⚠ 只锁【没有并发写者】的件。有并发写者的(如 02_impl/,channel-dsp-2 正在整改),
+#    改用「critic 钉一个 commit SHA 评审那个快照」——冻结工作树会把整改也一起冻住。
+01_design/D3D4_CHANNEL_CHAIN_v0.1.md
+01_design/D3D4_CONSTANT_LEDGER_v0.1.md
+01_design/d34_chain/

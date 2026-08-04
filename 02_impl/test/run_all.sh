@@ -19,6 +19,19 @@ echo "      check_modules.c@$(sha $HERE/check_modules.c) ref_modules.py@$(sha $R
 echo "编译器: $($CC --version|head -1)"
 echo "================================================================================"
 
+echo; echo "### 0. ⭐ 元检查:每一道闸门真的会响吗(**前置** —— 本环不过,下面的绿都不算数)"
+if [ "${CHDSP_GATES_META:-0}" = "1" ]; then
+  echo "  (跳过:本次由 check_gates_fire.sh 递归调用,避免无限递归)"
+else
+  if bash "$HERE/check_gates_fire.sh"; then
+    echo "  ⇒ 元检查通过 ⇒ 下面各环的绿是有意义的"
+  else
+    echo "  ⛔ 元检查失败:至少一道闸门弄坏被测物后仍不变红"
+    echo "  ⛔ ⇒ **下面各环的 PASS 不构成证据**(治理 §5 假绿纪律)"
+    rc_all=1
+  fi
+fi
+
 echo; echo "### 1. 严格编译(-Werror,强类型)"
 ok=1
 for f in "$ROOT"/src/*.c; do
@@ -37,8 +50,21 @@ $CC $CFLAGS -DCHDSP_STRICT_TYPES=1 "$HERE/check_modules.c" "$ROOT"/src/*.c "$FIX
 echo; echo "### 3b. 负编译检查(硬闸门,已按 critic BLOCKER 重做)"
 bash "$HERE/check_negcompile.sh" || rc_all=1
 
+echo; echo "### 3c. ⭐ 变异自证(硬闸门 · **杀伤矩阵的前置**)"
+echo "  ⇒ 每个变异先自证「它确实改变了它声称要改变的那个行为」,否则杀伤率的分母不可信"
+if bash "$HERE/check_mutants_valid.sh"; then
+  mut_valid=0
+else
+  mut_valid=1; rc_all=1
+fi
+
 echo; echo "### 4. 杀伤矩阵(硬闸门)"
 bash "$HERE/run_kill_matrix.sh" || rc_all=1
+if [ $mut_valid -ne 0 ]; then
+  echo "  ⛔ 上一环(变异自证)未通过 ⇒ **本轮杀伤率作废**"
+  echo "  ⛔ ⇒ 上面的『N/N 全部被杀死』不构成证据:至少一个变异没做到它声称的事,"
+  echo "       它的『被杀死』是一条【假的杀伤记录】,而假杀伤是隐形的。"
+fi
 
 echo; echo "### 5. 第二轨 bit-exact(硬闸门)"
 $CC $CFLAGS -DCHDSP_STRICT_TYPES=1 "$HERE/emit_bitexact.c" "$ROOT"/src/*.c "$FIXED/chdsp_fixed.c" \
@@ -60,5 +86,29 @@ else echo "  ⛔ STRICT=1 与 =0 数值不一致"; rc_all=1; fi
 echo; echo "================================================================================"
 [ $rc_all -eq 0 ] && echo "总闸门: PASS(全部环节通过)" || echo "⛔ 总闸门: FAIL"
 echo "================================================================================"
+exit $rc_all           # ⭐ 见下方整改说明:块的退出码必须由块自己给出
 } 2>&1 | tee "$OUT"
+# ============================================================================
+# ⛔⛔ 2026-08-04 整改 · channel-dsp 实例 #2 —— 本文件自己就是"不会响的闸门"
+# ----------------------------------------------------------------------------
+# 原写法:
+#     rc_all=0
+#     { ... rc_all=1 ... } 2>&1 | tee "$OUT"
+#     exit $rc_all
+# `{ ... } | tee` 使块运行在**子 shell** 里 ⇒ 块内对 rc_all 的赋值**出不来**
+# ⇒ `exit $rc_all` 取的永远是外层那个 0 ⇒ **本脚本恒 exit 0。**
+#
+# 实证(2026-08-04,拷贝树上做):弄坏 check_modules.c 的一条断言 ⇒
+#     结果文件里白纸黑字「⛔ 总闸门: FAIL」,而 `echo $?` = **0**。
+#
+# ⇒ 这与 critic 在 fixedpoint/run_r3.sh 抓到的 MAJOR-1 ② **是同一个缺陷**,
+#   只是长在**总闸门**上 —— 即:六道闸门每一道都可能红,而**总闸门永远绿**。
+# ⇒ 自查那句「这个检查失败时,会阻止什么?」在本文件上的答案曾经是:**什么也不阻止。**
+# ⇒ 前任的元检查 check_gates_fire.sh 没抓到它,因为它只测【单道闸门会不会红】,
+#   **没测【总闸门会不会聚合】** ⇒ 已补 G9 专测这一条。
+#
+# 修法:块内 `exit $rc_all`,块外用 PIPESTATUS 取回(⛔ tee 的退出码恒 0)。
+# ============================================================================
+rc_all=${PIPESTATUS[0]}
+[ $rc_all -eq 0 ] || echo "⛔ 总闸门 FAIL ⇒ 本脚本以 $rc_all 退出,阻止交付" >&2
 exit $rc_all

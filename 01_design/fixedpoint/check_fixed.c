@@ -441,17 +441,30 @@ int main(void)
     printf("CHK-7b dB→线性:真实精度包络 + 误差来源拆分\n");
     {
         int32_t q; int32_t bound_q8 = CHDSP_DB_MAX_Q8; double tab_worst = 0.0;
-        /* ① 从高 dB 往低 dB 扫,找 max|误差| 首次超过 0.01 dB 的点 */
+        /* ① 从高 dB 往低 dB 扫,找 max|误差| ≤0.01 dB 成立的真实下界
+         *
+         * ⭐ 2026-08-04 整改 · critic m-2:含端点错一格。
+         *   原写法在 run_max > 0.01 **之后**才记 bound_q8 ⇒ 报的是**首个越界点**
+         *   (−109.8164 dB,|err| = 0.010003 > 0.01),而不是**最后一个合规点**
+         *   (−109.8125 dB,|err| = 0.006097)。⇒ 报出来的"下界"本身就不满足它声称的判据。
+         *   ⇒ 改为在**判据仍成立时**才更新 bound_q8。
+         *   ⚠ 这是"不移动标杆"的同档要求:标杆本身也要放在对的格上。
+         *   两个读数与 critic 独立复核逐位相符 [L2/宿主实测 + critic 独立复核] */
         double run_max = 0.0;
+        int32_t first_viol_q8 = CHDSP_DB_MUTE_Q8;
         for (q = CHDSP_DB_MAX_Q8; q > CHDSP_DB_MUTE_Q8; q--) {
             chdsp_gain_q4_27_t g = chdsp_db_to_gain(chdsp_db_from_raw(q));
             double got = chdsp_gain_to_f64(g);
             double exact = pow(10.0, (double)q / 256.0 / 20.0);
             double e = (got > 0.0) ? fabs(20.0*log10(got/exact)) : 999.0;
             if (e > run_max) { run_max = e; }
-            if (run_max > 0.01) { bound_q8 = q; break; }
+            if (run_max > 0.01) { first_viol_q8 = q; break; }
+            bound_q8 = q;                    /* ⭐ 仍合规才记 */
         }
-        printf("      max|误差| ≤0.01 dB 成立的**真实 dB 下界** = %.3f dB\n", bound_q8/256.0);
+        printf("      max|误差| ≤0.01 dB 成立的**真实 dB 下界** = %.4f dB(最后一个合规格)\n",
+               bound_q8/256.0);
+        printf("      (首个越界格 = %.4f dB —— ⛔ 这个才是原先被误报为「下界」的那个)\n",
+               first_viol_q8/256.0);
         /* ② 查表贡献:用 double 复算同一算法但不量化到 Q4.27 */
         for (q = CHDSP_DB_MUTE_Q8 + 1; q <= CHDSP_DB_MAX_Q8; q++) {
             /* 复现 chdsp_db_to_gain 的查表步骤,但保留 double 精度输出。

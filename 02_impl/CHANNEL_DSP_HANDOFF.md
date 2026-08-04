@@ -10,7 +10,7 @@
 
 ## §0 当前在做什么(⭐ 恢复工作先读这一节)
 
-**状态:① 已完成。正在做 ②(`01_design/fixedpoint/check_negcompile.sh` 的 BLOCKER)。**
+**状态:①② 已完成(含 critic MAJOR-1 与 m-2)。正在做 ③(元检查覆盖 + 接进 run_all.sh)。**
 
 ### ⚠ 上岗时校正了 lead 派单里的两处事实(先看这个,免得重做)
 

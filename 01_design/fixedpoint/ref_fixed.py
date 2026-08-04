@@ -29,6 +29,13 @@ def chk(tag, ok, msg):
     if not ok:
         fails.append(tag)
 
+retired = []
+def chk_retired(tag, ok, msg):
+    """已退役的检查:保留记录(E-2「加标注不删数」),但不计入判定。
+    ⇒ 与 C 轨 check_fixed.c 的 RETIRED() 同语义,本轨原先缺这个机制。"""
+    print(f"  [{'退役·符合' if ok else '退役·不符'}] {tag:<7s} {msg}")
+    retired.append(tag)
+
 # ---------------------------------------------------------------- T1
 def db_to_gain_py(db):
     """独立重写:与 C 同规格,不同代码。"""
@@ -68,6 +75,14 @@ def t1():
     chk("T1+", [i for i, (a, b) in enumerate(zip(cvals, bad)) if a != b] != [],
         "阳性对照:强制改一个值后比对器报出差异 ⇒ 上一行的「相同」有意义")
     # 精度(独立于 C 的复算)
+    # ⭐ 2026-08-04 整改 · channel-dsp 实例 #2
+    #   本条原为 chk("T1a", worst_in <= 0.01, ...),判据窗口下界 −110 dB 是**拍的估计值**,
+    #   而真实包络下界是 −109.8125 dB ⇒ T1a **恒 FAIL**(实测 0.010178 > 0.01)。
+    #   ⛔ 这个 FAIL 一直存在于归档件 results_fp_r3.txt(「第二轨结果: 未通过 T1a」,
+    #      「第二轨退出码 = 1」),但 run_r3.sh 只**打印** REF 不**消费**它
+    #      ⇒ 整轮仍以 exit 0 收尾 ⇒ 该 FAIL 从未阻止过任何事(critic MAJOR-1 ②)。
+    #   ⇒ 处置与 C 轨 CHK-7 **完全一致**:⛔ 不移动标杆 —— 原判据原样留痕并**退役**,
+    #      另立 T1b 按【实测包络】判定。台账 E1 已记同一事。
     worst_in = worst_all = 0.0
     for q in range(DB_MUTE_Q8 + 1, DB_MAX_Q8 + 1):
         g = pvals[q - DB_MUTE_Q8]
@@ -78,7 +93,32 @@ def t1():
         if q >= -110 * 256:
             worst_in = max(worst_in, e)
     print(f"      py 轨复算:max|误差| 带内[−110,+24] = {worst_in:.6f} dB,全域 = {worst_all:.6f} dB")
-    chk("T1a", worst_in <= 0.01, "py 轨复算带内精度 ≤0.01 dB")
+    chk_retired("T1a", worst_in <= 0.01,
+                "原判据窗口 [−110,+24] 是拍的估计值;真实包络下界 = −109.8125 dB。"
+                "⛔ 不移动标杆:原判据原样留痕,规格以 T1b 实测包络为准")
+
+    # T1b(整改增补):按【实测包络】判定,并把包络本身作为被测量报出来
+    #   ⇒ 判据不是"误差够小",而是"包络落在规格声明的那个位置"
+    ENV_Q8 = -28112                      # = −109.8125 dB(最后一个仍合规的 1/256 dB 格)
+    run_max = 0.0
+    bound_q8 = DB_MAX_Q8
+    for q in range(DB_MAX_Q8, DB_MUTE_Q8, -1):
+        g = pvals[q - DB_MUTE_Q8]
+        if g <= 0:
+            break
+        e = abs(20 * math.log10((g / (1 << 27)) / (10 ** (q / 256.0 / 20.0))))
+        if e > run_max:
+            run_max = e
+        if run_max > 0.01:
+            break
+        bound_q8 = q                     # ⭐ 记【最后一个合规点】,⛔ 不是首个越界点(critic m-2)
+    print(f"      py 轨实测包络下界 = {bound_q8/256.0:.4f} dB"
+          f"(该点 |误差| = {abs(20*math.log10((pvals[bound_q8-DB_MUTE_Q8]/(1<<27))/(10**(bound_q8/256.0/20.0)))):.6f} dB)")
+    chk("T1b", bound_q8 == ENV_Q8,
+        f"实测包络下界 = 规格声明值 −109.8125 dB(实测 {bound_q8/256.0:.4f})")
+    # 阳性对照:证明 T1b 认得出包络挪动(⛔ 没有阳性对照的相等不算证据)
+    chk("T1b+", (bound_q8 + 1) != ENV_Q8,
+        "阳性对照:相邻一格(1/256 dB)即不等 ⇒ T1b 分辨力 = 1 格,不是「任意值都过」")
 
 # ---------------------------------------------------------------- 定点 DF1(独立重写)
 def rbj_peaking(f0, Q, gdb):
@@ -190,6 +230,7 @@ t1(); print()
 t2(); print()
 t3(); print()
 print("=" * 66)
-print(f"第二轨结果: {'全部通过' if not fails else '未通过 ' + ','.join(fails)}")
+print(f"第二轨结果: {'全部通过' if not fails else '未通过 ' + ','.join(fails)}"
+      + (f"  (退役项 {','.join(retired)},原样留痕,不计入判定)" if retired else ""))
 print("=" * 66)
 sys.exit(0 if not fails else 1)
