@@ -1,0 +1,9 @@
+未经 critic 评审 —— r88 单格 tag=t02s1  [L2/宿主仿真]  预注册 = PREREG_r88b.txt
+deps: nhs.py@b77a0524669386af clrig.py@ed46450303b0423c modal_rig.py@18facf9df15fbe5e
+工作点:T60=0.2 seed=1 / src=-20.0 dBFS(标称) / T_OBS=12s / bw_oct=1/5 / NN=8 槽全空 / T_low=-45 / duck **消融** / 修法全关 / f_cut=8000 / STEP=0.5
+plant:P_stat=clrig 噪声RIR / P_conf=模态 (5.8, 4.6, 3.75) (100 m³) / P_mod9=模态 (2.2, 2.1, 1.95) (9.01 m³,**阳性对照,全段 M<1**;仅 T60=0.5)
+⚠ 模态 plant 的 seed 只换**源/收位置**(几何固定)⇒ 种子间变异性在构造上更小,⛔ 散布不得与统计臂直接比
+
+    plant       m0    m_NHS    ΔMSG    挂陷  <300Hz      深度中位     末−首dB             窗判定    f_trig
+   P_stat   -12.93   -10.93    2.00     3       0    -15.00     -3.02            ✅ 干净    1034.0
+          频点 [1033.6, 2517.1, 5503.9]
