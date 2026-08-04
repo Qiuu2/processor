@@ -5,13 +5,32 @@ set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"; ROOT="$(cd "$HERE/.." && pwd)"
 FIXED="$(cd "$ROOT/../01_design/fixedpoint" && pwd)"
 CC="${CC:-gcc}"; CFLAGS="-std=gnu99 -O2 -Wall -Wextra -Werror -I$ROOT/src -I$FIXED"
-OUT="$ROOT/results_impl_r1.txt"
+
+# ⛔⛔ 轮次(critic 02impl-r11 MAJOR-1,2026-08-05 修)
+#   原先 OUT 写死 `results_impl_r1.txt`,而它当时已经是【第 11 轮】——
+#   每一轮覆盖上一轮,且**文件名本身在误导**:按名字取用的人会以为拿到的是 r1。
+#   ⇒ critic 原话:「git 里那 34 个版本救得回历史,救不回一个按文件名取用的人。」
+# ⭐ 轮次不手工维护 —— 它由【评审 tag】自动导出,⛔ 不会因为有人忘了改而过期:
+#   本轮 = 最大的 `review/02impl-rN` + 1(tag 由 lead 在送审时打,∴ 两 tag 之间就是下一工作轮)
+#   ⇒ 拿不到 git/tag 时退回 `CHDSP_ROUND` 环境变量,再退回 `x`(⛔ 不假装知道轮次)
+_last_tag_round="$(git -C "$ROOT" tag 2>/dev/null | sed -n 's|^review/02impl-r\([0-9]\{1,\}\)$|\1|p' | sort -n | tail -1)"
+if [ -n "${_last_tag_round:-}" ]; then
+  ROUND="r$((_last_tag_round + 1))"
+  ROUND_SRC="自动导出:最大评审 tag review/02impl-r${_last_tag_round} + 1"
+else
+  ROUND="${CHDSP_ROUND:-rx}"
+  ROUND_SRC="⚠ 未取到评审 tag ⇒ 用 CHDSP_ROUND 或占位 rx(⛔ 不假装知道轮次)"
+fi
+OUT="$ROOT/results_impl_$ROUND.txt"
 rm -rf "$ROOT/build" "$ROOT/build_kill"; mkdir -p "$ROOT/build"
 sha(){ sha256sum "$1"|cut -c1-16; }
 rc_all=0
 {
 echo "================================================================================"
-echo "results_impl_r1 —— D3/D4 C 实现 · 总闸门"
+echo "results_impl_$ROUND —— D3/D4 C 实现 · 总闸门"
+echo "⭐ 本轮 = $ROUND   ($ROUND_SRC)"
+echo "   ⚠ 轮次沿革(各轮总闸门状态 / FAIL 去向 / 引入后又被移除的东西)见"
+echo "     02_impl/CHANNEL_DSP_HANDOFF.md §0.2【轮次沿革】"
 echo "门禁状态: 未过门(未经独立 critic 评审)"
 echo "时间: $(date -Iseconds)"
 echo "deps: $(for f in "$ROOT"/src/*.h "$ROOT"/src/*.c; do printf '%s@%s ' "$(basename $f)" "$(sha $f)"; done)"

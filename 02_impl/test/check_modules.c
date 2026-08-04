@@ -29,7 +29,9 @@
 
 static int g_fail = 0, g_pass = 0, g_regress = 0;
 /* ⭐ 整改 2026-08-04 · critic MAJOR-4:
- * 交付件 results_impl_r1.txt 是 CTO / lead / 下一个 critic 读的**唯一入口**,
+ * 交付件 results_impl_rN.txt(N = 轮次,由评审 tag 自动导出;⚠ 2026-08-05 前它写死叫
+ * `results_impl_r1.txt` 而当时已是第 11 轮 —— critic 02impl-r11 MAJOR-1)
+ * 是 CTO / lead / 下一个 critic 读的**唯一入口**,
  * 而它原先只有一行「合计: PASS=29」——**没有任何标记区分**
  *   ①「这条有证伪证据(有变异杀得死它)」与
  *   ②「作者已知它证不了它名字里那件事」。
