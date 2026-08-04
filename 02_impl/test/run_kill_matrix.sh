@@ -166,6 +166,23 @@ else
   echo "  ⇒ 真欠账 $n_debt ≤ 登记上限 $LIMIT ✓(棘轮:只许降,⛔ 不许上调上限)"
 fi
 
+# ---- 棘轮的【已知失效模式】:它只在有人试图上调时才响 ----
+# lead 指出:**「不新增检查」本身永远不会触发棘轮** ⇒ 一个人可以靠不写新检查让它永远安静,
+# 而那正是我们最不想要的行为。⇒ 棘轮只防退步,不促前进。
+# ⇒ 处置:记账 + 停滞时**显眼报出**(⛔ 不 FAIL —— 欠账不降可能是本轮在做别的,
+#   把它做成 FAIL 会逼人为了绿而乱补变异,那比停滞更坏)。
+HIST="$HERE/kill_coverage_history.txt"
+echo "$(date -Iseconds) debt=$n_debt limit=$LIMIT total=$n_all" >> "$HIST"
+n_same=$(awk '{print $2}' "$HIST" | tail -5 | sort -u | wc -l)
+n_rows=$(wc -l < "$HIST")
+if [ "$n_rows" -ge 3 ] && [ "$n_same" -eq 1 ]; then
+  echo
+  echo "  ⚠⚠ 停滞告警:最近 $(( n_rows < 5 ? n_rows : 5 )) 轮「真欠账」一直是 $n_debt,没有下降。"
+  echo "     ⇒ 棘轮**只防退步、不促前进** —— 不写新检查就永远不会触发它。"
+  echo "     ⇒ 若本轮确实在做别的,忽略;若连续多轮如此,说明这笔账在被绕开。"
+  echo "     ⇒ 账本:$HIST"
+fi
+
 echo
 echo "================================================================"
 if [ $survived -eq 0 ]; then
