@@ -369,3 +369,72 @@ chain
   [已杀死] CHDSP_BROKEN_BESSEL_RBJ  ⇐ CHK-X2 
   [已杀死] CHDSP_BROKEN_XO_UNIT  ⇐ CHK-B3 CHK-B3s CHK-B3s+ CHK-C2 
   [已杀死] CHDSP_BROKEN_NOTCH_EVICT_FIXED  ⇐ CHK-N1 CHK-N3 CHK-N4 CHK-A2 
+  [已杀死] CHDSP_BROKEN_NOTCH_RESET_ALL  ⇐ CHK-N4 
+  [已杀死] CHDSP_BROKEN_GUARD_BY_S  ⇐ CHK-B1 CHK-B1b 
+  [已杀死] CHDSP_BROKEN_NOTCH_MRU  ⇐ CHK-N2 
+  [已杀死] CHDSP_BROKEN_NOTCH_NOWRITE  ⇐ CHK-N5 CHK-A1 CHK-A3 
+  [已杀死] CHDSP_BROKEN_HOOK_SKIP  ⇐ CHK-C4 
+  [已杀死] CHDSP_BROKEN_NO_SATTEL  ⇐ CHK-M6b 
+  [已杀死] CHDSP_BROKEN_SLOPE_CONV  ⇐ CHK-B3c 
+  [已杀死] CHDSP_BROKEN_XO_NORANGE  ⇐ CHK-B3u 
+  [已杀死] CHDSP_BROKEN_BUTTER_KOFF  ⇐ CHK-B3s CHK-X3 CHK-X4 
+  [已杀死] CHDSP_BROKEN_BESSEL_SCALE  ⇐ CHK-X1 CHK-X2 
+  [已杀死] CHDSP_BROKEN_LR_ODD_OK  ⇐ CHK-X5 
+  [已杀死] CHDSP_BROKEN_FIRSTORDER  ⇐ CHK-X3 CHK-X6 
+  [已杀死] CHDSP_BROKEN_SMOOTH_FIXED  ⇐ CHK-D3 CHK-Y3 CHK-D1b 
+  [已杀死] CHDSP_BROKEN_GATE_ENUM  ⇐ CHK-Y1a 
+  [已杀死] CHDSP_BROKEN_COEF_NOCONST  ⇐ CHK-M6a 
+  [已杀死] CHDSP_BROKEN_AFC_AFTER_NOTCH  ⇐ CHK-A3 
+  [已杀死] CHDSP_BROKEN_BESSEL_FREEQ  ⇐ CHK-X7 
+
+================================================================
+杀伤覆盖率(MAJOR-5)—— ⛔ 三类分开,合成一个数会掩盖差别
+  检查总数 51;无任何变异杀得死 10,其中:
+    · 回归项 6 条 —— critic MAJOR-4 已判零分辨力,加标注即为此(按标注自动推导)
+    · 前提自检 6 条 —— 断言测试台的工作点落在有分辨力的区间(不是产品行为)⇒ 产品变异不该杀它们
+    · ⛔ **真欠账 0 条** —— 声称测产品行为,却没有任何变异能杀死它:
+         
+  ⇒ 真欠账 0 ≤ 登记上限 0 ✓(棘轮:只许降,⛔ 不许上调上限)
+
+  ⚠⚠ 停滞告警:最近 5 轮「真欠账」一直是 0,没有下降。
+     ⇒ 棘轮**只防退步、不促前进** —— 不写新检查就永远不会触发它。
+     ⇒ 若本轮确实在做别的,忽略;若连续多轮如此,说明这笔账在被绕开。
+     ⇒ 账本:/home/it1234/processor/02_impl/test/kill_coverage_history.txt
+
+================================================================
+杀伤矩阵:37/37 全部被杀死  ⇒ PASS
+
+### 5. 实现一致性核 + 铁律七的独立解析轨(硬闸门)
+  ⛔ 两件事分开报(整改 · critic 02impl MAJOR-1):
+     (A) 实现一致性核 —— ref_modules.py 是**同式转写**,只证转写忠实,⛔ 不证算法对
+     (B) 铁律七的独立轨 —— 拿解析式做参照,与实现无共用代码
+  ⚠ 原称「第二轨 bit-exact」,那个定级越了铁律七的界
+已写出 bitexact_{bq_in,bq_out,det_out,lim_gdb,det_step}.txt
+==================================================================
+ref_modules.py — (A) 实现一致性核 + (B) 铁律七的独立解析轨
+==================================================================
+--- (A) 实现一致性核:同式转写 ⇒ 只证【转写忠实】,⛔ 不证算法对 ---
+  [PASS] T1        biquad DF1+EF 逐位相同(20000 样本,不等 0 处)
+  [PASS] T1+       阳性对照:强制改一个值后比对器报出差异 ⇒ 上一行的「相同」有意义
+  [PASS] T2        检测器功率状态逐位相同(20000 样本,不等 0 处)
+  [PASS] T2+       阳性对照:强制改一个值后比对器报出差异 ⇒ 上一行的「相同」有意义(整改 · critic MAJOR-2:T2 原先没有阳性对照)
+
+--- (B) 铁律七的独立解析轨:拿【解析式】做参照,⛔ 与实现无共用代码 ---
+  [PASS] T3a       前提自检:限幅器增益**真的动了**(205 个不同取值)⇒ 下面几条才有内容
+  [PASS] T3        解析律①:限幅器只衰减不放大(max gdb = +0.0000 dB ≤ 0)
+  [PASS] T3b       解析律②:最深衰减 -5.691 dB ≈ 阈值−输入峰值 -6.000 dB(容差 1.5 dB;⚠ 峰值检测器的跟踪误差使二者不会精确相等)
+  [PASS] T4a       前提自检:阶跃响应真的在爬升(终值 1125899840421218,7991 个不同取值)
+  [PASS] T4        解析:到达 1−1/e 用了 479 样本 = 0.998·tau(一阶节应 ≈1.0;容差 ±25%)
+  [PASS] T4+       阳性对照:若按 4×tau 判,同一数据给 0.249 ⇒ 落在判据外 ⇒ T4 不是恒真
+==================================================================
+(A) 实现一致性核 + (B) 独立解析轨: 全部通过
+==================================================================
+
+### 6. 强类型开关的数值中立性(硬闸门)
+已写出 bitexact_{bq_in,bq_out,det_out,lim_gdb,det_step}.txt
+  STRICT=1 vs 0:逐位 SAME ✓
+  阳性对照:强制错值 ⇒ DIFF ✓ ⇒ 上一行的 SAME 有意义
+
+================================================================================
+总闸门: PASS(全部环节通过)
+================================================================================
