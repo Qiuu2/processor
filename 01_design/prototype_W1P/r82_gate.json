@@ -1,0 +1,1 @@
+{"failA": [[0.2, 1, Infinity], [0.5, 0, Infinity], [0.5, 1, Infinity]], "failB": [[0.2, 0, 0.49359920729934537], [0.2, 1, Infinity], [0.5, 0, 0.9080244022807236], [0.5, 1, Infinity]], "passed": false}
