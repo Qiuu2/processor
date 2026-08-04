@@ -22,8 +22,22 @@ import hashlib
 D = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(D, "d34_analysis.py")
 
-# ⛔ 登记在案的基线 FAIL(⚠ 改这一行 = 改标杆,须与 PREREG 一起改)
-BASELINE_EXPECTED = {"EXP-5c"}
+# ⛔⛔ 登记**不在本文件里**(critic D3D4-r3 MAJOR-2 修法①,2026-08-05)
+#   上一版把 `BASELINE_EXPECTED = {"EXP-5c"}` 写死在这里,而**本文件名带轮次号**。
+#   ⇒ critic 用本项目自己的历史当证据:本文件模块头就写着「r16 起机械化;此前是手工跑 + 手工抄表」
+#     = **驱动件是每轮换的** ⇒ r17 写新驱动件时,**没有任何东西强迫它带上这份登记**。
+#   ⇒ ⛔ 那不需要任何人想洗掉它 —— 只需要有人重写驱动件时没读本文件。
+# ⇒ ∴ 登记移到**不带轮次号**的 `BASELINE_FAILS.txt`;本文件只读它。
+#   ⛔ 读不到就【中止】,⛔ 不回退到内嵌默认值 —— 回退等于把逃逸路径又开回来。
+_REG = os.path.join(D, "BASELINE_FAILS.txt")
+if not os.path.exists(_REG):
+    sys.stderr.write(f"⛔ 找不到登记件 {_REG};⛔ 拒绝在无登记的情况下跑杀伤矩阵。\n")
+    sys.exit(2)
+BASELINE_EXPECTED = set()
+for _ln in open(_REG, encoding="utf-8"):
+    _ln = _ln.strip()
+    if _ln and not _ln.startswith("#") and not _ln.startswith("|"):
+        BASELINE_EXPECTED.add(_ln.split("|")[0].strip())
 
 MUTANTS = ["polarity", "qcoef", "freeq", "hpf_order", "xo_order", "qcoef_and_freeq"]
 

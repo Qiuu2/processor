@@ -39,14 +39,17 @@ if BROKEN and BROKEN not in _KNOWN_BROKEN:
     sys.exit(2)
 
 _pass, _fail, _retired = 0, 0, 0
+_decided = set()          # ⭐ 本次跑批实际出现过的【判定项】标识(META-1 用)
 def OK(tag, cond, msg):
     global _pass, _fail
+    _decided.add(tag)
     if cond: _pass += 1
     else:    _fail += 1
     print(f"  [{'PASS' if cond else 'FAIL'}] {tag:<9s} {msg}")
 
 def RETIRED(tag, cond, msg):
-    """已退役的检查:保留记录(E-2 加标注不删数),不计入判定。"""
+    """已退役的检查:保留记录(E-2 加标注不删数),不计入判定。
+    ⛔ 退役项【不进 _decided】—— 那正是 META-1 要抓的一种消失方式。"""
     global _retired
     _retired += 1
     print(f"  [{'退役·符合' if cond else '退役·不符'}] {tag:<9s} {msg}")
@@ -471,14 +474,59 @@ d3_unity = noise_floor_interstage(_hpf1 + _unity8)
 d3_worst = noise_floor_interstage(_hpf1 + _worst8)
 d3_model = NOISE_PER_SECTION_DBFS + 10*math.log10(9)
 print(f"      含级间增益的复算(D3 输入链,9 量化器):")
-print(f"        ① 各节增益=1         ⇒ {d3_unity:8.2f} dBFS(直接相加模型 {d3_model:.2f})")
-print(f"        ④ 8 段全 +15 dB 同频 ⇒ **{d3_worst:8.2f} dBFS**(差 {d3_worst-d3_unity:+.2f} dB)")
+print(f"        ① 各节增益=1                        ⇒ {d3_unity:8.2f} dBFS(直接相加模型 {d3_model:.2f})")
+print(f"        ② 8 段 +15 dB 同频 @1 kHz, Q=1.4(**默认 Q**)⇒ {d3_worst:8.2f} dBFS"
+      f"(差 {d3_worst-d3_unity:+.2f} dB)")
+print(f"          ⛔ 上面这一格【不是最坏合法配置】—— 它是【默认点】,见下 EXP-5c 的扫描")
 OK("EXP-5b", abs(d3_unity - d3_model) < 0.01,
    f"含级间增益的模型在【各节增益=1】时回到直接相加({d3_unity:.2f} vs {d3_model:.2f})"
    f" ⇒ 它没写错,且能认出'没有级间增益'这件事")
-OK("EXP-5c", d3_worst <= -106.0,
-   f"⛔ **§6.2-4 明文允许**的最坏合法配置下链末噪声底 {d3_worst:.2f} dBFS ≤ −106(PRD)"
-   f" ⇒ 实测突破 {d3_worst+106:.2f} dB")
+
+# ---- EXP-5c(r17 重写 · critic D3D4-r3 BLOCKER-1 修法②)------------------------
+# ⛔⛔ 上一版 EXP-5c 把工作点**钉死在 (f0=1000, Q=1.4)** —— 而 Q=1.4 是参数字典的**默认值**,
+#   不是量程端点(字典 `band_q ∈ [0.02, 50]`,设计件 :326)。
+#   ⇒ 它报的 −76.97 / 破 29.03 dB 被写成了「最坏合法配置」,而 lead 已把 29.03 报给 CTO。
+#   ⇒ ⭐ 三层(我用独立实现逐层复核过,`check_r17_worstQ.py` R1/R2/R3):
+#     ① 连它自己那一行(Q=1.4)的最坏点都不是:f0 挪到 12500 ⇒ −68.14 ⇒ 破 37.86
+#     ② 字典全范围最坏 = (f0=12500, Q=0.02) ⇒ −54.38 ⇒ **破 51.62 dB**
+#     ③ 「同频叠加」这根轴选错了:8 段**散开**但 Q 取下限 ⇒ −68.37,仍比同频+默认Q 差 8.59 dB
+#        ⇒ ⭐ **承重的轴是 Q(低 Q ⇒ 峰更宽 ⇒ 噪声增益的频率积分更大),不是同频。**
+# ⇒ ∴ 本轮改成【在参数字典自己声明的范围上求最坏】,⛔ 不再钉一个点。
+#   ⭐ 这样它自带 LESSONS B-4(极值必须带取值范围),且**日后 D2 改 band_q 量程时它会自动跟着变**。
+# ⚠ 若判 Q=0.02 不该可达 ⇒ 要改的是**参数字典**,⛔ 不是改本判据
+#   ——「把测量点挪回安全区」正是本条预注册明令禁止的那件事。
+PEQ_Q_RANGE = (0.02, 50.0)          # 设计件 :326 `band_q[k]`
+PEQ_GAIN_MAX = 15.0                 # 设计件 :325 `band_gain[k]` 上限(实测 +15 比 −15 差 118.6 dB
+                                    #   ⇒ 取 + 号是最坏,⛔ 这一条是实测的,不是假定的)
+_F_GRID = [32., 63., 125., 250., 500., 1000., 2000., 4000., 8000., 12500., 16000., 20000.]
+_Q_GRID = [0.02, 0.10, 0.50, 1.40, 50.0]
+print(f"\n    EXP-5c 在**参数字典范围**上求最坏(band_q ∈ {PEQ_Q_RANGE},band_gain = +{PEQ_GAIN_MAX:.0f} dB)")
+print(f"      ⛔ ⛔ 上一版把工作点钉死在【默认 Q = 1.4 / f0 = 1000】并称之为「最坏合法配置」——")
+print(f"         那是【默认点】不是【最坏点】(critic D3D4-r3 BLOCKER-1)。本版扫量程。")
+_qf_hdr = "Q \\ f0"
+print(f"      {_qf_hdr:>8s}" + "".join(f"{f:>8.0f}" for f in _F_GRID))
+_w5c = (-1e9, None, None)
+for _qq in _Q_GRID:
+    _cells = []
+    for _f0 in _F_GRID:
+        _v = noise_floor_interstage(
+            _hpf1 + [qsec(rbj_peaking(_f0, _qq, PEQ_GAIN_MAX)) for _ in range(8)], NW=1024)
+        _cells.append(_v)
+        if _v > _w5c[0]:
+            _w5c = (_v, _f0, _qq)
+    print(f"      {_qq:>8.2f}" + "".join(f"{v:>8.1f}" for v in _cells))
+# 最坏格用与其余各处相同的 NW=4096 复算(⚠ 实测 NW 1024→16384 该值动 0.0000 dB)
+_w5c_v = noise_floor_interstage(
+    _hpf1 + [qsec(rbj_peaking(_w5c[1], _w5c[2], PEQ_GAIN_MAX)) for _ in range(8)])
+print(f"      ⇒ 最坏格 = (f0 = {_w5c[1]:.0f} Hz, Q = {_w5c[2]}) ⇒ **{_w5c_v:.2f} dBFS**")
+print(f"      ⚠ 与默认点 ({d3_worst:.2f}) 相差 {_w5c_v-d3_worst:.2f} dB ——")
+print(f"        **⇒ 报给 CTO 的量级由『破 {abs(d3_worst+106):.2f} dB』更正为『破 {_w5c_v+106:.2f} dB』。**")
+print(f"        ⇒ ⚠ 定性结论**不变**(增益结构必须返工);⛔ 变的是量级与「最坏」这个词。")
+OK("EXP-5c", _w5c_v <= -106.0,
+   f"⛔ 在**参数字典自己声明的范围**(band_q ∈ [{PEQ_Q_RANGE[0]}, {PEQ_Q_RANGE[1]}]、"
+   f"band_gain ≤ +{PEQ_GAIN_MAX:.0f} dB、band_freq 20…20 kHz)上求最坏:"
+   f"链末噪声底 {_w5c_v:.2f} dBFS @ (f0={_w5c[1]:.0f} Hz, Q={_w5c[2]}) ≤ −106(PRD)"
+   f" ⇒ 实测突破 {_w5c_v+106:.2f} dB")
 print("      ⛔⛔ EXP-5c 的处置【预先写死在 PREREG_D34_r16_addendum §3】:")
 print("        它 FAIL 就以 FAIL 的身份留在结果里。⛔ 不退役、⛔ 不改判据、")
 print("        ⛔ 不因'已路由给 architect/D2'就当它不存在 —— 处置权在别人手里,")
@@ -910,7 +958,41 @@ OK("EXP-13", 18*tau_1 >= 1.0, f"解析量级 {18*tau_1:.1f} s ≥ 1 s ⇒ WORST 
 print("     ⇒ ⭐ 运行时校验的拦截线**不应基于群延迟数值**(极端配置下算不准),")
 print("        **应基于参数本身**(如 f0 与 Q 的组合上限)。⇒ 已写进设计件。")
 
+# ================================================================ META-1
+# ⭐⭐ 元检查(critic D3D4-r3 MAJOR-2 修法②):**登记在案的判定项必须还在**
+#   理由(critic 原话):**「EXP-5c 在不在,不能由 EXP-5c 自己回答」** —— 它被删了就不会报警。
+#   ⇒ 与 `check_gates_fire.sh` 同型而方向相反:那边验【闸门会响】,这边验【闸门还在】。
+# ⚠ 本条只要求它们**存在**,⛔ 不要求它们 FAIL ——
+#   若增益结构真被改好,EXP-5c 应当 PASS。**「必须存在」与「必须 FAIL」是两件事。**
+# ⛔ 登记住在**不带轮次号**的 `BASELINE_FAILS.txt`;读不到 ⇒ 退出码 2,
+#   ⛔ 不得回退到内嵌的默认集合(那正好会让"换驱动件/换脚本"重新变成一条逃逸路径)。
+print("\n" + "="*84)
+print("META-1  登记在案的判定项是否还在(⛔ 它不能由被登记的那条检查自己回答)")
+print("-"*84)
+_reg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "BASELINE_FAILS.txt")
+_meta_rc = 0
+if not os.path.exists(_reg_path):
+    print(f"  ⛔ 找不到登记件 {_reg_path}")
+    print(f"  ⛔ 拒绝在【没有登记件】的情况下报出任何合计 —— 那会让'换驱动件'重新成为逃逸路径。")
+    sys.exit(2)
+_registered = []
+for _ln in open(_reg_path, encoding="utf-8"):
+    _ln = _ln.strip()
+    if not _ln or _ln.startswith("#") or _ln.startswith("|"):
+        continue
+    _registered.append(_ln.split("|")[0].strip())
+print(f"  登记件: BASELINE_FAILS.txt(⛔ 不带轮次号)  登记 {len(_registered)} 条: {_registered}")
+_missing = [t for t in _registered if t not in _decided]
+if _missing:
+    print(f"  ⛔⛔ [META-1 FAIL] 登记在案却**未出现在本次判定项里**: {_missing}")
+    print(f"       ⇒ 它可能被删除、被改名、或被降级为 RETIRED(退役项不计入 _decided)。")
+    print(f"       ⇒ ⛔ 退出码 2。删除登记须 lead + 独立 critic,见 BASELINE_FAILS.txt 规矩 ②。")
+    _meta_rc = 2
+else:
+    print(f"  [PASS] META-1   全部登记项都出现在本次判定里"
+          f"(⚠ 只验【存在】,⛔ 不验它是 PASS 还是 FAIL)")
+
 print("\n" + "="*84)
 print(f"合计: PASS={_pass}  FAIL={_fail}  RETIRED={_retired}(退役项不计入判定,原样留痕)   坏版本开关={BROKEN if BROKEN else '无'}")
 print("="*84)
-sys.exit(0 if _fail == 0 else 1)
+sys.exit(2 if _meta_rc == 2 else (0 if _fail == 0 else 1))
