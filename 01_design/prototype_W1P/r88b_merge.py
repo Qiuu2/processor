@@ -42,35 +42,49 @@ def main():
       f"{'δ=conf−stat':>13}{'判读(主问)':>22}{'δ=booth−stat':>14}{'判读(阳性对照,仅T60=0.5)':>26}")
     dc, db = [], []
     for (t, s) in SEEDS:
-        a, b, c = K.get((t, s, 'P_stat')), K.get((t, s, 'P_conf')), K.get((t, s, 'P_mod9'))
-        if not (a and b and c):
-            W(f"{t}/{s:<6}  ⛔ 缺格")
+        a, b = K.get((t, s, 'P_stat')), K.get((t, s, 'P_conf'))
+        c = K.get((t, s, 'P_mod9'))          # 仅 T60=0.5 存在(T60=0.2 需 V<3.7 m³,无可行阳性对照)
+        if not (a and b):
+            W(f"{t}/{s:<6}  ⛔ 缺格(主问)")
             continue
-        d1, d2 = b['dmsg'] - a['dmsg'], c['dmsg'] - a['dmsg']
-        dc.append(d1)
-        db.append(d2)
-        W(f"{t}/{s:<6}{a['dmsg']:>9.2f}{b['dmsg']:>9.2f}{c['dmsg']:>10.2f}"
-          f"{d1:>13.2f}{mark(d1):>22}{d2:>14.2f}{mark(d2):>24}")
+        d1 = b['dmsg'] - a['dmsg']
+        dc.append((t, s, d1))
+        if c:
+            d2 = c['dmsg'] - a['dmsg']
+            db.append((t, s, d2))
+            W(f"{t}/{s:<6}{a['dmsg']:>9.2f}{b['dmsg']:>9.2f}{c['dmsg']:>10.2f}"
+              f"{d1:>13.2f}{mark(d1):>22}{d2:>14.2f}{mark(d2):>26}")
+        else:
+            W(f"{t}/{s:<6}{a['dmsg']:>9.2f}{b['dmsg']:>9.2f}{'—':>10}"
+              f"{d1:>13.2f}{mark(d1):>22}{'—':>14}{'⛔ 无阳性对照(见下)':>26}")
     W("")
-    nc = sum(1 for d in dc if abs(d) >= FLOOR)
-    nb = sum(1 for d in db if abs(d) >= FLOOR)
-    W(f"   Hp1 主问:P_conf vs P_stat **可判 {nc}/{len(dc)}**")
-    W(f"   Hp2 阳性对照:P_mod9 vs P_stat **可判 {nb}/{len(db)}**")
+    nc = sum(1 for _, _, d in dc if abs(d) >= FLOOR)
+    nb = sum(1 for _, _, d in db if abs(d) >= FLOOR)
+    dc5 = [(t, s, d) for (t, s, d) in dc if abs(t - 0.5) < 1e-9]
+    nc5 = sum(1 for _, _, d in dc5 if abs(d) >= FLOOR)
+    W(f"   Hq1 主问(全部六条):P_conf vs P_stat **可判 {nc}/{len(dc)}**")
+    W(f"     其中 T60=0.5(**有阳性对照背书**):可判 {nc5}/{len(dc5)}")
+    W(f"     其中 T60=0.2:⛔ **无阳性对照**(该档需 V<3.7 m³ 才能造出模态场,不存在)"
+      f" ⇒ 逐条列出但**不并入结论**")
+    W(f"   Hq2 阳性对照(仅 T60=0.5):P_mod9 vs P_stat **可判 {nb}/{len(db)}**")
+    W(f"     逐条 δ:{[(f'{t}/{s}', round(d,2)) for (t,s,d) in db]}")
+    W(f"     主问逐条 δ:{[(f'{t}/{s}', round(d,2)) for (t,s,d) in dc]}")
     W(f"   ⇒ 机械判读(按预注册 §4):")
     if nb == 0:
-        W("     ⛔ **阳性对照未出现差异 ⇒ 本对比无分辨力 ⇒ Hp1 的『无差异』不得读作阴性结论**")
-    elif nc == 0:
-        W("     ✅ 阳性对照有差异 ∧ 主问 0/6 可判 ⇒ **『常数之争不改变决定』成立(B-1 形式)**")
+        W("     ⛔ **阳性对照未出现差异 ⇒ 本对比无分辨力 ⇒ Hq1 的『无差异』不得读作阴性结论**")
+    elif nc5 == 0:
+        W("     ✅ 阳性对照有差异 ∧ 主问(T60=0.5)0/3 可判 ⇒ **『场的性质不改变 NHS 行为』成立(B-1 形式)**")
     else:
-        W("     ⚠ 主问出现可判差异 ⇒ **争议【会】影响决定** ⇒ 须逐条看是哪些种子")
+        W("     ⚠ 主问出现可判差异 ⇒ **场的性质【确实】改变 NHS 行为 ⇒ B-1 不成立** ⇒ 逐条见上")
     W("")
     W("=" * 116)
     W("② Hp3 低频行为(挂陷频点 <300 Hz 的个数)+ 挂陷总数 —— ⛔ 与 ΔMSG 分开报")
     W("=" * 116)
-    W(f"{'T60/sd':>8}{'挂陷 stat/conf/booth':>24}{'<300Hz stat/conf/booth':>26}{'深度中位 stat/conf/booth':>28}")
+    W(f"{'T60/sd':>8}{'挂陷 stat/conf/mod9':>24}{'<300Hz stat/conf/mod9':>26}{'深度中位 stat/conf/mod9':>28}")
     for (t, s) in SEEDS:
-        a, b, c = K.get((t, s, 'P_stat')), K.get((t, s, 'P_conf')), K.get((t, s, 'P_mod9'))
-        if not (a and b and c):
+        a, b = K.get((t, s, 'P_stat')), K.get((t, s, 'P_conf'))
+        c = K.get((t, s, 'P_mod9')) or {}
+        if not (a and b):
             continue
         W(f"{t}/{s:<6}"
           f"{'%d / %d / %d' % (a.get('n_notch',-1), b.get('n_notch',-1), c.get('n_notch',-1)):>24}"
