@@ -123,6 +123,41 @@ void chdsp_in_ch_process(chdsp_in_ch_t *ch, const chdsp_io_q0_31_t *in,
                          chdsp_smp_q4_27_t *out, uint16_t n);
 
 /* ==========================================================================
+ * ✳ AFC 接口(r13)—— 陷波器组接进 D3 真实链路
+ * ==========================================================================
+ * ⛔⛔ 职责边界(重申):**本层不含 AFC 算法**(CTO 裁定:算法层未定死之前不 C 化)。
+ *   这里提供的是**接口**:AFC 在它自己的 hook 回调里调 `chdsp_in_ch_notch_request()`,
+ *   由本层做确定性槽位簿记 + 写系数;**哪个频率、什么时候、放多深由 AFC 定**。
+ *
+ * ⭐ 链序保证(⛔ 这是本接口能工作的前提):D3 的顺序是
+ *      … → PEQ×8 → **hook_afc** → **陷波器组** → 延时 → 保护限幅
+ *   ⇒ AFC 在 hook 里看到的是 PEQ 之后的信号,而它请求的陷波**在同一块内生效**。
+ *   ⇒ 若有人把 hook_afc 挪到陷波之后,本接口就变成"下一块才生效" ⇒ 已由 CHK-A3 机械锁住。
+ *
+ * ⚠⚠ **给 AFC 实现者的一条硬限定(⛔ 别在这上面建判定)**:
+ *   W1-P 实测(`01_design/W1P_CLOSEOUT/01_NHS_numbers.md` §2 + §1.1,⚠ 未过门):
+ *     · 头条表口径:**不确定度 = ±0.50 dB(一格),方向未定**;
+ *       ⛔ 而**唯一的方向性证据指向【高估】**(检测器漏掉小超量失稳)⇒ **不得读作下界**。
+ *     · 单臂检测器偏差实测跨度 **−0.486 … +0.197 dB**(r89 六格)。
+ *   ⇒ **∴ 任何拿检测器读数做的【判定】,都要留 ≥0.5 dB 的余量,且不得假定方向。**
+ *   ⛔ 去原文核,不要引本注释的转述。
+ */
+
+/** 把 AFC 回调挂上,并令 `user` 指向本通道 ⇒ 回调里可直接 `chdsp_in_ch_notch_request()`。 */
+void chdsp_in_ch_bind_afc(chdsp_in_ch_t *ch, chdsp_alg_hook_fn fn);
+
+/** 设定陷波器组工作模式(PRD §二.5 三种)。⚠ 语义 [L4/我定的,PRD 未定义,须 CTO 确认]。 */
+void chdsp_in_ch_notch_set_mode(chdsp_in_ch_t *ch, chdsp_notch_mode_t mode, uint16_t n_fixed);
+
+/** **上位机路径**:装机时把固定陷波写进指定槽。 */
+int  chdsp_in_ch_notch_set_fixed(chdsp_in_ch_t *ch, uint16_t idx,
+                                 double f_hz, double q, double depth_db);
+
+/** **AFC 路径**:运行期请求一个陷波(只用动态槽;满则回收 LRU;固定槽永不被占)。 */
+int  chdsp_in_ch_notch_request(chdsp_in_ch_t *ch, double f_hz, double q,
+                               double depth_db, uint16_t *out_idx);
+
+/* ==========================================================================
  * D4 输出通道
  * ========================================================================== */
 typedef struct {

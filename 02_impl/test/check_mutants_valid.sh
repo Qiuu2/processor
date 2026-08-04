@@ -104,6 +104,14 @@ phase_a_flip A2 CHDSP_BROKEN_CHAIN_ORDER chdsp_out_ch_process \
 phase_a_gone A3 CHDSP_BROKEN_XO_POLARITY chdsp_out_ch_process \
   'xo_polarity_flip' '极性翻转段'
 
+# ⭐ A4(r13):hook_afc 必须在陷波器组【之前】—— 这是「AFC 本块请求、本块生效」的结构前提。
+#   ⚠ 为什么用结构探针而不是行为探针:行为探针只能测"全链第 0 块能量",而链上**任何**改动
+#     (限幅前视、陷波不写系数…)都会带动它 ⇒ 对"位置"这个主张太粗,会产出一堆假连带。
+#     ⇒ 实测过:它确实被 LIM_NOLOOK 与 NOTCH_NOWRITE 两条带动。
+#   ⇒ **位置的主张,用位置去证。**
+phase_a_flip A4 CHDSP_BROKEN_AFC_AFTER_NOTCH chdsp_in_ch_process \
+  'chdsp_hook_run(&ch->hook_afc' 'chdsp_bq_chain_process(&ch->notch' 'AFC钩子' '陷波器组'
+
 # ---------------------------------------------------------------------------
 # Phase B:行为探针
 # ---------------------------------------------------------------------------
@@ -207,7 +215,7 @@ else
   km_list=$(sed -n '/^\(MUTS\|FIXED_MUTS\)=(/,/^)/p' "$KM" \
             | grep -oE 'CHDSP_BROKEN_[A-Z0-9_]+' | sort -u)
   # 结构类变异不走行为探针(它们由 Phase A 覆盖)⇒ 显式登记,⛔ 不是默默豁免
-  STRUCT="CHDSP_BROKEN_HPF_AFTER_DYN CHDSP_BROKEN_CHAIN_ORDER CHDSP_BROKEN_XO_POLARITY"
+  STRUCT="CHDSP_BROKEN_HPF_AFTER_DYN CHDSP_BROKEN_CHAIN_ORDER CHDSP_BROKEN_XO_POLARITY CHDSP_BROKEN_AFC_AFTER_NOTCH"
   self_list=$( { for k in "${!CLAIM[@]}"; do echo "$k"; done; for k in $STRUCT; do echo "$k"; done; } | sort -u)
   only_km=$(comm -23 <(echo "$km_list") <(echo "$self_list"))
   only_sv=$(comm -13 <(echo "$km_list") <(echo "$self_list"))

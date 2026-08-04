@@ -61,6 +61,7 @@ MUTS=(
   CHDSP_BROKEN_SMOOTH_FIXED       # detector(r12):平滑系数不随 tau 变
   CHDSP_BROKEN_GATE_ENUM          # dynamics(r12):安全状态挪离 0 ⇒ 全 0 初始化落错侧
   CHDSP_BROKEN_COEF_NOCONST       # fixed(r12):系数界退回只靠 int32 边界
+  CHDSP_BROKEN_AFC_AFTER_NOTCH    # chain(r13):hook_afc 挪到陷波之后 ⇒ 请求晚一块生效
 )
 
 echo "================================================================"
@@ -150,7 +151,7 @@ regress_tags=$(grep -E '保留为回归项' "$BUILD/good.txt" \
            | sed -nE 's/^[^C]*\b(CHK-[A-Za-z0-9]+).*/\1/p' | sort -u)
 # (b) 前提自检:它们断言的是【测试台自己有分辨力】,不是产品行为
 #     ⇒ 产品变异本就不该杀死它们。必须**显式声明 + 写明理由**(同自证的 ALSO 机制)。
-PRECOND="CHK-Y1c0 CHK-Y2b0 CHK-N5a CHK-C3a CHK-T4a"
+PRECOND="CHK-Y1c0 CHK-Y2b0 CHK-N5a CHK-C3a CHK-T4a CHK-A1a"
 PRECOND_WHY="断言测试台的工作点落在有分辨力的区间(不是产品行为)⇒ 产品变异不该杀它们"
 precond_tags=$(echo "$PRECOND" | tr ' ' '\n' | grep -c . >/dev/null; echo "$PRECOND" | tr ' ' '\n' | sort -u)
 

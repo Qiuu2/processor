@@ -19,6 +19,9 @@
 #ifndef CHDSP_BROKEN_NO_SATTEL        /* 1 = 链内饱和不计数(C-B 遥测失效) */
 #  define CHDSP_BROKEN_NO_SATTEL 0
 #endif
+#ifndef CHDSP_BROKEN_AFC_AFTER_NOTCH  /* 1 = hook_afc 挪到陷波【之后】⇒ 请求晚一块才生效 */
+#  define CHDSP_BROKEN_AFC_AFTER_NOTCH 0
+#endif
 
 void chdsp_hook_clear(chdsp_alg_hook_t *h) { h->fn = 0; h->user = 0; h->call_count = 0u; }
 
@@ -98,8 +101,13 @@ void chdsp_in_ch_process(chdsp_in_ch_t *ch, const chdsp_io_q0_31_t *in,
 #endif
     /* ⑥ PEQ → ✳ AFC 陷波器组 */
     chdsp_bq_chain_process(&ch->peq, out, out, n, &ch->sat);
+#if CHDSP_BROKEN_AFC_AFTER_NOTCH
+    chdsp_bq_chain_process(&ch->notch, out, out, n, &ch->sat);
+    chdsp_hook_run(&ch->hook_afc, out, n);   /* ⛔ 坏版本:本块请求下块才生效 */
+#else
     chdsp_hook_run(&ch->hook_afc, out, n);
     chdsp_bq_chain_process(&ch->notch, out, out, n, &ch->sat);
+#endif
     /* ⑦ 延时 → ⑧ 保护限幅 */
     for (i = 0u; i < n; i++) {
         out[i] = chdsp_delay_process1(&ch->delay, out[i]);
@@ -113,6 +121,29 @@ void chdsp_in_ch_process(chdsp_in_ch_t *ch, const chdsp_io_q0_31_t *in,
 #endif
 #endif
 }
+
+/* ---------------------------------------------------------------- ✳ AFC 接口(r13) */
+void chdsp_in_ch_bind_afc(chdsp_in_ch_t *ch, chdsp_alg_hook_fn fn)
+{
+    ch->hook_afc.fn   = fn;
+    ch->hook_afc.user = ch;      /* ⇒ 回调里可由 user 取回通道,进而请求陷波 */
+}
+
+void chdsp_in_ch_notch_set_mode(chdsp_in_ch_t *ch, chdsp_notch_mode_t mode, uint16_t n_fixed)
+{
+    chdsp_notch_bank_init(&ch->notch_bank, mode, n_fixed);
+    /* 换模式 ⇒ 全部槽回到未占用,滤波器链一并旁路(⛔ 不留下"簿记说没有、音频里还在"的状态) */
+    { uint16_t i; for (i = 0u; i < (uint16_t)CHDSP_NOTCH_COUNT; i++) { ch->notch_sec[i].bypass = 1u; } }
+    ch->notch.n = 0u;
+}
+
+int chdsp_in_ch_notch_set_fixed(chdsp_in_ch_t *ch, uint16_t idx,
+                                double f_hz, double q, double depth_db)
+{ return chdsp_notch_bank_set_fixed(&ch->notch_bank, &ch->notch, idx, f_hz, q, depth_db); }
+
+int chdsp_in_ch_notch_request(chdsp_in_ch_t *ch, double f_hz, double q,
+                              double depth_db, uint16_t *out_idx)
+{ return chdsp_notch_bank_request(&ch->notch_bank, &ch->notch, f_hz, q, depth_db, out_idx); }
 
 /* ---------------------------------------------------------------- D4 */
 int chdsp_out_ch_init(chdsp_out_ch_t *ch, const chdsp_out_bufs_t *b)

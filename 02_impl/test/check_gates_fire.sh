@@ -130,6 +130,9 @@ ensure_green(){ local key="$1" desc="$2" cmd="$3"
   local out rc
   out=$( ( cd "$BASE/02_impl" && eval "$cmd" ) 2>&1 ); rc=$?
   printf '%s' "$out" > "$TMPROOT/green_$key.txt"     # 供 want 非平凡校验(见 expect_red)
+  # ⚠ 只有【基线确实是绿的】那次输出,才有资格当非平凡校验的参照物。
+  #   基线红时它含失败串,会让 want 被误判成"平凡" ⇒ 报出与真因无关的理由(实测撞过一次)。
+  [ $rc -eq 0 ] && : > "$TMPROOT/greenok_$key"
   if [ $rc -eq 0 ]; then
     echo "  [PASS] base:$key  基线上「$desc」是绿的 ⇒ 下面的红可归因于变异"; pass=$((pass+1))
   else
@@ -170,7 +173,7 @@ expect_red(){ local tag="$1" desc="$2" cmd="$3" w="$4" want="${5:-}" gkey="${6:-
     echo "         ⇒ 器械失效 ⇒ 本条元检查无意义(⛔ 不得当作通过)"
     fail=$((fail+1)); return; fi
   # ⭐ 器械自检 ②:want 必须【非平凡】—— 它不得出现在基线(通过的那一跑)的输出里
-  if [ -n "$gkey" ] && [ -f "$TMPROOT/green_$gkey.txt" ]; then
+  if [ -n "$gkey" ] && [ -f "$TMPROOT/greenok_$gkey" ] && [ -f "$TMPROOT/green_$gkey.txt" ]; then
     if grep -qE "$want" "$TMPROOT/green_$gkey.txt"; then
       echo "  [FAIL] $tag  ⛔ 失败特征串 /$want/ **在基线(通过)输出里就能命中**"
       echo "         ⇒ 它区分不了通过与失败 ⇒ 白名单被架空(如 want=\".\")"

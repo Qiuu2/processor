@@ -44,6 +44,20 @@ static void OKC(const char *tag, int cond, const char *msg)
 }
 
 /* 确定性 PRNG */
+
+/* ── 测试用的**假 AFC**:只做一件事 —— 第一次被调到时请求一个 1 kHz 陷波。
+ *    ⛔ 这不是 AFC 算法,它对啸叫检测零知识;它只用来证明【接口通了】。 */
+static int g_fake_afc_called = 0;
+static void fake_afc(void *user, chdsp_smp_q4_27_t *buf, uint16_t n)
+{
+    chdsp_in_ch_t *ch = (chdsp_in_ch_t *)user;
+    (void)buf; (void)n;
+    if (!g_fake_afc_called) {
+        g_fake_afc_called = 1;
+        (void)chdsp_in_ch_notch_request(ch, 1000.0, 8.0, -18.0, 0);
+    }
+}
+
 static uint32_t g_rng = 0x2468ACE1u;
 static uint32_t rnd32(void)
 { g_rng ^= g_rng << 13; g_rng ^= g_rng >> 17; g_rng ^= g_rng << 5; return g_rng; }
@@ -841,6 +855,98 @@ int main(void)
         OKC("CHK-N5", e_off > 1e-6
                       && 10.0 * log10(e_on / (e_off + 1e-300) + 1e-300) < -12.0,
             "⭐ 触达证明:request() 真的改变了音频(⛔ 不只是改了个结构体字段)");
+    }
+
+    /* ================= ✳ AFC 接口:陷波器组接进 D3 真实链路(r13)================= */
+    printf("\n✳ AFC 接口(陷波器组 ↔ D3 真实链路)\n");
+    {   /* CHK-A1 ⭐ 触达证明:AFC 在 hook 里请求的陷波,**经真实 D3 链**作用到音频上
+         * ⛔ 与 CHK-N5 的区别:N5 用的是独立 bq_chain;本条走 chdsp_in_ch_process 全链。 */
+        chdsp_in_ch_t ich; chdsp_io_q0_31_t in[CHDSP_FRAME_SAMPLES];
+        chdsp_smp_q4_27_t out[CHDSP_FRAME_SAMPLES];
+        int k, i; double e_off = 0.0, e_on = 0.0;
+        const double F = 1000.0;
+        /* —— 不挂 AFC:能量应通过 —— */
+        (void)chdsp_in_ch_init(&ich, g_dly_in, sizeof(g_dly_in)/sizeof(g_dly_in[0]),
+                               g_look_in, sizeof(g_look_in)/sizeof(g_look_in[0]));
+        for (k = 0; k < 40; k++) {
+            for (i = 0; i < CHDSP_FRAME_SAMPLES; i++) {
+                double t = (double)(k * CHDSP_FRAME_SAMPLES + i);
+                in[i] = chdsp_io_from_raw((int32_t)(0.1 * 2147483647.0
+                          * sin(2.0 * M_PI * F * t / CHDSP_FS_HZ)));
+            }
+            chdsp_in_ch_process(&ich, in, out, CHDSP_FRAME_SAMPLES);
+            if (k >= 20) { for (i = 0; i < CHDSP_FRAME_SAMPLES; i++) {
+                double v = chdsp_smp_to_f64(out[i]); e_off += v * v; } }
+        }
+        /* —— 挂上假 AFC:它在 hook 里请求 1 kHz −18 dB —— */
+        g_fake_afc_called = 0;
+        (void)chdsp_in_ch_init(&ich, g_dly_in, sizeof(g_dly_in)/sizeof(g_dly_in[0]),
+                               g_look_in, sizeof(g_look_in)/sizeof(g_look_in[0]));
+        chdsp_in_ch_bind_afc(&ich, fake_afc);
+        for (k = 0; k < 40; k++) {
+            for (i = 0; i < CHDSP_FRAME_SAMPLES; i++) {
+                double t = (double)(k * CHDSP_FRAME_SAMPLES + i);
+                in[i] = chdsp_io_from_raw((int32_t)(0.1 * 2147483647.0
+                          * sin(2.0 * M_PI * F * t / CHDSP_FS_HZ)));
+            }
+            chdsp_in_ch_process(&ich, in, out, CHDSP_FRAME_SAMPLES);
+            if (k >= 20) { for (i = 0; i < CHDSP_FRAME_SAMPLES; i++) {
+                double v = chdsp_smp_to_f64(out[i]); e_on += v * v; } }
+        }
+        printf("      经真实 D3 链:无 AFC 能量 %.4e;挂 AFC(请求 −18 dB @1 kHz)后 %.4e ⇒ %.2f dB\n",
+               e_off, e_on, 10.0 * log10(e_on / (e_off + 1e-300) + 1e-300));
+        OKC("CHK-A1a", e_off > 1e-6 && g_fake_afc_called == 1,
+            "⭐ 前提自检:无陷波时确有能量,且 AFC 回调确实被调到过");
+        OKC("CHK-A1", e_off > 1e-6
+                      && 10.0 * log10(e_on / (e_off + 1e-300) + 1e-300) < -12.0,
+            "⭐ AFC 经 hook 请求的陷波**在真实 D3 链上生效**(⛔ 不是只改了簿记)");
+    }
+    {   /* CHK-A2 ⭐ FIXED 模式下,AFC 的请求经真实链路仍被拒,且固定陷波不动 */
+        chdsp_in_ch_t ich; int r_set, r_req;
+        (void)chdsp_in_ch_init(&ich, g_dly_in, sizeof(g_dly_in)/sizeof(g_dly_in[0]),
+                               g_look_in, sizeof(g_look_in)/sizeof(g_look_in[0]));
+        chdsp_in_ch_notch_set_mode(&ich, CHDSP_NOTCH_MODE_FIXED, 0u);
+        r_set = chdsp_in_ch_notch_set_fixed(&ich, 0u, 120.0, 8.0, -6.0);
+        r_req = chdsp_in_ch_notch_request(&ich, 3000.0, 8.0, -6.0, 0);
+        printf("      FIXED:装机写固定陷波=%d(期 0);AFC 请求=%d(期 %d);槽 0 的 f=%.0f\n",
+               r_set, r_req, CHDSP_NOTCH_ERR_NO_SLOT, ich.notch_bank.slot[0].f_hz);
+        OKC("CHK-A2", r_set == CHDSP_NOTCH_OK && r_req == CHDSP_NOTCH_ERR_NO_SLOT
+                      && ich.notch_bank.slot[0].f_hz == 120.0,
+            "⭐ FIXED:AFC 经真实接口的请求被拒,装机陷波原封不动");
+    }
+    {   /* CHK-A3 ⭐⭐ 「同块生效」:AFC 在 hook 里请求的陷波,**本块就要作用到本块的输出上**
+         * ⇒ 若 hook_afc 被挪到陷波之后,第 0 块会是【未加陷波】的,从下一块才开始生效。
+         * ⚠ 我первый版把这条写成 `OKC("CHK-A3", 1, ...)` 占位 —— 那是"输出行不是检查",
+         *   正是我这几轮一直在删的东西。⇒ 改成**只看第 0 块**的行为判据。 */
+        chdsp_in_ch_t ich; chdsp_io_q0_31_t in[CHDSP_FRAME_SAMPLES];
+        chdsp_smp_q4_27_t out[CHDSP_FRAME_SAMPLES];
+        int i; double e0_plain = 0.0, e0_afc = 0.0;
+        const double F = 1000.0;
+        for (i = 0; i < CHDSP_FRAME_SAMPLES; i++) {
+            in[i] = chdsp_io_from_raw((int32_t)(0.1 * 2147483647.0
+                      * sin(2.0 * M_PI * F * i / CHDSP_FS_HZ)));
+        }
+        (void)chdsp_in_ch_init(&ich, g_dly_in, sizeof(g_dly_in)/sizeof(g_dly_in[0]),
+                               g_look_in, sizeof(g_look_in)/sizeof(g_look_in[0]));
+        chdsp_in_ch_process(&ich, in, out, CHDSP_FRAME_SAMPLES);
+        for (i = 0; i < CHDSP_FRAME_SAMPLES; i++)
+            { double v = chdsp_smp_to_f64(out[i]); e0_plain += v * v; }
+        g_fake_afc_called = 0;
+        (void)chdsp_in_ch_init(&ich, g_dly_in, sizeof(g_dly_in)/sizeof(g_dly_in[0]),
+                               g_look_in, sizeof(g_look_in)/sizeof(g_look_in[0]));
+        chdsp_in_ch_bind_afc(&ich, fake_afc);
+        chdsp_in_ch_process(&ich, in, out, CHDSP_FRAME_SAMPLES);
+        for (i = 0; i < CHDSP_FRAME_SAMPLES; i++)
+            { double v = chdsp_smp_to_f64(out[i]); e0_afc += v * v; }
+        printf("      **第 0 块**:无 AFC %.4e;挂 AFC %.4e ⇒ 差 %.2f dB(同块生效则应显著为负)\n",
+               e0_plain, e0_afc, 10.0 * log10(e0_afc / (e0_plain + 1e-300) + 1e-300));
+        /* ⚠ 判据取 −0.5 dB,理由是**先量出分辨力再定判据**(不是拍的):
+         *   第 0 块滤波器尚未稳态 ⇒ 好版本只到 **−1.64 dB**(不是稳态的 −18);
+         *   而坏版本(hook 在陷波之后)第 0 块**逐位不变 ⇒ 恰好 0.00 dB**。
+         *   ⇒ 两者相距 1.64 dB,取 −0.5 留双边余量。⛔ 我首版拍了 −3.0,好版本自己过不去。 */
+        OKC("CHK-A3", e0_plain > 1e-9
+                      && 10.0 * log10(e0_afc / (e0_plain + 1e-300) + 1e-300) < -0.5,
+            "⭐ 同块生效:AFC 本块请求的陷波作用在**本块**输出上(⛔ hook 若在陷波之后,第 0 块不受影响)");
     }
 
     /* ================= m-6 接线审计的机械形式 ================= */
