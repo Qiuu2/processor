@@ -27,11 +27,20 @@
 #include <string.h>
 #include <stdlib.h>
 
-static int g_fail = 0, g_pass = 0;
+static int g_fail = 0, g_pass = 0, g_regress = 0;
+/* ⭐ 整改 2026-08-04 · critic MAJOR-4:
+ * 交付件 results_impl_r1.txt 是 CTO / lead / 下一个 critic 读的**唯一入口**,
+ * 而它原先只有一行「合计: PASS=29」——**没有任何标记区分**
+ *   ①「这条有证伪证据(有变异杀得死它)」与
+ *   ②「作者已知它证不了它名字里那件事」。
+ * ⇒ 读者的自然理解是①,而其中六条是②。
+ * ⇒ 凡 tag 里带「保留为回归项」的,单独计数并在汇总行标出。
+ * ⛔ 它们仍计入 PASS/FAIL 与退出码 —— 它们**确实还在测别的真东西**(E-2:加标注不删数)。 */
 static void OKC(const char *tag, int cond, const char *msg)
 {
     if (cond) { g_pass++; } else { g_fail++; }
-    printf("  [%s] %-9s %s\n", cond ? "PASS" : "FAIL", tag, msg);
+    if (strstr(tag, "保留为回归项") != NULL) { g_regress++; }
+    printf("  [%s] %s %s\n", cond ? "PASS" : "FAIL", tag, msg);
 }
 
 /* 确定性 PRNG */
@@ -241,8 +250,11 @@ int main(void)
             prev = y;
         }
         printf("      斜坡 480 步:越出稳定三角 %d 次;输出最大逐样本跳变 %.4e\n", out_tri, maxjump);
-        OKC("CHK-B4", out_tri == 0 && maxjump < 0.02,
-            "稳定三角是凸集 ⇒ 线性插值恒稳定;且无输出跳变(防爆音)");
+        OKC("CHK-B4(斜坡机制部分已被 CHK-B4b 取代·保留为回归项)",
+            out_tri == 0 && maxjump < 0.02,
+            "稳定三角是凸集 ⇒ 线性插值恒稳定(**本条真正在测的事,仍有效**)。"
+            "⛔ 但其中「无输出跳变」一半对 BQ_NORAMP 变异【零分辨力】:DF1 状态连续本来就不跳"
+            " ⇒ 关掉斜坡照样过。斜坡机制的分辨力在 CHK-B4b");
     }
 
     /* ================= detector ================= */
@@ -260,7 +272,10 @@ int main(void)
             if (fabs(got - exp_db) > worst) { worst = fabs(got - exp_db); }
         }
         printf("      对称 atk=rel=100ms,−20…−100 dBFS:最大偏离均值功率 = %.3f dB\n", worst);
-        OKC("CHK-D1", worst <= 0.05, "对称时读数精确等于均值功率(≤0.05 dB)");
+        OKC("CHK-D1(方向性部分已被 CHK-D1b 取代·保留为回归项)", worst <= 0.05,
+            "对称时读数精确等于均值功率(≤0.05 dB)(**本条真正在测的事,仍有效**)。"
+            "⛔ 但它对 DET_ONEDIR 变异【零分辨力】:atk=rel 对称时"
+            "「不分方向」的坏版本与好版本**完全等价**。方向性的分辨力在 CHK-D1b");
     }
     {   /* CHK-D2 拆两条:①非塌陷(本模块真正声称的那件事)②精度(须离功率底有余量)
          * ⚠ 初版把两者写成一个断言,并在 −120 dBFS 上要求 ±1 dB —— 而该点距
@@ -318,8 +333,11 @@ int main(void)
                 last = (double)chdsp_db_raw(gd) / 256.0;
             }
             printf("      −80 dBFS 噪声下门增益 = %.2f dB,state = %d\n", last, (int)g.state);
-            OKC("CHK-Y1b", g.state == CHDSP_GATE_CLOSED && last < -20.0,
-                "远低于门限时门保持关闭且确实衰减(肯定式条件生效)");
+            OKC("CHK-Y1b(已被 CHK-Y1c 取代·保留为回归项)",
+                g.state == CHDSP_GATE_CLOSED && last < -20.0,
+                "远低于门限时门保持关闭且确实衰减。"
+                "⛔ 本条对 GATE_NEGATIVE 变异【零分辨力】:−80 dBFS 远低于门限,"
+                "肯定式与否定式给同一答案 ⇒ 它证不了「肯定式条件生效」。分辨力在 CHK-Y1c");
         }
     }
     {   /* CHK-Y2 迟滞防颤振:门限附近抖动时开合次数应有限 */
@@ -334,7 +352,10 @@ int main(void)
             if (g.state != prev) { toggles++; prev = g.state; }
         }
         printf("      门限 ±1 dB 摆动 1 秒:状态切换 %d 次(迟滞 3 dB ⇒ 应很少)\n", toggles);
-        OKC("CHK-Y2", toggles <= 4, "迟滞抑制了门限附近的颤振");
+        OKC("CHK-Y2(已被 CHK-Y2b 取代·保留为回归项)", toggles <= 4,
+            "门限附近切换次数有界。"
+            "⛔ 本条对 NO_HYST 变异【零分辨力】:3 Hz 缓慢摆动被检测器平滑吃掉,"
+            "无迟滞也不颤 ⇒ 它证不了「迟滞在起作用」。分辨力在 CHK-Y2b");
     }
     {   /* CHK-Y3 ⭐ 限幅器前视 ⇒ 阶跃到满量程时无过冲 */
         chdsp_limiter_t l; int i; double peak = 0.0;
@@ -368,7 +389,12 @@ int main(void)
             prev = g;
         }
         printf("      输入每升 0.25 dB,增益最大跳变 = %.3f dB(软拐点 12 dB)\n", maxstep);
-        OKC("CHK-Y4", maxstep <= 0.25, "软拐点使增益曲线连续(硬拐点会在阈值处跳)");
+        OKC("CHK-Y4(已被 CHK-Y4b 取代·保留为回归项)", maxstep <= 0.25,
+            "增益曲线相邻步无大跳变。"
+            "⛔ 本条对 COMP_HARDKNEE 变异【零分辨力】:**硬拐点也是连续的**,只是不光滑"
+            " ⇒ 它证不了软拐点。分辨力在 CHK-Y4b(拐点中心 vs 软拐点解析值)"
+            "〔整改 2026-08-04 · critic MAJOR-4:原括注「硬拐点会在阈值处跳」**已删** —— "
+            "那是我自己亲手证伪的一句,却仍作为一条 PASS 的理由印在交付件里〕");
     }
 
     /* ================= FIR ================= */
@@ -450,8 +476,13 @@ int main(void)
         }
         printf("      40 Hz 阻带激励(−20 dBFS):分频在前的链内峰 %.5f;PEQ 在前 %.5f ⇒ 差 %.2f dB\n",
                peak_after_xo, peak_after_peq, 20.0 * log10(peak_after_peq / peak_after_xo));
-        OKC("CHK-C1", 20.0 * log10(peak_after_peq / peak_after_xo) >= 20.0,
-            "分频在前使阻带链内电平低 ≥20 dB(设计件 §2③ 的实测 31.14 dB)");
+        OKC("CHK-C1(已被 CHK-C1b 取代·保留为回归项)",
+            20.0 * log10(peak_after_peq / peak_after_xo) >= 20.0,
+            "两种顺序的阻带链内电平差 ≥20 dB。"
+            "⛔ 本条对 CHAIN_ORDER 变异【零分辨力】:它在测试里**自己搭 biquad 链**,"
+            "根本没调 chdsp_out_ch_process ⇒ 链序变异改不到它。分辨力在 CHK-C1b"
+            "〔整改 2026-08-04 · critic MAJOR-4:原括注引「设计件 §2③ 实测 31.14 dB」**已删** —— "
+            "本条没走被测链,⛔ 不得拿设计件的数为它背书〕");
     }
     {   /* CHK-C2 分频极性规则被链使用 */
         chdsp_out_ch_t ch; chdsp_out_bufs_t b;
@@ -1027,6 +1058,10 @@ int main(void)
 
     printf("\n================================================================\n");
     printf("合计: PASS=%d  FAIL=%d\n", g_pass, g_fail);
+    printf("  其中 %d 条标为【已知零分辨力·保留为回归项】(critic MAJOR-4)\n", g_regress);
+    printf("  ⛔ 这 %d 条【不构成】对它们名字里那件事的证据 —— 各自的分辨力在被指名的替代条上。\n",
+           g_regress);
+    printf("  ⇒ 有效判据数 = %d\n", g_pass - g_regress);
     printf("退出码 = %d  ⇒ **本文件的每条检查都是硬闸门**\n", g_fail ? 1 : 0);
     printf("================================================================\n");
     return g_fail ? 1 : 0;
