@@ -437,17 +437,28 @@ int main(void)
     }
     {   /* CHK-Y2b 迟滞:门限附近【快速】抖动 ⇒ 无迟滞会颤振
          * ⚠ 原 CHK-Y2 用 3 Hz 缓慢摆动 + 检测器平滑 ⇒ 无迟滞也不颤,零分辨力。 */
-        chdsp_gate_t g; int i, toggles = 0; chdsp_gate_state_t prev;
-        chdsp_gate_init(&g, -45.0, 20.0, 3.0, 60.0, 0.2, 0.0, 2.0);   /* 快检测器 */
-        g.enabled = 1u; prev = g.state;
+        /* ⭐ 决定性构造:先升到 thr+0.5(开门),再降到 thr−1.5 ——
+         *   该点仍在迟滞带(thr−3, thr)内 ⇒ **有迟滞应保持 OPEN,无迟滞应变 CLOSED**。
+         *   ⚠ 初版用「±2 dB 正弦抖动」⇒ 检测器平滑把抖动吃掉了,两种版本都只切换 1 次
+         *     ⇒ 对 NO_HYST 零分辨力。 */
+        chdsp_gate_t g; int i; chdsp_gate_state_t after_up, after_down;
+        double a_up = pow(10.0, (-45.0 + 0.5) / 20.0) * 1.41421356;
+        double a_dn = pow(10.0, (-45.0 - 1.5) / 20.0) * 1.41421356;
+        chdsp_gate_init(&g, -45.0, 20.0, 3.0, 60.0, 20.0, 0.0, 20.0);  /* 对称,读数=均值 */
+        g.enabled = 1u;
         for (i = 0; i < CHDSP_FS_HZ / 2; i++) {
-            double lv = -45.0 + 2.0 * sin(2.0 * M_PI * 200.0 * i / CHDSP_FS_HZ);
-            double amp = pow(10.0, lv / 20.0) * 1.41421356;
-            (void)chdsp_gate_gain1(&g, smp_f(amp * sin(2.0 * M_PI * 3000.0 * i / CHDSP_FS_HZ)), 0);
-            if (g.state != prev) { toggles++; prev = g.state; }
+            (void)chdsp_gate_gain1(&g, smp_f(a_up * sin(2.0 * M_PI * 500.0 * i / CHDSP_FS_HZ)), 0);
         }
-        printf("      门限 ±2 dB @200 Hz 快抖动 0.5 秒:状态切换 %d 次\n", toggles);
-        OKC("CHK-Y2b", toggles <= 30, "⭐ 迟滞把快抖动下的颤振压住(⛔ 无迟滞版会大量颤振)");
+        after_up = g.state;
+        for (i = 0; i < CHDSP_FS_HZ / 2; i++) {
+            (void)chdsp_gate_gain1(&g, smp_f(a_dn * sin(2.0 * M_PI * 500.0 * i / CHDSP_FS_HZ)), 0);
+        }
+        after_down = g.state;
+        printf("      升到 thr+0.5 ⇒ state=%d;再降到 thr−1.5(仍在迟滞带内)⇒ state=%d\n",
+               (int)after_up, (int)after_down);
+        OKC("CHK-Y2b0", after_up == CHDSP_GATE_OPEN, "前提自检:thr+0.5 确实把门打开了");
+        OKC("CHK-Y2b", after_down != CHDSP_GATE_CLOSED,
+            "⭐ 迟滞带内不关门(⛔ 无迟滞版在 thr−1.5 就会关)");
     }
     {   /* CHK-Y4b 软拐点的【平滑性】,不是【连续性】
          * ⚠ 原 CHK-Y4 测「相邻步的增益跳变」—— 硬拐点也是连续的,只是不光滑

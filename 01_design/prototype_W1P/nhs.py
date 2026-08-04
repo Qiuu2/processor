@@ -113,6 +113,11 @@ class Params:
         #   ⇒ 本参数把职 B 拆出来,**默认 None ⇒ 回落到 `bw_oct` ⇒ 行为逐位不变**
         #   ⇒ 等价性由 `r78a_bitexact.py` 的**逐位实跑对照**证明(含阳性对照),不靠"读起来一样"。
         self.bw_oct_match = None
+        # ⭐ r86:名额按【资源】计费 —— `out[:1]` 是【槽】这个资源的预算,
+        #   而**复检不消耗槽**(走 `_allocate` 的 `same` 分支,只把已有槽再压 3 dB)
+        #   ⇒ 默认 False ⇒ 行为逐位不变;True ⇒ 复检不占名额,在 out[:1] 之外额外放行。
+        #   ⚠ 等价性由 r86a 逐位实跑对照证明(含阳性对照),不靠"读起来一样"。
+        self.recheck_free = False
         self.ramp_db_per_s = 3.0 / 0.050
         self.lift_after_s, self.lift_step_s, self.reclaim_s = 60.0, 5.0, 30.0
         # ── C8-②(IF-v1.8)事后甄别探针:**物理实验,非统计推断**(与 C11-① LIFT 探针同范式)
@@ -911,6 +916,11 @@ class NHS:
                                 self._notch_covers(h['f']) if P.prefer_unnotched else False,
                                 -h['b']))
         kept = out[:1] if out and out[0]['cls'] != 'PANIC' else out[:2]
+        if P.recheck_free and out:
+            # 复检(已被本层陷波覆盖)不消耗槽 ⇒ 不占名额 ⇒ 在 kept 之外额外放行
+            extra = [h for h in out[len(kept):] if self._notch_covers(h['f'])]
+            if extra:
+                kept = kept + extra
         # ── r84 漏斗遥测(**只计数,不改行为**;与 r10/r11 同范式)
         #   ⚠ 计在【截断处】,因为 lead 要问的正是"out[:1] 挡掉了什么"
         c = self.ctr

@@ -19,10 +19,16 @@ SRC="$HERE/check_modules.c $ROOT/src/chdsp_biquad.c $ROOT/src/chdsp_detector.c \
 BUILD="$ROOT/build_kill"
 rm -rf "$BUILD"; mkdir -p "$BUILD"
 
+# ⚠ 变异必须跑在【拥有它的那个检查二进制】上。
+#   chdsp_fixed 的三个变异(WRAP/TRUNC/NOEF)由 01_design/fixedpoint/check_fixed.c 拥有,
+#   check_modules.c 不测它们 ⇒ 若放在这里跑,会"存活"而给出错误的杀伤率。
+#   ⇒ 它们在 FIXED_MUTS 里,单独用 check_fixed 跑。
+FIXED_MUTS=(
+  CHDSP_BROKEN_WRAP
+  CHDSP_BROKEN_TRUNC
+  CHDSP_BROKEN_NOEF
+)
 MUTS=(
-  CHDSP_BROKEN_WRAP           # chdsp_fixed:窄化回绕
-  CHDSP_BROKEN_TRUNC          # chdsp_fixed:截断代替就近舍入
-  CHDSP_BROKEN_NOEF           # chdsp_fixed:关掉二阶误差反馈
   CHDSP_BROKEN_BQ_NORAMP      # biquad:系数直接跳变
   CHDSP_BROKEN_BQ_TIE_FREE    # biquad:HPF/LPF 自由量化
   CHDSP_BROKEN_POW_NARROW     # detector:功率状态截回 Q4.27
@@ -55,6 +61,26 @@ echo "  阴性对照(无变异):PASS ✓  ⇒ 下面的杀死可归因于变异"
 echo
 
 survived=0
+total=$(( ${#MUTS[@]} + ${#FIXED_MUTS[@]} ))
+
+# ---- 地基件(chdsp_fixed)的变异:跑它自己的检查二进制 ----
+FSRC="$FIXED/check_fixed.c $FIXED/chdsp_fixed.c"
+if $CC -std=gnu99 -O2 -Wall -Wextra -I$FIXED $FSRC -o "$BUILD/fx_good" -lm 2>/dev/null; then
+  for M in "${FIXED_MUTS[@]}"; do
+    $CC -std=gnu99 -O2 -Wall -Wextra -I$FIXED -DCHDSP_CHECK_FORCE_GOOD_ASSERT=1 -D$M=1 \
+        $FSRC -o "$BUILD/fx_$M" -lm 2>/dev/null
+    ( cd "$BUILD" && ./fx_$M ) > "$BUILD/fo_$M.txt" 2>&1
+    if [ $? -ne 0 ]; then
+      k=$(grep -E '^\s*\[FAIL\]' "$BUILD/fo_$M.txt" | grep -v 'CHK-0' | awk '{print $2}' | tr '\n' ' ')
+      echo "  [已杀死] $M  ⇐ $k  (由 check_fixed 拥有)"
+    else
+      echo "  [⛔ 存活] $M  —— 由 check_fixed 拥有,却没被抓到"; survived=$((survived+1))
+    fi
+  done
+else
+  echo "  ⛔ check_fixed 编译失败 ⇒ 地基件的三个变异无法判定"; survived=$((survived+3))
+fi
+
 for M in "${MUTS[@]}"; do
   if ! $CC $CFLAGS -D$M=1 $SRC -o "$BUILD/m_$M" -lm 2>"$BUILD/b_$M.log"; then
     echo "  [编译失败] $M"; sed 's/^/      /' "$BUILD/b_$M.log" | head -3; survived=$((survived+1)); continue
@@ -73,7 +99,7 @@ done
 echo
 echo "================================================================"
 if [ $survived -eq 0 ]; then
-  echo "杀伤矩阵:${#MUTS[@]}/${#MUTS[@]} 全部被杀死  ⇒ PASS"
+  echo "杀伤矩阵:$total/$total 全部被杀死  ⇒ PASS"
   exit 0
 else
   echo "⛔ 杀伤矩阵:$survived 个变异存活 ⇒ **对应检查不依赖被测物,必须补检查或删变异**"

@@ -71,9 +71,6 @@ void chdsp_in_ch_process(chdsp_in_ch_t *ch, const chdsp_io_q0_31_t *in,
     /* ✳ AEC → ✳ ANC(此前只允许 LTI 且系数静态的模块) */
     chdsp_hook_run(&ch->hook_aec, out, n);
     chdsp_hook_run(&ch->hook_anc, out, n);
-#if CHDSP_BROKEN_HPF_AFTER_DYN
-    chdsp_bq_chain_process(&ch->hpf, out, out, n, &ch->sat);   /* ⛔ 坏版本 */
-#endif
     /* ④ 门 → ⑤ 压缩 */
     for (i = 0u; i < n; i++) {
         chdsp_gain_q4_27_t g = chdsp_gate_gain1(&ch->gate, out[i], 0);
@@ -81,6 +78,12 @@ void chdsp_in_ch_process(chdsp_in_ch_t *ch, const chdsp_io_q0_31_t *in,
         g = chdsp_comp_gain1(&ch->comp, out[i], 0);
         out[i] = chdsp_apply_gain(out[i], g, &ch->sat);
     }
+#if CHDSP_BROKEN_HPF_AFTER_DYN
+    /* ⛔ 坏版本:HPF 放到【动态处理之后】—— 侧链因此看到未滤的隆隆声。
+     * ⚠ 初版把它放在 AEC 钩子之后、门之前 ⇒ **仍在动态之前** ⇒ 变异没实现它声称的缺陷,
+     *   因而在杀伤矩阵里"存活"。由杀伤矩阵抓出后改到此处。 */
+    chdsp_bq_chain_process(&ch->hpf, out, out, n, &ch->sat);
+#endif
     /* ✳ AGC */
     chdsp_hook_run(&ch->hook_agc, out, n);
     /* ⑥ PEQ → ✳ AFC 陷波器组 */
