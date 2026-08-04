@@ -39,6 +39,7 @@
 #include "chdsp_dynamics.h"
 #include "chdsp_fir.h"
 #include "chdsp_delay.h"
+#include "chdsp_notch.h"
 #include <stdio.h>
 #include <math.h>
 
@@ -285,6 +286,42 @@ int main(void)
             v = v * 10 + (chdsp_xover_needs_polarity_flip(1, chdsp_xo_order(NS[i])) + 2);
         }
         printf("PROBE P_XO_UNIT %ld\n", v);
+    }
+
+    /* ---- P_NOTCH_EVICT:回收时是否会动【固定槽】-----------------------------
+     * 声称改变的行为:HYBRID 下持续回收压力后,固定槽是否还完好。
+     * 读数 = 固定槽 0 的 f_hz(好版本恒为装机值 100;坏版本会被 AFC 频率覆盖)。 */
+    {
+        chdsp_notch_bank_t b; chdsp_bq_t sec[CHDSP_NOTCH_COUNT]; chdsp_bq_chain_t ch;
+        const uint16_t NF = (uint16_t)(CHDSP_NOTCH_COUNT / 2);
+        int i;
+        chdsp_bq_chain_init(&ch, sec, CHDSP_NOTCH_COUNT);
+        chdsp_notch_bank_init(&b, CHDSP_NOTCH_MODE_HYBRID, NF);
+        for (i = 0; i < (int)NF; i++) {
+            (void)chdsp_notch_bank_set_fixed(&b, &ch, (uint16_t)i, 100.0 + i, 8.0, -6.0);
+        }
+        for (i = 0; i < CHDSP_NOTCH_COUNT * 5; i++) {
+            (void)chdsp_notch_bank_request(&b, &ch, 1000.0 + 10.0 * i, 8.0, -6.0, 0);
+        }
+        printf("PROBE P_NOTCH_EVICT %ld\n", (long)b.slot[0].f_hz);
+    }
+
+    /* ---- P_NOTCH_RESET:复位动态槽时固定槽是否留下 --------------------------
+     * 声称改变的行为:「重启后仍在」。读数 = 复位后仍占用的槽数。 */
+    {
+        chdsp_notch_bank_t b; chdsp_bq_t sec[CHDSP_NOTCH_COUNT]; chdsp_bq_chain_t ch;
+        const uint16_t NF = (uint16_t)(CHDSP_NOTCH_COUNT / 2);
+        int i;
+        chdsp_bq_chain_init(&ch, sec, CHDSP_NOTCH_COUNT);
+        chdsp_notch_bank_init(&b, CHDSP_NOTCH_MODE_HYBRID, NF);
+        for (i = 0; i < (int)NF; i++) {
+            (void)chdsp_notch_bank_set_fixed(&b, &ch, (uint16_t)i, 100.0 + i, 8.0, -6.0);
+        }
+        for (i = 0; i < CHDSP_NOTCH_COUNT; i++) {
+            (void)chdsp_notch_bank_request(&b, &ch, 2000.0 + 10.0 * i, 8.0, -6.0, 0);
+        }
+        chdsp_notch_bank_reset_dynamic(&b, &ch);
+        printf("PROBE P_NOTCH_RESET %u\n", (unsigned)chdsp_notch_bank_used(&b));
     }
 
     return 0;

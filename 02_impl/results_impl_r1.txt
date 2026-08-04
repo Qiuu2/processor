@@ -1,9 +1,9 @@
 ================================================================================
 results_impl_r1 —— D3/D4 C 实现 · 总闸门
 门禁状态: 未过门(未经独立 critic 评审)
-时间: 2026-08-04T15:08:14+08:00
-deps: chdsp_biquad.h@6d95dea5f8b3472b chdsp_chain.h@8a1cb5f3dd191b6d chdsp_config.h@c4e3788447920f64 chdsp_delay.h@5fe962b7a355715a chdsp_detector.h@5174324e05b09f2f chdsp_dynamics.h@4b033e284d7a8056 chdsp_fir.h@0ceed3f2aac3eb73 chdsp_biquad.c@3706c696f5b01031 chdsp_chain.c@f1495d880c6153d6 chdsp_delay.c@17491f0d34d4c0a3 chdsp_detector.c@e8085bea08eb4748 chdsp_dynamics.c@a82dfc1b12464ca8 chdsp_fir.c@a499834ca5626c38 
-      check_modules.c@6735fd8f4155ce03 ref_modules.py@1178ad663dd1e18a
+时间: 2026-08-04T15:31:49+08:00
+deps: chdsp_biquad.h@6d95dea5f8b3472b chdsp_chain.h@a37932eec5e25534 chdsp_config.h@d1112b527e408c2f chdsp_delay.h@5fe962b7a355715a chdsp_detector.h@5174324e05b09f2f chdsp_dynamics.h@4b033e284d7a8056 chdsp_fir.h@0ceed3f2aac3eb73 chdsp_notch.h@7b089f8ff579290d chdsp_biquad.c@3706c696f5b01031 chdsp_chain.c@06bcbbab54a75388 chdsp_delay.c@17491f0d34d4c0a3 chdsp_detector.c@e8085bea08eb4748 chdsp_dynamics.c@a82dfc1b12464ca8 chdsp_fir.c@a499834ca5626c38 chdsp_notch.c@7224f93db832c29b 
+      check_modules.c@e55b732b68bff2c3 ref_modules.py@1178ad663dd1e18a
 编译器: gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
 ================================================================================
 
@@ -121,6 +121,25 @@ chain
       45 Hz 隆隆 −20 dBFS 经真链:输出功率 = -93.43 dB
   [PASS] CHK-C3    ⭐ HPF 在动态之前 ⇒ 隆隆不顶开门 ⇒ 输出被压(⛔ HPF 在后会顶开门)
 
+陷波器组 · 三种工作模式(PRD §二.5)
+      FIXED:set_fixed=0(期 0);12 次 AFC 请求 ⇒ 被拒 12 次;占用 1;固定陷波 f=120 Hz
+  [PASS] CHK-N1    ⭐ FIXED:AFC 请求**全部被拒**(⛔ 不得挪用固定槽),固定陷波原封不动
+      DYNAMIC:填满 8 槽;第 9 次请求 ⇒ 占用槽 0(最早那个是 0),该槽 f 由 200 变成 9000;evict=1 reject=0
+  [PASS] CHK-N2    ⭐ DYNAMIC:槽满时回收**最早分配的那个**(LRU),占用数不变
+      HYBRID(固定 4 / 动态 4):灌 40 次请求后 —— 固定槽完好=1;evict=36;可用动态槽=0
+  [PASS] CHK-N3    ⭐⭐ HYBRID:固定槽在持续回收压力下**一个都没被动**(⛔ 这是 FIXED 语义的全部意义)
+      复位前占用 8 ⇒ 复位动态槽后占用 4(期望 = 固定槽数 4)
+  [PASS] CHK-N4    ⭐「重启后仍在」:固定槽保留、动态槽清空(⛔ 不是全清也不是全留)
+      1 kHz 激励:无陷波能量 1.2000e+01;放 −18 dB 陷波后 1.9019e-01 ⇒ 衰减 -18.00 dB
+  [PASS] CHK-N5a   ⭐ 前提自检:无陷波时确实有能量通过(⛔ 否则下一条是在 0/0 上通过)
+  [PASS] CHK-N5    ⭐ 触达证明:request() 真的改变了音频(⛔ 不只是改了个结构体字段)
+
+接线(critic m-6 · D6-ao)
+      15.9999999→0(期 0) 16.0→-1(期 −1) 16.0000001→-1(期 −1) −16.0→-1(期 −1)
+  [PASS] CHK-M6a   ⭐ |x| < CHDSP_COEF_ABS_MAX_INT 是**显式**判据(⛔ 不再靠 int32 边界碰巧等价)
+      满量程+24dB trim+15dB PEQ ⇒ 链内饱和帧 1;标称 −20 dBFS 单位增益 ⇒ 0
+  [PASS] CHK-M6b   ⭐ C-B 真的接上了:链内饱和被记录,而正常工作点下恒 0(⛔ 两个方向都测)
+
 分频补全(C 第二批 r8:奇数阶 + Bessel)
       Bessel 1..8 阶 × LP/HP:设计失败 0 次;max|b| = 1.950593(Q4.27 上限 16)
   [PASS] CHK-X1    ⭐ Y7 闭合:Bessel 全族 max|b| ≤ 2 ⇒ 装得进 Q4.27(EXP-9 解析预测兑现)
@@ -136,7 +155,7 @@ chain
   [PASS] CHK-X6    一阶节 max|b| ≤ 1 ⇒ Q4.27 装得下,不需额外包络检查
 
 ================================================================
-合计: PASS=39  FAIL=0
+合计: PASS=47  FAIL=0
 退出码 = 0  ⇒ **本文件的每条检查都是硬闸门**
 ================================================================
 
@@ -190,7 +209,7 @@ chain
   [PASS] A3  ⇒ 该段确实被移除了 —— 变异名副其实
 
 --- Phase B:行为探针(只比该变异自己那一行读数)---
-  好版本探针读数 16 条 ✓
+  好版本探针读数 18 条 ✓
   CHDSP_BROKEN_TRUNC             P_TRUNC            好=2                      变异=1                     
   [PASS] CHDSP_BROKEN_TRUNC ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_TRUNC ②  ⇒ 其余探针逐位未变(已声明连带:P_NOEF —— 舍入模式**就是量化器的一部分**,而 P_NOEF 测的正是量化误差功率 ⇒ 同一处改动的第二个观测面,不是第二个缺陷)
@@ -200,6 +219,9 @@ chain
   CHDSP_BROKEN_DET_ONEDIR        P_DET_ONEDIR       好=-5348                  变异=-5890                 
   [PASS] CHDSP_BROKEN_DET_ONEDIR ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_DET_ONEDIR ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  CHDSP_BROKEN_NOTCH_EVICT_FIXED P_NOTCH_EVICT      好=100                    变异=1360                  
+  [PASS] CHDSP_BROKEN_NOTCH_EVICT_FIXED ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_NOTCH_EVICT_FIXED ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
   CHDSP_BROKEN_FIR_NOBYPASS      P_FIR_NOBYPASS     好=0                      变异=2554                  
   [PASS] CHDSP_BROKEN_FIR_NOBYPASS ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_FIR_NOBYPASS ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
@@ -224,6 +246,9 @@ chain
   CHDSP_BROKEN_BQ_NORAMP         P_BQ_NORAMP        好=8                      变异=1                     
   [PASS] CHDSP_BROKEN_BQ_NORAMP ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_BQ_NORAMP ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
+  CHDSP_BROKEN_NOTCH_RESET_ALL   P_NOTCH_RESET      好=4                      变异=0                     
+  [PASS] CHDSP_BROKEN_NOTCH_RESET_ALL ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
+  [PASS] CHDSP_BROKEN_NOTCH_RESET_ALL ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
   CHDSP_BROKEN_COMP_HARDKNEE     P_COMP_HARDKNEE    好=-282                   变异=0                     
   [PASS] CHDSP_BROKEN_COMP_HARDKNEE ①  ⇒ 声称改变的量确实变了 —— 变异名副其实
   [PASS] CHDSP_BROKEN_COMP_HARDKNEE ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
@@ -241,12 +266,12 @@ chain
   [PASS] CHDSP_BROKEN_WRAP ②  ⇒ 其余探针**逐位未变** ⇒ 该变异只注入了它声称的那一个缺陷
 
 ================================================================
-变异自证合计: PASS=35  FAIL=0
+变异自证合计: PASS=39  FAIL=0
 ⇒ 全部变异名副其实 ⇒ 杀伤矩阵的分母可信 ⇒ PASS
 
 ### 4. 杀伤矩阵(硬闸门)
 ================================================================
-杀伤矩阵(硬闸门)  变异数 = 16
+杀伤矩阵(硬闸门)  变异数 = 18
 ================================================================
   阴性对照(无变异):PASS ✓  ⇒ 下面的杀死可归因于变异
 
@@ -269,9 +294,11 @@ chain
   [已杀死] CHDSP_BROKEN_BUTTER_COS  ⇐ CHK-X3 
   [已杀死] CHDSP_BROKEN_BESSEL_RBJ  ⇐ CHK-X2 
   [已杀死] CHDSP_BROKEN_XO_UNIT  ⇐ CHK-B3 CHK-B3s CHK-B3s+ CHK-C2 
+  [已杀死] CHDSP_BROKEN_NOTCH_EVICT_FIXED  ⇐ CHK-N1 CHK-N3 CHK-N4 
+  [已杀死] CHDSP_BROKEN_NOTCH_RESET_ALL  ⇐ CHK-N4 
 
 ================================================================
-杀伤矩阵:19/19 全部被杀死  ⇒ PASS
+杀伤矩阵:21/21 全部被杀死  ⇒ PASS
 
 ### 5. 第二轨 bit-exact(硬闸门)
 已写出 bitexact_{bq_in,bq_out,det_out}.txt

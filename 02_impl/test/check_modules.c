@@ -684,6 +684,130 @@ int main(void)
             "⭐ HPF 在动态之前 ⇒ 隆隆不顶开门 ⇒ 输出被压(⛔ HPF 在后会顶开门)");
     }
 
+    /* ================= 陷波器组:三种工作模式(PRD §二.5 待定项②)================= */
+    printf("\n陷波器组 · 三种工作模式(PRD §二.5)\n");
+    {   /* CHK-N1 ⭐ FIXED:AFC 一律拿不到槽,且固定陷波不被动 */
+        chdsp_notch_bank_t b; chdsp_bq_t sec[CHDSP_NOTCH_COUNT]; chdsp_bq_chain_t ch;
+        int i, r_set, r_req = CHDSP_NOTCH_OK, rejected = 0;
+        chdsp_bq_chain_init(&ch, sec, CHDSP_NOTCH_COUNT);
+        chdsp_notch_bank_init(&b, CHDSP_NOTCH_MODE_FIXED, 0u);
+        r_set = chdsp_notch_bank_set_fixed(&b, &ch, 0u, 120.0, 8.0, -6.0);
+        for (i = 0; i < CHDSP_NOTCH_COUNT + 4; i++) {
+            r_req = chdsp_notch_bank_request(&b, &ch, 300.0 + 10.0 * i, 8.0, -6.0, 0);
+            if (r_req == CHDSP_NOTCH_ERR_NO_SLOT) { rejected++; }
+        }
+        printf("      FIXED:set_fixed=%d(期 0);%d 次 AFC 请求 ⇒ 被拒 %d 次;"
+               "占用 %u;固定陷波 f=%.0f Hz\n",
+               r_set, CHDSP_NOTCH_COUNT + 4, rejected,
+               (unsigned)chdsp_notch_bank_used(&b), b.slot[0].f_hz);
+        OKC("CHK-N1", r_set == CHDSP_NOTCH_OK && rejected == CHDSP_NOTCH_COUNT + 4
+                      && chdsp_notch_bank_used(&b) == 1u && b.slot[0].f_hz == 120.0,
+            "⭐ FIXED:AFC 请求**全部被拒**(⛔ 不得挪用固定槽),固定陷波原封不动");
+    }
+    {   /* CHK-N2 ⭐ DYNAMIC:填满后回收【最早那个】,⛔ 不是随便挑一个 */
+        chdsp_notch_bank_t b; chdsp_bq_t sec[CHDSP_NOTCH_COUNT]; chdsp_bq_chain_t ch;
+        int i; uint16_t idx0 = 0xFFFFu, idx_evict = 0xFFFFu; double f_after;
+        chdsp_bq_chain_init(&ch, sec, CHDSP_NOTCH_COUNT);
+        chdsp_notch_bank_init(&b, CHDSP_NOTCH_MODE_DYNAMIC, 0u);
+        for (i = 0; i < CHDSP_NOTCH_COUNT; i++) {
+            uint16_t k = 0xFFFFu;
+            (void)chdsp_notch_bank_request(&b, &ch, 200.0 + 10.0 * i, 8.0, -6.0, &k);
+            if (i == 0) { idx0 = k; }
+        }
+        /* 再来一个 ⇒ 必须回收 idx0(最早分配的那个) */
+        (void)chdsp_notch_bank_request(&b, &ch, 9000.0, 8.0, -6.0, &idx_evict);
+        f_after = b.slot[idx0].f_hz;
+        printf("      DYNAMIC:填满 %u 槽;第 %u 次请求 ⇒ 占用槽 %u(最早那个是 %u),"
+               "该槽 f 由 200 变成 %.0f;evict=%u reject=%u\n",
+               (unsigned)CHDSP_NOTCH_COUNT, (unsigned)CHDSP_NOTCH_COUNT + 1u,
+               (unsigned)idx_evict, (unsigned)idx0, f_after,
+               (unsigned)b.evict_count, (unsigned)b.reject_count);
+        OKC("CHK-N2", idx_evict == idx0 && f_after == 9000.0
+                      && b.evict_count == 1u && b.reject_count == 0u
+                      && chdsp_notch_bank_used(&b) == (uint16_t)CHDSP_NOTCH_COUNT,
+            "⭐ DYNAMIC:槽满时回收**最早分配的那个**(LRU),占用数不变");
+    }
+    {   /* CHK-N3 ⭐⭐ HYBRID:固定槽在**任何压力下**都不被回收 —— 这是本组最要紧的一条 */
+        const uint16_t NF = (uint16_t)(CHDSP_NOTCH_COUNT / 2);
+        chdsp_notch_bank_t b; chdsp_bq_t sec[CHDSP_NOTCH_COUNT]; chdsp_bq_chain_t ch;
+        int i, fixed_intact = 1;
+        chdsp_bq_chain_init(&ch, sec, CHDSP_NOTCH_COUNT);
+        chdsp_notch_bank_init(&b, CHDSP_NOTCH_MODE_HYBRID, NF);
+        for (i = 0; i < (int)NF; i++) {
+            (void)chdsp_notch_bank_set_fixed(&b, &ch, (uint16_t)i, 100.0 + i, 8.0, -6.0);
+        }
+        /* 猛灌:远超动态槽数 */
+        for (i = 0; i < CHDSP_NOTCH_COUNT * 5; i++) {
+            (void)chdsp_notch_bank_request(&b, &ch, 1000.0 + 10.0 * i, 8.0, -6.0, 0);
+        }
+        for (i = 0; i < (int)NF; i++) {
+            if (b.slot[i].f_hz != 100.0 + i || !b.slot[i].in_use) { fixed_intact = 0; }
+        }
+        printf("      HYBRID(固定 %u / 动态 %u):灌 %d 次请求后 —— 固定槽完好=%d;"
+               "evict=%u;可用动态槽=%u\n",
+               (unsigned)NF, (unsigned)(CHDSP_NOTCH_COUNT - NF), CHDSP_NOTCH_COUNT * 5,
+               fixed_intact, (unsigned)b.evict_count,
+               (unsigned)chdsp_notch_bank_free_dynamic(&b));
+        OKC("CHK-N3", fixed_intact == 1 && b.evict_count > 0u
+                      && chdsp_notch_bank_used(&b) == (uint16_t)CHDSP_NOTCH_COUNT,
+            "⭐⭐ HYBRID:固定槽在持续回收压力下**一个都没被动**(⛔ 这是 FIXED 语义的全部意义)");
+    }
+    {   /* CHK-N4 ⭐「重启后仍在」:复位动态槽 ⇒ 固定留、动态清 */
+        const uint16_t NF = (uint16_t)(CHDSP_NOTCH_COUNT / 2);
+        chdsp_notch_bank_t b; chdsp_bq_t sec[CHDSP_NOTCH_COUNT]; chdsp_bq_chain_t ch;
+        int i; uint16_t used_before, used_after;
+        chdsp_bq_chain_init(&ch, sec, CHDSP_NOTCH_COUNT);
+        chdsp_notch_bank_init(&b, CHDSP_NOTCH_MODE_HYBRID, NF);
+        for (i = 0; i < (int)NF; i++) {
+            (void)chdsp_notch_bank_set_fixed(&b, &ch, (uint16_t)i, 100.0 + i, 8.0, -6.0);
+        }
+        for (i = 0; i < CHDSP_NOTCH_COUNT; i++) {
+            (void)chdsp_notch_bank_request(&b, &ch, 2000.0 + 10.0 * i, 8.0, -6.0, 0);
+        }
+        used_before = chdsp_notch_bank_used(&b);
+        chdsp_notch_bank_reset_dynamic(&b, &ch);
+        used_after = chdsp_notch_bank_used(&b);
+        printf("      复位前占用 %u ⇒ 复位动态槽后占用 %u(期望 = 固定槽数 %u)\n",
+               (unsigned)used_before, (unsigned)used_after, (unsigned)NF);
+        OKC("CHK-N4", used_before == (uint16_t)CHDSP_NOTCH_COUNT && used_after == NF
+                      && b.slot[0].f_hz == 100.0,
+            "⭐「重启后仍在」:固定槽保留、动态槽清空(⛔ 不是全清也不是全留)");
+    }
+    {   /* CHK-N5 ⭐ 触达证明:bank 真的驱动了滤波器链,⛔ 不只是簿记 */
+        chdsp_notch_bank_t b; chdsp_bq_t sec[CHDSP_NOTCH_COUNT]; chdsp_bq_chain_t ch;
+        chdsp_sat_t st; int i; double e_on = 0.0, e_off = 0.0;
+        const double F = 1000.0;
+        const int NS = CHDSP_FS_HZ / 10, SKIP = NS / 2;   /* ⚠ SKIP 必须 < NS,见下 */
+        chdsp_bq_chain_init(&ch, sec, CHDSP_NOTCH_COUNT); chdsp_sat_reset(&st);
+        chdsp_notch_bank_init(&b, CHDSP_NOTCH_MODE_DYNAMIC, 0u);
+        /* 无陷波:链上 n=0 ⇒ 逐位透传 */
+        for (i = 0; i < NS; i++) {
+            chdsp_smp_q4_27_t x = smp_f(0.1 * sin(2.0 * M_PI * F * i / CHDSP_FS_HZ));
+            chdsp_smp_q4_27_t y = x;
+            chdsp_bq_chain_process(&ch, &y, &y, 1u, &st);
+            if (i > SKIP) { double v = chdsp_smp_to_f64(y); e_off += v * v; }
+        }
+        /* 在 1 kHz 放一个 −18 dB 的陷波 ⇒ 同一激励能量必须显著下降 */
+        (void)chdsp_notch_bank_request(&b, &ch, F, 8.0, -18.0, 0);
+        chdsp_bq_chain_reset(&ch);
+        for (i = 0; i < NS; i++) {
+            chdsp_smp_q4_27_t x = smp_f(0.1 * sin(2.0 * M_PI * F * i / CHDSP_FS_HZ));
+            chdsp_smp_q4_27_t y = x;
+            chdsp_bq_chain_process(&ch, &y, &y, 1u, &st);
+            if (i > SKIP) { double v = chdsp_smp_to_f64(y); e_on += v * v; }
+        }
+        printf("      1 kHz 激励:无陷波能量 %.4e;放 −18 dB 陷波后 %.4e ⇒ 衰减 %.2f dB\n",
+               e_off, e_on, 10.0 * log10(e_on / (e_off + 1e-300) + 1e-300));
+        /* ⭐⭐ 前提自检 —— 本条首跑时是【假绿】:窗口写成 i > 4800 而循环只到 4799
+         *   ⇒ 两个能量都是 0 ⇒ 判据在 1e−300/1e−300 上通过,**什么也没测**。
+         *   ⇒ 教训与 CHK-Y1c0 同族:**先量出被测量的实际值,再据此断言**。 */
+        OKC("CHK-N5a", e_off > 1e-6,
+            "⭐ 前提自检:无陷波时确实有能量通过(⛔ 否则下一条是在 0/0 上通过)");
+        OKC("CHK-N5", e_off > 1e-6
+                      && 10.0 * log10(e_on / (e_off + 1e-300) + 1e-300) < -12.0,
+            "⭐ 触达证明:request() 真的改变了音频(⛔ 不只是改了个结构体字段)");
+    }
+
     /* ================= m-6 接线审计的机械形式 ================= */
     printf("\n接线(critic m-6 · D6-ao)\n");
     {   /* CHK-M6a ⭐ `CHDSP_COEF_ABS_MAX_INT` 现在**真的**是拦截依据,不是碰巧

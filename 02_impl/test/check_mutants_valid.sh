@@ -32,7 +32,7 @@ FIXED="$(cd "$ROOT/../01_design/fixedpoint" && pwd)"
 CC="${CC:-gcc}"
 CFLAGS="-std=gnu99 -O2 -I$ROOT/src -I$FIXED"
 SRC="$ROOT/src/chdsp_biquad.c $ROOT/src/chdsp_detector.c $ROOT/src/chdsp_delay.c \
-     $ROOT/src/chdsp_dynamics.c $ROOT/src/chdsp_fir.c $ROOT/src/chdsp_chain.c \
+     $ROOT/src/chdsp_dynamics.c $ROOT/src/chdsp_fir.c $ROOT/src/chdsp_chain.c $ROOT/src/chdsp_notch.c \
      $FIXED/chdsp_fixed.c"
 B="$ROOT/build_mv"; rm -rf "$B"; mkdir -p "$B"
 pass=0; fail=0
@@ -135,6 +135,8 @@ declare -A CLAIM=(
   [CHDSP_BROKEN_BUTTER_COS]=P_BUTTER_COS
   [CHDSP_BROKEN_BESSEL_RBJ]=P_BESSEL_RBJ
   [CHDSP_BROKEN_XO_UNIT]=P_XO_UNIT
+  [CHDSP_BROKEN_NOTCH_EVICT_FIXED]=P_NOTCH_EVICT
+  [CHDSP_BROKEN_NOTCH_RESET_ALL]=P_NOTCH_RESET
 )
 
 # ---------------------------------------------------------------------------

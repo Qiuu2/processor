@@ -37,6 +37,7 @@
 #include "chdsp_config.h"
 #include "chdsp_biquad.h"
 #include "chdsp_dynamics.h"
+#include "chdsp_notch.h"
 #include "chdsp_fir.h"
 
 #ifdef __cplusplus
@@ -87,7 +88,11 @@ typedef struct {
     /* ✳ AFC 陷波器组:形状留够 CHDSP_NOTCH_COUNT 节 + 三种模式 */
     chdsp_bq_t          notch_sec[CHDSP_NOTCH_COUNT];
     chdsp_bq_chain_t    notch;
-    chdsp_notch_mode_t  notch_mode[CHDSP_NOTCH_COUNT];
+    /** ⭐ 陷波器组的**槽位簿记**(整改 2026-08-04:PRD §二.5「三种工作模式」的落地)。
+     *  原先这里是 `chdsp_notch_mode_t notch_mode[CHDSP_NOTCH_COUNT]` —— 它在 init 里被赋值,
+     *  **而全库零消费者**(D6-ao 接线审计)⇒ 三种模式只是一个形状,没有任何行为。
+     *  ⛔ 本 bank 只做确定性簿记;**哪个频率要陷波由 AFC 定**(经 hook_afc / request)。 */
+    chdsp_notch_bank_t  notch_bank;
     chdsp_alg_hook_t    hook_afc;          /**< 由 adaptive-dsp 决定陷波参数 */
     /* ⑦ ⑧ */
     chdsp_delay_t       delay;

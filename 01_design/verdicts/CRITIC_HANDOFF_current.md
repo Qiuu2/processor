@@ -17,7 +17,13 @@
   + `..._addendum1.md` = **PASS-with-conditions**(0B/**3**M/**3**m,含 addendum 新增)。
   ⭐ 锁 = tag **`review/w1p-closeout-r1` = `2990240`**;我核过 tag 内三件与主件锁的 sha16 **逐字节相同**
   ⇒ **主件判定已覆盖该 tag,未重评。**
-- **⇒ 四件全部出件并已报 lead。当前无在评标的。**
+- **第五/六件【已出件】· r2 复核两份**:
+  `critic_02impl_r2_verdict_20260804.md` = **FAIL(维持)** 锁 tag `review/02impl-r2`=`d8fced2`
+  `critic_W1P_CLOSEOUT_verdict_20260804_addendum2.md` = PASS-w-c 锁 tag `review/w1p-closeout-r2`=`3276a8f`
+- **⛔ 第七件 = 我自己的勘误**:`critic_D3D4_CHAIN_v0.1_verdict_20260804_erratum1.md`
+  ⇒ 我 D3/D4 MAJOR-3 修法④「把大增益放在链尾」**在噪声轴上方向反了**(作者更正,我复算确认)
+  ⇒ 该措辞是我从**前任 critic 的 verdict 原样承接**、未验就复述的 ⇒ 记:承接前任措辞与引用前任的数同等需复核
+- **⇒ 当前无在评标的。**
 
 ## 1. 评审队列与状态
 | # | 标的 | 状态 | verdict |
@@ -25,7 +31,32 @@
 | 1 | `D3D4_CHANNEL_CHAIN_v0.1.md` + `d34_chain/` | ✅ **FAIL** | `critic_D3D4_CHAIN_v0.1_verdict_20260804.md` |
 | 2 | `02_impl/` C 实现第一批 | ✅ **FAIL** | `critic_02impl_r1_verdict_20260804.md`(锁 `review/02impl-r1`=`8402198`) |
 | 3 | r87 收口件 F76–F80 | ✅ **PASS-with-conditions** | `critic_r87_F76-F80_verdict_20260804.md` |
-| 4 | W1-P 收口件三件 `W1P_CLOSEOUT/` | ✅ **PASS-with-conditions**(0B/3M/3m) | 主件 `critic_W1P_CLOSEOUT_verdict_20260804.md` + `..._addendum1.md`(锁 tag `review/w1p-closeout-r1`=`2990240`) |
+| 4 | W1-P 收口件三件 `W1P_CLOSEOUT/` | ✅ **PASS-with-conditions**(0B/3M/3m) | 主件 + `..._addendum1.md`(锁 tag `review/w1p-closeout-r1`=`2990240`) |
+| 5 | **02_impl r2** | ✅ **FAIL(维持)** | `critic_02impl_r2_verdict_20260804.md`(锁 `review/02impl-r2`=`d8fced2`) |
+| 6 | **W1P 收口件 r2** | ✅ **PASS-w-c**(1M/3m 未闭) | `..._addendum2.md`(锁 `review/w1p-closeout-r2`=`3276a8f`) |
+| 7 | **我自己 D3/D4 verdict 的勘误** | ⛔ 已出 | `critic_D3D4_CHAIN_v0.1_verdict_20260804_erratum1.md` |
+
+## 1e. r2 两轮的要点(细节见各 verdict)
+```
+【02_impl r2】r1 的 1 BLOCKER + 5 MAJOR **一条都没关闭**(逐条机械核过,expect_red 逐字节未动)
+   ⭐ 而 r2 有大量高质量新工作:单位强类型 / 断言② / G11 / 变异 16→19 / 自证 16→35 / 18.089 全库反扫
+   ⛔ 而 G11(专抓"一个变异注入两个缺陷",= 我设计侧 BLOCKER-2 的 C 侧护栏)
+      【建在没修的 expect_red 上】⇒ 拿走它要调的脚本,G10+G11 双双报绿,元检查整体 PASS
+   ⇒ 新护栏的地基还是那块坏的
+   MAJOR-5 比例变差:无杀手 14/29(48%)→ 21/40(52.5%);CHK-B1b 仍无杀手
+   ✅ 自查项③(18.089)已闭;根因值得记:反扫特征串没覆盖【由被撤回值推出的派生值】(D6-u 新形态)
+   ✅ 自查项①(run_all 聚合)其实 r1 就修好了 —— 是我 r1 没读 run_all.sh 收尾段,不是作者的问题
+【W1P r2】MAJOR-1 ✅闭 / MAJOR-3 ✅闭得极好 / m-3 ✅闭且更全
+   ⛔ MAJOR-2、m-1、m-2 **一个字没动**
+   ⭐ MAJOR-3 的解法:一手原文自带校验例(Fig.7 booth 14m³/T60 0.34 ⇒ "about 600 cps"
+      k=4000⇒623 ✓ / k=2000⇒312 ⛔)⇒ 论文自己验证自己的常数
+   ⭐⭐ 而我独立算出两边都没说的一条:k=2000 ⇔ M≈3、k=4000 ⇔ M≈11
+      ⇒ 两常数【不矛盾】,是同一曲线上两个阈值 ⇒ C9 要裁的是「我们需要 M 取多少」不是「谁权威」⇒ P-5
+   m-4(新)「孤立模态区 54–110 Hz」两端取自不同 V(下沿用 V=100、上沿用 V=60)
+      按 §5.0 自己声明的 V 60–300 全网格应是 31–110;且 V≲51 m³ 时上沿越过 120 ⇒「两段分离」失效
+      ⇒ 这正是 §5.0 开头刚立的纪律,两小节后自己没用上(D6-l)
+   §5.3 我按 lead 要求硬审:论证【成立】;但三手段表漏了第四种(合成非统计 plant),「唯一」下得过重
+```
 
 ## 1d. 第四件已坐实的(细节见 verdict)
 ```

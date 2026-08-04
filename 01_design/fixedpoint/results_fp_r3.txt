@@ -1,10 +1,10 @@
 ================================================================================
 results_fp_r2  —  定点格式与量纲约定 · 第 2 轮(r1 两条不达标后的独立再观测)
-预注册: PREREG_FP_r1.txt@c120ac7ac12d24f1 + PREREG_FP_r2_addendum.txt@1f98eba8b34f7483 + PREREG_FP_r3_addendum.txt@08f3914ae97fc9a8
+预注册: PREREG_FP_r1.txt@c120ac7ac12d24f1 + PREREG_FP_r2_addendum.txt@1f98eba8b34f7483 + PREREG_FP_r3_addendum.txt@95d217310122e640
 门禁状态: 未过门(未经独立 critic 评审)
-跑批时间: 2026-08-04T15:09:53+08:00
-deps: chdsp_fixed.h@b2a44e5423960170, chdsp_fixed.c@21b69f99d71e645b,
-      chdsp_tables.h@31ad410305a842d7, check_fixed.c@b8341816a8bb8512,
+跑批时间: 2026-08-04T15:22:59+08:00
+deps: chdsp_fixed.h@90e0afbc6d92f948, chdsp_fixed.c@100a7a4f714cab3b,
+      chdsp_tables.h@31ad410305a842d7, check_fixed.c@07f6ffc42006a4f5,
       gen_tables.py@31731243d317b459, ref_fixed.py@5dc18a5ddc56c243
 编译器: gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
 已清 build 产物: 是(rm -rf build_r3 + 全部输出 txt)
@@ -106,6 +106,12 @@ CHK-5  级联:8 节 PEQ + LR8 分频(D-4:单级正确 != 级联正确)
   [PASS] CHK-5d  级联 DC/Nyquist 泄漏 ≤ −180 dB
       对照:结构约束量化(b1=−2b0,b2=b0)DC 单节 = 0.0000e+00 ⇒ 精确 0(构造保证)
   [PASS] CHK-5t  结构约束量化使 DC 零点在量化后仍精确
+      LR8 四节级联 · **结构约束量化** · 扫 400 个 fc:
+        DC 零点非 0 的 fc 数 = 0 / 400(最坏 0.000e+00 @ 0.0 Hz)
+        Nyquist 零点非 0 的 fc 数 = 0 / 400(最坏 0.000e+00)
+        阳性对照:同一批 fc 走**自由量化**,DC 非 0 的 fc 数 = 189 / 400
+  [PASS] CHK-5g  ⭐ 结构约束量化在 LR8 四节级联下,全扫描域 DC/Nyquist 恒精确 0
+  [PASS] CHK-5g+ ⭐ 阳性对照:自由量化在同一批 fc 上大量破坏零点 ⇒ 上一条不是恒真(D6-c:⛔ 不用单点 fc)
       fc 扫 500 点(20Hz-20kHz):
         自由量化   高通 DC 零点被破坏 251/500 点(最坏 DC 增益 -59.26 dB @ 20.0 Hz)
         自由量化   低通 Nyq 零点被破坏 261/500 点(最坏 -150.38 dB)
@@ -117,7 +123,7 @@ CHK-9  已写出逐位输出 bitexact_strict1.txt(由 run_r1.sh 比对两种构�
 已写出 db_table_c.txt(第二轨对表用)
 
 ================================================================
-合计: PASS=25  FAIL=0  RETIRED=3(退役项不计入判定,原样留痕)
+合计: PASS=27  FAIL=0  RETIRED=3(退役项不计入判定,原样留痕)
 构建: FORCE_GOOD_ASSERT=0
 ================================================================
 好版本退出码 = 0
@@ -148,6 +154,8 @@ CHK-9  已写出逐位输出 bitexact_strict1.txt(由 run_r1.sh 比对两种构�
       [PASS] CHK-5   级联量化误差远小于 ±0.3 dB 规格
       [PASS] CHK-5d  级联 DC/Nyquist 泄漏 ≤ −180 dB
       [PASS] CHK-5t  结构约束量化使 DC 零点在量化后仍精确
+      [PASS] CHK-5g  ⭐ 结构约束量化在 LR8 四节级联下,全扫描域 DC/Nyquist 恒精确 0
+      [PASS] CHK-5g+ ⭐ 阳性对照:自由量化在同一批 fc 上大量破坏零点 ⇒ 上一条不是恒真(D6-c:⛔ 不用单点 fc)
       [PASS] CHK-5f  自由量化会破坏零点(r1 的精确 0 是巧合),结构约束量化恒精确 ⇒ 该规则有理由存在
     坏版本 CHDSP_BROKEN_WRAP 退出码 = 1  (非 0 = 被杀死,符合假绿纪律)
 
@@ -176,6 +184,8 @@ CHK-9  已写出逐位输出 bitexact_strict1.txt(由 run_r1.sh 比对两种构�
       [PASS] CHK-5   级联量化误差远小于 ±0.3 dB 规格
       [PASS] CHK-5d  级联 DC/Nyquist 泄漏 ≤ −180 dB
       [PASS] CHK-5t  结构约束量化使 DC 零点在量化后仍精确
+      [PASS] CHK-5g  ⭐ 结构约束量化在 LR8 四节级联下,全扫描域 DC/Nyquist 恒精确 0
+      [PASS] CHK-5g+ ⭐ 阳性对照:自由量化在同一批 fc 上大量破坏零点 ⇒ 上一条不是恒真(D6-c:⛔ 不用单点 fc)
       [PASS] CHK-5f  自由量化会破坏零点(r1 的精确 0 是巧合),结构约束量化恒精确 ⇒ 该规则有理由存在
     坏版本 CHDSP_BROKEN_TRUNC 退出码 = 1  (非 0 = 被杀死,符合假绿纪律)
 
@@ -204,6 +214,8 @@ CHK-9  已写出逐位输出 bitexact_strict1.txt(由 run_r1.sh 比对两种构�
       [PASS] CHK-5   级联量化误差远小于 ±0.3 dB 规格
       [PASS] CHK-5d  级联 DC/Nyquist 泄漏 ≤ −180 dB
       [PASS] CHK-5t  结构约束量化使 DC 零点在量化后仍精确
+      [PASS] CHK-5g  ⭐ 结构约束量化在 LR8 四节级联下,全扫描域 DC/Nyquist 恒精确 0
+      [PASS] CHK-5g+ ⭐ 阳性对照:自由量化在同一批 fc 上大量破坏零点 ⇒ 上一条不是恒真(D6-c:⛔ 不用单点 fc)
       [PASS] CHK-5f  自由量化会破坏零点(r1 的精确 0 是巧合),结构约束量化恒精确 ⇒ 该规则有理由存在
     坏版本 CHDSP_BROKEN_NOEF 退出码 = 1  (非 0 = 被杀死,符合假绿纪律)
 

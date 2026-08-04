@@ -15,7 +15,7 @@ CC="${CC:-gcc}"
 CFLAGS="-std=gnu99 -O2 -Wall -Wextra -I$ROOT/src -I$FIXED"
 SRC="$HERE/check_modules.c $ROOT/src/chdsp_biquad.c $ROOT/src/chdsp_detector.c \
      $ROOT/src/chdsp_delay.c $ROOT/src/chdsp_dynamics.c $ROOT/src/chdsp_fir.c \
-     $ROOT/src/chdsp_chain.c $FIXED/chdsp_fixed.c"
+     $ROOT/src/chdsp_chain.c $ROOT/src/chdsp_notch.c $FIXED/chdsp_fixed.c"
 BUILD="$ROOT/build_kill"
 rm -rf "$BUILD"; mkdir -p "$BUILD"
 
@@ -45,6 +45,8 @@ MUTS=(
   CHDSP_BROKEN_BUTTER_COS     # biquad(r8):butter_q 退回 cos 式 ⇒ 奇数阶 BW 静默算错
   CHDSP_BROKEN_BESSEL_RBJ     # biquad(r8):Bessel 退回逐节 RBJ ⇒ 高阶高通错到 90 dB
   CHDSP_BROKEN_XO_UNIT        # biquad(r9):极性 mod 4 算在 dB/oct 上 ⇒ LR2/LR6 深谷
+  CHDSP_BROKEN_NOTCH_EVICT_FIXED  # notch(r10):回收时把固定槽也算进候选
+  CHDSP_BROKEN_NOTCH_RESET_ALL    # notch(r10):复位动态槽时把固定槽也清掉
 )
 
 echo "================================================================"

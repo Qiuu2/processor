@@ -26,14 +26,14 @@ void chdsp_hook_run(chdsp_alg_hook_t *h, chdsp_smp_q4_27_t *buf, uint16_t n)
 int chdsp_in_ch_init(chdsp_in_ch_t *ch, chdsp_smp_q4_27_t *dbuf, uint32_t dcap,
                      chdsp_smp_q4_27_t *lbuf, uint32_t lcap)
 {
-    int e = 0; uint16_t i;
+    int e = 0;
     memset(ch, 0, sizeof(*ch));
     ch->polarity = 1;
     ch->trim = chdsp_gain_from_raw(1 << CHDSP_GAIN_FRACBITS);
     chdsp_bq_chain_init(&ch->hpf,   ch->hpf_sec,   CHDSP_IN_HPF_SECTIONS);
     chdsp_bq_chain_init(&ch->peq,   ch->peq_sec,   CHDSP_IN_PEQ_BANDS);
     chdsp_bq_chain_init(&ch->notch, ch->notch_sec, CHDSP_NOTCH_COUNT);
-    for (i = 0u; i < CHDSP_NOTCH_COUNT; i++) { ch->notch_mode[i] = CHDSP_NOTCH_MODE_DYNAMIC; }
+    chdsp_notch_bank_init(&ch->notch_bank, CHDSP_NOTCH_MODE_DYNAMIC, 0u);
     chdsp_hook_clear(&ch->hook_aec); chdsp_hook_clear(&ch->hook_anc);
     chdsp_hook_clear(&ch->hook_agc); chdsp_hook_clear(&ch->hook_afc);
     chdsp_gate_init(&ch->gate, -45.0, 4.0, 3.0, 60.0, 1.0, 50.0, 200.0);
@@ -48,6 +48,8 @@ void chdsp_in_ch_reset(chdsp_in_ch_t *ch)
 {
     chdsp_bq_chain_reset(&ch->hpf); chdsp_bq_chain_reset(&ch->peq);
     chdsp_bq_chain_reset(&ch->notch);
+    /* ⭐「重启后仍在」:只清动态槽,固定槽原样保留(PRD §二.5 的 FIXED 语义) */
+    chdsp_notch_bank_reset_dynamic(&ch->notch_bank, &ch->notch);
     chdsp_gate_reset(&ch->gate); chdsp_comp_reset(&ch->comp);
     chdsp_delay_reset(&ch->delay); chdsp_limiter_reset(&ch->prot);
     chdsp_sat_reset(&ch->sat);
