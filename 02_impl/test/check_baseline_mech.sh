@@ -44,6 +44,9 @@ inject_standing_fail(){ local w="$1"
 
 setreg(){ printf '# 测试用登记(仅副本)\n%s\n' "$2" > "$1/02_impl/test/BASELINE_FAILS.txt"; }
 runkm(){ ( cd "$1/02_impl" && timeout 900 bash test/run_kill_matrix.sh ) > "$2" 2>&1; echo $?; }
+# ⭐ 只验基线逻辑的走法用快速模式(⛔ 不跑变异扫描)——
+#   一条太贵的对照会被人挪出常跑清单,而那与没有它是同一个结局。
+runkm_fast(){ ( cd "$1/02_impl" && CHDSP_KM_BASELINE_ONLY=1 timeout 300 bash test/run_kill_matrix.sh ) > "$2" 2>&1; echo $?; }
 
 echo "================================================================"
 echo "check_baseline_mech —— 基线机制的阴性/阳性对照(硬闸门)"
@@ -63,10 +66,18 @@ else no "P-0b" "⛔ 好版本未如预期带上那条常驻 FAIL(见 $OUT)"; fi
 
 # ── ⭐ P-1 关键阳性对照:常驻 FAIL【没有】被记成每个变异的战功 ────────────────
 n_mut=$(grep -cE '^\s*\[已杀死\]' "$OUT" || true)
-n_b3=$(grep -E '^\s*\[已杀死\]' "$OUT" | grep -c 'CHK-B3' || true)
-echo "     (副本内:已杀死 $n_mut 条;其中把 CHK-B3 记为杀手的 $n_b3 条)"
+# ⛔⛔ 这一行我第一版写成了 `grep -c 'CHK-B3'` ⇒ **它把 CHK-B3c / CHK-B3s / CHK-B3u 也算了进来**
+#   ⇒ P-1 当场报 FAIL,而**机制是对的,错的是我这条对照的判据**(同族检查名互为前缀)。
+#   ⇒ ⭐ 正是我在别处反复抓过的那个病:【判据串太宽】。这次它出现在一条【刚写的对照】里。
+#   ⇒ ∴ 必须整词匹配(前后都不是字母数字),⛔ 不用子串。
+n_b3=$(grep -E '^\s*\[已杀死\]' "$OUT" | grep -cE '(^|[^A-Za-z0-9])CHK-B3([^A-Za-z0-9]|$)' || true)
+n_b3fam=$(grep -E '^\s*\[已杀死\]' "$OUT" | grep -c 'CHK-B3' || true)
+echo "     (副本内:已杀死 $n_mut 条;把【CHK-B3 本身】记为杀手的 $n_b3 条;"
+echo "      而 CHK-B3* 同族(B3c/B3s/B3u)被记为杀手的 $n_b3fam 条 —— ⛔ 后者与基线无关,是真杀伤)"
 if [ "$n_mut" -gt 0 ] && [ "$n_b3" -eq 0 ]; then
-  ok "P-1" "⭐ 常驻 FAIL 【一次都没有】被记成变异的战功 ⇒ 「超出基线」判据确实在起作用"
+  ok "P-1" "⭐ 常驻 FAIL【CHK-B3 本身】一次都没有被记成变异的战功 ⇒ 「超出基线」判据确实在起作用"
+  [ "$n_b3fam" -gt 0 ] && echo "        ⚠ 而同族 CHK-B3* 仍被记为 $n_b3fam 条的杀手 —— 那是【真杀伤】,⛔ 不该被减掉"
+
 else
   no "P-1" "⛔ 常驻 FAIL 被记成了 $n_b3 条变异的杀手 ⇒ 正是 BLOCKER-2「把功记在错的缺陷上」"
 fi
@@ -76,7 +87,7 @@ else no "P-2" "⛔ 带已登记的常驻 FAIL 时矩阵 rc=$RC(须 0)—— 见 
 # ── N-1 未登记的常驻 FAIL ⇒ 退出码 1 ∧ 命中它自己的特征 ─────────────────────
 W="$TMPROOT/n1"; mkwork "$W"; inject_standing_fail "$W" >/dev/null
 setreg "$W" "# (故意留空:未登记)"
-OUT="$TMPROOT/n1.txt"; RC=$(runkm "$W" "$OUT")
+OUT="$TMPROOT/n1.txt"; RC=$(runkm_fast "$W" "$OUT")
 if [ "$RC" = "1" ] && grep -q '未登记.*常驻 FAIL' "$OUT"; then
   ok "N-1" "未登记的常驻 FAIL ⇒ rc=1 ∧ 命中「未登记的常驻 FAIL」"
 else no "N-1" "⛔ rc=$RC,或未命中该走法的特征(见 $OUT)"; fi
@@ -84,7 +95,7 @@ else no "N-1" "⛔ rc=$RC,或未命中该走法的特征(见 $OUT)"; fi
 # ── N-2 登记了、而它 PASS(基线漂移)⇒ 退出码 1 ∧ 自己的特征 ────────────────
 W="$TMPROOT/n2"; mkwork "$W"      # ⛔ 不注入 ⇒ CHK-B3 是 PASS 的
 setreg "$W" "CHK-B3 | 测试 | 登记为 FAIL 而实际 PASS"
-OUT="$TMPROOT/n2.txt"; RC=$(runkm "$W" "$OUT")
+OUT="$TMPROOT/n2.txt"; RC=$(runkm_fast "$W" "$OUT")
 if [ "$RC" = "1" ] && grep -q '登记为 FAIL 而实测 PASS' "$OUT"; then
   ok "N-2" "登记为 FAIL 而实测 PASS ⇒ rc=1 ∧ 命中「基线漂移」"
 else no "N-2" "⛔ rc=$RC,或未命中该走法的特征(见 $OUT)"; fi
@@ -92,14 +103,14 @@ else no "N-2" "⛔ rc=$RC,或未命中该走法的特征(见 $OUT)"; fi
 # ── N-3 登记项【不在判定集合里】(被删/改名)⇒ 退出码 2 ────────────────────
 W="$TMPROOT/n3"; mkwork "$W"
 setreg "$W" "CHK-NOSUCHTAG | 测试 | 登记一个不存在的标识"
-OUT="$TMPROOT/n3.txt"; RC=$(runkm "$W" "$OUT")
+OUT="$TMPROOT/n3.txt"; RC=$(runkm_fast "$W" "$OUT")
 if [ "$RC" = "2" ] && grep -q '不在本次判定项里' "$OUT"; then
   ok "N-3" "登记项被删/改名 ⇒ **rc=2** ∧ 命中「不在本次判定项里」"
 else no "N-3" "⛔ rc=$RC(须 2),或未命中该走法的特征(见 $OUT)"; fi
 
 # ── N-4 登记件缺失 ⇒ 退出码 2,⛔ 不得回退到默认集合 ───────────────────────
 W="$TMPROOT/n4"; mkwork "$W"; rm -f "$W/02_impl/test/BASELINE_FAILS.txt"
-OUT="$TMPROOT/n4.txt"; RC=$(runkm "$W" "$OUT")
+OUT="$TMPROOT/n4.txt"; RC=$(runkm_fast "$W" "$OUT")
 if [ "$RC" = "2" ] && grep -q '找不到基线登记件' "$OUT"; then
   ok "N-4" "登记件缺失 ⇒ **rc=2** ∧ 拒绝回退到默认集合"
 else no "N-4" "⛔ rc=$RC(须 2),或未命中该走法的特征(见 $OUT)"; fi

@@ -199,7 +199,7 @@ echo "元检查:每一道闸门真的会响吗(硬闸门)"
 echo "  ⛔ 判据 = 【非 0】∧【不是"跑不起来"】∧【命中该闸门自己的失败特征】,三者缺一不可"
 mkwork $BASE          # 未变异的基线树,供全部阴性对照复用
 
-echo "  覆盖 run_all.sh 的第 0(本文件)/1/2/3/3b/4/5/6 环 + 总聚合"
+echo "  覆盖 run_all.sh 的第 0(本文件)/1/2/3/3b/3c/**3d**/4/5/6 环 + 总聚合"
 echo
 
 # ---------------------------------------------------------------- 第 1 环:严格编译 + 编译期断言
@@ -326,6 +326,26 @@ if mutate $W/02_impl/src/chdsp_fir.c \
      's/^#if CHDSP_BROKEN_FIR_NOBYPASS$/#if CHDSP_BROKEN_FIR_NOBYPASS || CHDSP_BROKEN_NO_HYST/'; then
   expect_red G11 "让一个变异顺手注入第二个缺陷 ⇒ 变异自证的【断言②】应变红" \
     "bash test/check_mutants_valid.sh" $W "未声明的连带变化|\\[FAIL\\]" mutvalid
+fi
+
+# ---------------------------------------------------------------- 3d 基线机制会不会响 ⭐(N-6)
+# ⭐ 这一环守的是【设计侧刚修掉的那条病的 C 侧对应物】:
+#   一旦 C 侧出现常驻 FAIL,旧判据「杀死 = 变异 exit ≠ 0」会把它记成每个变异的战功。
+#   ⇒ check_baseline_mech.sh 在临时副本上人为造一条常驻 FAIL 来验这件事。
+#   ⇒ ⛔ 而【它自己会不会响】仍要验 —— 否则它就是又一个"看起来很全"的检查。
+# 变异:把 run_kill_matrix.sh 里「登记件缺失 ⇒ exit 2」改成【回退到空基线】
+#   ⇒ 那正是 BASELINE_FAILS.txt 规矩 ① 明令禁止的那个动作(回退 = 把逃逸路径开回来)
+#   ⇒ check_baseline_mech 的 N-4 必须因此变红。
+ensure_green basemech "基线机制对照" "bash test/check_baseline_mech.sh"
+W=$TMPROOT/k; mkwork $W
+KM=$W/02_impl/test/run_kill_matrix.sh
+if grep -q '拒绝在【无登记】的情况下跑杀伤矩阵' "$KM"; then
+  perl -0pi -e 's/  echo "⛔ 拒绝在【无登记】的情况下跑杀伤矩阵 —— 回退到默认集合会把逃逸路径开回来。" >&2\n  exit 2/  BASELINE=""; n_reg=0/' "$KM"
+  expect_red G12 "把「登记件缺失 ⇒ exit 2」改成【回退到空基线】⇒ 基线机制对照应变红" \
+    "bash test/check_baseline_mech.sh" $W "\[FAIL\] N-4|基线机制有走法不会响" basemech
+else
+  echo "  [FAIL] G12  ⛔ 找不到注入点(run_kill_matrix.sh 的无登记中止分支)⇒ 该闸门未被覆盖"
+  fail=$((fail+1))
 fi
 
 # ---------------------------------------------------------------- 总聚合:run_all.sh 自己会不会红 ⭐

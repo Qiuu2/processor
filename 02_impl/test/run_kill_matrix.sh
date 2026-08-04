@@ -130,6 +130,16 @@ else
 fi
 echo
 
+# ⭐ 快速模式:只跑【登记 + 基线对照】,⛔ 不跑变异扫描。
+#   用途 = `check_baseline_mech.sh` 的四条阴性对照(它们只验基线逻辑,不需要杀伤结果)。
+#   ⇒ 理由:把一条【会响的对照】做得太贵,它就会被人从常跑清单里挪走 ——
+#     而那与"没有这条对照"是同一个结局。⇒ ∴ 让它便宜,是让它活下来的条件。
+#   ⛔ 而它【不是】给交付路径用的:run_all.sh 走全量,本开关只在对照脚本里出现。
+if [ "${CHDSP_KM_BASELINE_ONLY:-0}" = "1" ]; then
+  echo "  (CHDSP_KM_BASELINE_ONLY=1 ⇒ 只验基线登记与阴性对照,⛔ 跳过变异扫描)"
+  exit 0
+fi
+
 survived=0
 total=$(( ${#MUTS[@]} + ${#FIXED_MUTS[@]} ))
 

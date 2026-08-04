@@ -99,6 +99,12 @@ else
   mut_valid=1; rc_all=1
 fi
 
+echo; echo "### 3d. ⭐ 基线机制会不会响(硬闸门 · **杀伤矩阵的前置**,N-6)"
+echo "  ⇒ C 侧目前【没有】常驻 FAIL ⇒ 登记为空 ⇒ 基线逻辑此刻是恒等式(空集 == 空集)"
+echo "  ⛔ 而一个从未被证明会响的机制,与没有机制的区别只在于**它让人放心**"
+echo "  ⇒ ∴ 在临时副本上人为造一条常驻 FAIL,逐条验四种走法(⛔ 不碰真实树)"
+bash "$HERE/check_baseline_mech.sh" || rc_all=1
+
 echo; echo "### 4. 杀伤矩阵(硬闸门)"
 bash "$HERE/run_kill_matrix.sh" || rc_all=1
 if [ $mut_valid -ne 0 ]; then
