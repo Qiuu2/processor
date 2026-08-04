@@ -909,11 +909,26 @@ class NHS:
         out.sort(key=lambda h: (h['cls'] != 'PANIC',
                                 self._notch_covers(h['f']) if P.prefer_unnotched else False,
                                 -h['b']))
-        return out[:1] if out and out[0]['cls'] != 'PANIC' else out[:2]
+        kept = out[:1] if out and out[0]['cls'] != 'PANIC' else out[:2]
+        # ── r84 漏斗遥测(**只计数,不改行为**;与 r10/r11 同范式)
+        #   ⚠ 计在【截断处】,因为 lead 要问的正是"out[:1] 挡掉了什么"
+        c = self.ctr
+        c['F1_cls_out'] = c.get('F1_cls_out', 0) + len(out)          # 截断【前】判为 howl 的
+        c['F2_kept'] = c.get('F2_kept', 0) + len(kept)               # 截断【后】留下的
+        dropped = out[len(kept):]
+        c['F3_dropped'] = c.get('F3_dropped', 0) + len(dropped)      # 被 out[:1] 挡掉的
+        # ⭐ 被挡掉的里面,有多少是【已挂陷的复检】—— 这是 lead 的问 ⑦
+        c['F4_drop_notched'] = c.get('F4_drop_notched', 0) + \
+            sum(1 for h in dropped if self._notch_covers(h['f']))
+        c['F5_kept_notched'] = c.get('F5_kept_notched', 0) + \
+            sum(1 for h in kept if self._notch_covers(h['f']))
+        return kept
 
     # ---------------- 状态机 / 分配 ----------------
     def _allocate(self, howls, M=None, df=None):
         P = self.P
+        # ── r84 漏斗遥测(只计数,不改行为)
+        self.ctr['A1_in'] = self.ctr.get('A1_in', 0) + len(howls)
         for h in howls:
             f = h['f']; bw = self._bw_hz(f)
             same = [s for s in self.slots if s.st != NotchSlot.FREE and abs(s.f - f) <= bw/2]
@@ -960,6 +975,11 @@ class NHS:
                 if deepened and s.has_affirmative_verdict:   # ★★ r27 肯定式(原为 not from_abstain)
                     s.t_last_hit = self.t_wall
                 self.events.append((self.slot_seq, 'deepen', round(f, 1)))
+                # ── r84 遥测:走【已挂陷 ⇒ 加深】这一支;deepened = 是否真的加深了
+                self.ctr['A2_deepen_branch'] = self.ctr.get('A2_deepen_branch', 0) + 1
+                if deepened:
+                    self.ctr['A3_deepen_real'] = self.ctr.get('A3_deepen_real', 0) + 1
+                    self.ctr['A3_cmd_db'] = self.ctr.get('A3_cmd_db', 0.0) + abs(s.target - old_target)
                 continue
             # ── C8-② 保鲜期:已判为外部音的频点,期内不再挂陷(代价 = 每个不同外部音一次)
             if 'B14' not in self.B and any(abs(fr - f) <= bw/2 and self.t_wall < exp
