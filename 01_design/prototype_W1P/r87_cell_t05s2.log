@@ -1,0 +1,39 @@
+未经 critic 评审 —— r87 单格 tag=t05s2  [L2/宿主仿真]  预注册 = PREREG_r87b.txt
+deps: nhs.py@b77a0524669386af clrig.py@ed46450303b0423c howl_detect.py@fd63e901f2d8be33 msg_meter.py@a0c16fd22b29f083 r81_windowcheck.py@8164827cd49188a5
+工作点:T60=0.5 seed=2 / src_rms=-20.0 dBFS(**标称**) / T_OBS=12 s / bw_oct=1/5 / T_low=-45 / T_low_gr=-65 / NN=8 槽全空 / n_cand=16 / f_cut=8000(**环路 8k 以上被带限**) / STEP=0.5 / fs=48k / frame=64 / nfft=2^18 / cal_offset_db=0.0 / prefer_unnotched=False
+臂:m0=无proc / A_base=rf关+duck消融(**主列基线**) / A_rf=rf开+duck消融(**主列修法**)
+   D_base=rf关+duck不消融(附列) / D_rf=rf开+duck不消融(附列)
+⚠ 仪器底 0.354 dB = STEP/2×√2;而两臂同锚同栅格 ⇒ δ 恒为 0.5 的整数倍(预注册 §5 跑前写死)
+
+  臂 m0       m= -12.52  f_trig=  7062.0 Hz  status=ok         (62s)
+  臂 A_base   m= -10.02  f_trig=   716.0 Hz  status=ok         (81s)
+  臂 A_rf     m= -10.02  f_trig=   716.0 Hz  status=ok         (81s)
+  臂 D_base   m= -11.02  f_trig=   716.0 Hz  status=ok         (62s)
+  臂 D_rf     m=  -8.52  f_trig=  7511.0 Hz  status=ok         (106s)
+
+       臂     ΔMSG      终点G    挂陷      深度中位   g_duck最深     末−首dB     到峰/窗             窗判定    f_trig
+      m0     0.00   -12.52    -1       nan        nan     +0.19     0.78     **⛔ 只能作上界**    7062.0
+  A_base     2.50   -10.02     4    -16.50      -6.00     -7.68     0.07            ✅ 干净     716.0
+    A_rf     2.50   -10.02     4    -18.00      -6.00     -7.44     0.07            ✅ 干净     716.0
+  D_base     1.50   -11.02     3    -18.00      -4.00     -2.68     0.07            ✅ 干净     716.0
+    D_rf     4.00    -8.52     6    -18.00      -6.00     -9.33     0.06            ✅ 干净    7511.0
+
+  A_base   深度分布 [-18.0, -18.0, -15.0, -12.0]  频点 [717.0, 3112.4, 5377.1, 7062.9]
+           计数 N1=12000 N2=11975 N4=8 N5=36 preempt=0 A3_deepen_real=17 F2_kept=36 F3_dropped=22 F4_drop_notched=20
+  A_rf     深度分布 [-18.0, -18.0, -18.0, -12.0]  频点 [716.9, 3112.4, 4376.8, 5377.1]
+           计数 N1=12000 N2=11975 N4=10 N5=52 preempt=0 A3_deepen_real=23 F2_kept=52 F3_dropped=2 F4_drop_notched=2
+  D_base   深度分布 [-18.0, -18.0, -3.0]  频点 [717.2, 4377.3, 5376.9]
+           计数 N1=12000 N2=11975 N4=10 N5=17 preempt=0 A3_deepen_real=10 F2_kept=17 F3_dropped=0 F4_drop_notched=0
+  D_rf     深度分布 [-18.0, -18.0, -18.0, -18.0, -18.0, -9.0]  频点 [716.8, 1516.8, 3112.6, 4376.6, 5377.1, 7062.4]
+           计数 N1=12000 N2=11977 N4=20 N5=44 preempt=0 A3_deepen_real=27 F2_kept=44 F3_dropped=5 F4_drop_notched=0
+
+
+§7 诊断(⛔ 非闸门):A_base vs r76 同工作点已落盘值
+   m0      本轮 -12.52 vs r76 -12.52  ⇒ 相符
+   ΔMSG    本轮 +2.50 vs r76 dA=+2.50  ⇒ 相符
+   挂陷    本轮 4 vs r76 n_notch_Na=4  ⇒ 相符
+   终点lp  本轮 -18.25 vs r76 lp_Na=-18.248378436705437  ⇒ 相符
+   ⚠ 四项全符 ⇒ 「recheck_free 默认关 = 行为不变」在 ΔMSG 层面得到一次**事后**支持;
+     ⛔ 它**不等于**盘面上的逐位等价证据件(§1 核①(c):r86a_bitexact 不存在)
+
+总耗时 393 s。⛔ 未经 critic 评审;本文件不含结论性判读。

@@ -1,0 +1,11 @@
+[13:34:23] 闸门起跑(G1 配置断言 + G2 修法可达性)
+[13:35:42] 闸门退出码 = 0
+[13:35:42] 闸门通过 ⇒ 起 6 个 cell(每种子一个 worker,独立日志/输出,D6-j)
+  launched t02s0 pid=3865472
+  launched t02s1 pid=3865473
+  launched t02s2 pid=3865474
+  launched t05s0 pid=3865475
+  launched t05s1 pid=3865476
+  launched t05s2 pid=3865477
+[13:42:22] 6 个 cell 全部结束 ⇒ 归并
+[13:42:22] 归并退出码 = 0 ⇒ 输出 r87_dmsg_out.txt
