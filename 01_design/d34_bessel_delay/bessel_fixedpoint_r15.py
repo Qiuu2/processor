@@ -63,8 +63,11 @@ def quantize_struct(sec):
 
 def quantize(sec, kind):
     """⛔ 按被测物在 C 里【实际走的那条路】选量化模型,不是统一用一种。
-    ⚠ 首版对三类都用自由量化 ⇒ 那不是在测 C,是在测一个不存在的实现。"""
-    return quantize_free(sec) if kind == "Bessel" else quantize_struct(sec)
+    ⚠ 首版对三类都用自由量化 ⇒ 那不是在测 C,是在测一个不存在的实现。
+    ⭐ 2026-08-05 起 **Bessel 已改走结构约束**(chdsp_biquad.c,本轮整改)
+      ⇒ 三类现在都是 struct;自由量化那一支保留在 E-2 里作为【整改前后对照】。"""
+    _ = kind
+    return quantize_struct(sec)
 
 
 DESIGN = {"Bessel": r14.design_bessel_lp,
@@ -156,15 +159,19 @@ chk("F-3", not better_all,
 
 # ── E-2 零点完整性(⚠ Bessel 走自由量化,绕过了 CHK-5f 立的守卫)────────────
 print("\nE-2 零点完整性(低通:Nyquist 零点 = b0 − b1 + b2,理想 0)")
-print(f"  {'类型':<8}{'非 0 节数 / 总节数':>20}{'最坏泄漏':>14}")
-print("  " + "-" * 44)
+print("  ⭐ 整改前后对照:Bessel 原走【自由量化】(绕过 CHK-5f 立的守卫),现已改走【结构约束】")
+print(f"  {'类型':<8}{'量化路径':<12}{'非 0 节数 / 总节数':>20}{'最坏泄漏':>14}")
+print("  " + "-" * 56)
 for nm, mk in DESIGN.items():
+  for path, qf in (("自由(整改前)", quantize_free), ("结构约束(现行)", quantize_struct)):
+    if nm != "Bessel" and path.startswith("自由"):
+        continue          # BW/LR 从来就是结构约束,没有"整改前"
     nz = tot = 0
     worst = 0.0
     for n in ORDERS:
         for fc in FCS:
             for s in mk(fc, n):
-                qs = quantize(s, nm)
+                qs = qf(s)
                 if qs is None:
                     continue
                 tot += 1
@@ -176,7 +183,7 @@ for nm, mk in DESIGN.items():
                     nz += 1
                     worst = max(worst, abs(v))
     lk = 20 * math.log10(worst) if worst > 0 else -999.0
-    print(f"  {nm:<8}{nz:>10} / {tot:<8}{lk:>11.2f} dB")
+    print(f"  {nm:<8}{path:<12}{nz:>10} / {tot:<8}{lk:>11.2f} dB")
 
 print("\n" + "=" * 98)
 print(f"r15 结果: {'全部通过' if not fails else '未通过 ' + ','.join(fails)}")
