@@ -3,7 +3,7 @@
 ====================================================================================
 results_d34  —  D3/D4 通道链设计 · 验证结果(轮次见文件名)
 预注册: PREREG_D34_r1.txt + PREREG_D34_r2_addendum.txt(一字未改)
-deps: d34_analysis.py@aa3daba05bb87eaf
+deps: d34_analysis.py@417e6ba45d40bae5
 numpy 2.2.6 / scipy scipy.signal  fs = 48000.0 Hz  系数格式 Q4.27
 坏版本开关: 无(出货构建)
 门禁状态: 未过门

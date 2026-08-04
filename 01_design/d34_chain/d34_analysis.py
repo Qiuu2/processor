@@ -399,7 +399,8 @@ OK("EXP-4d", worst_rel <= 10.0,
 
 ADC, DAC = 22.9844, 25.0
 print(f"\n    转换器锚点 [L2/厂家]: ADC {ADC}/fS = {ADC/FS*1e3:.3f} ms;DAC {DAC}/fS = {DAC/FS*1e3:.3f} ms"
-      f"  ⇒ 合计 {(ADC+DAC)/FS*1e3:.5f} ms")
+      f"  ⇒ 合计 {(ADC+DAC)/FS*1e3:.4f} ms")   # ⛔ m-7:精确 0.999675,末位是舍入平局
+      # ⇒ 用 .5f 打印会得到 0.99967(float 表示略小于平局,向下)⇒ 改 .4f = 0.9997,⛔ 不给截断值
 print(f"    {'帧长L':>6s} {'块I/O(2L)':>10s} {'FIR taps':>9s} {'FIR群延迟ms':>12s} {'固定合计ms':>11s} {'余(12ms)':>10s}")
 for L in [32, 64, 128]:
     for Nt in [128, 256, 512, 1024]:
@@ -642,7 +643,10 @@ for L in [64, 32]:
     print(f"      块 I/O L={L:3d}(2L 乒乓)  {2*L/FS*1e3:8.3f} ms   省 {(128-2*L)/FS*1e3:+8.3f} ms(相对 L=64)")
 print(f"      块 I/O L= 64(单缓冲)     {64/FS*1e3:8.3f} ms   省 {64/FS*1e3:+8.3f} ms  ⚠ 口径归 platform-fw")
 print(f"      lim_lookahead 1→0 ms      0.000 ms   省 {1.0:+8.3f} ms  ⚠ 代价:限幅改反馈式,过冲不受控")
-print(f"      转换器 ADC+DAC            {0.99967:8.5f} ms   ⛔ 不可降(器件固有)")
+# ⛔ 整改 2026-08-05(critic m-7):原先这里写死字面量 0.99967 —— 那是 47.9844/48 = 0.999675
+#   的【截断】(平局应远离零 ⇒ 0.99968;PREREG_D34_r1.txt:90 当时写的就是 0.99968)。
+#   ⚠ 只有这一处显示是字面量,全部算术走的是下面的 ADC_DAC(由样本数算),⇒ 数值结论不受影响。
+print(f"      转换器 ADC+DAC            {(22.9844 + 25.0)/FS*1e3:8.4f} ms   ⛔ 不可降(器件固有)")
 
 # ---------------------------------------------------------------- EXP-9
 print("\nEXP-9  参考配置(REF) vs 最坏可配置(WORST) —— 急件,定义与理由见 PREREG_r8 §1/§2")
@@ -767,7 +771,7 @@ CFG_WOR  = dict(hp_order=4, hp_fc=20.0,  peq_in=WORST_PEQ_IN, xo_lr=8, xo_fc=20.
                 peq_out=WORST_PEQ_OUT, fir=512, look=2.0)
 
 print("\n  ⭐ EXP-10  12 ms 到底约束哪个频带 —— 三个评价频带各报一次")
-print(f"     固定项:转换器 {ADC_DAC:.5f} + 块 I/O {BLK_L64:.3f} ms")
+print(f"     固定项:转换器 {ADC_DAC:.4f} + 块 I/O {BLK_L64:.3f} ms")   # ⛔ m-7 同上
 two_worst = 0.0
 tbl = {}
 for tag, cfg in [("REF", CFG_REF), ("WORST", CFG_WOR)]:
