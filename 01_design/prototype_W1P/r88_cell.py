@@ -8,7 +8,8 @@
 import sys, json, time, argparse, hashlib
 sys.path.insert(0, '/home/it1234/processor/01_design/prototype_W1P')
 import numpy as np
-import clrig, howl_detect as HD, nhs, modal_rig
+import clrig, howl_detect as HD, nhs
+import modal_rig_BROKEN_seam16dB as modal_rig   # ⛔ 已知损坏,见 F81;此处仅为复现伪影证据
 from nhs import NHS
 from clrig import FS
 from msg_meter import MSGMeter

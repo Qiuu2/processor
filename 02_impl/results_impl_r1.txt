@@ -1,7 +1,7 @@
 ================================================================================
 results_impl_r1 —— D3/D4 C 实现 · 总闸门
 门禁状态: 未过门(未经独立 critic 评审)
-时间: 2026-08-04T16:04:51+08:00
+时间: 2026-08-04T16:09:53+08:00
 deps: chdsp_biquad.h@6d95dea5f8b3472b chdsp_chain.h@a37932eec5e25534 chdsp_config.h@d1112b527e408c2f chdsp_delay.h@5fe962b7a355715a chdsp_detector.h@5174324e05b09f2f chdsp_dynamics.h@4b033e284d7a8056 chdsp_fir.h@0ceed3f2aac3eb73 chdsp_notch.h@7b089f8ff579290d chdsp_biquad.c@3706c696f5b01031 chdsp_chain.c@06bcbbab54a75388 chdsp_delay.c@17491f0d34d4c0a3 chdsp_detector.c@e8085bea08eb4748 chdsp_dynamics.c@a82dfc1b12464ca8 chdsp_fir.c@a499834ca5626c38 chdsp_notch.c@7224f93db832c29b 
       check_modules.c@a18cc087060cabdc ref_modules.py@1178ad663dd1e18a
 编译器: gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
@@ -28,6 +28,13 @@ deps: chdsp_biquad.h@6d95dea5f8b3472b chdsp_chain.h@a37932eec5e25534 chdsp_confi
   [PASS] G7  只扰动 C 轨的 biquad 输出(+1 LSB)⇒ 第二轨对表应变红 ⇒ 闸门确实变红(命中 /\[FAIL\]|不同|DIFF/)
   [PASS] base:neutral  基线上「强类型中立性」是绿的 ⇒ 下面的红可归因于变异
   [PASS] G8  注入只在 STRICT=0 下生效的扰动 ⇒ 强类型中立性应变红 ⇒ 闸门确实变红(命中 /differ|DIFF|不同|不一致/)
-  [PASS] base:mutvalid  基线上「变异自证」是绿的 ⇒ 下面的红可归因于变异
-  [PASS] G10  把 HPF_AFTER_DYN 改回前任的错误形态(挪了但仍在动态之前)⇒ 变异自证应变红 ⇒ 闸门确实变红(命中 /\[FAIL\]|杀伤率作废/)
-  [PASS] G11  让一个变异顺手注入第二个缺陷 ⇒ 变异自证的【断言②】应变红 ⇒ 闸门确实变红(命中 /未声明的连带变化|\[FAIL\]/)
+  [FAIL] base:mutvalid  ⛔ 基线上「变异自证」就是红的 ⇒ 该命令的红**不可归因于变异**
+         ── 退出码 1,末 8 行 ──
+         grep: /tmp/gates_base/02_impl/build_mv/good.txt: 没有那个文件或目录
+           [FAIL] CHDSP_BROKEN_NOEF  ⛔ 好版本里没有探针 P_NOEF ⇒ 该变异没有自证探针
+         grep: /tmp/gates_base/02_impl/build_mv/good.txt: 没有那个文件或目录
+           [FAIL] CHDSP_BROKEN_WRAP  ⛔ 好版本里没有探针 P_WRAP ⇒ 该变异没有自证探针
+         
+         ================================================================
+         变异自证合计: PASS=14  FAIL=13
+         ⛔ 有变异未通过自证 ⇒ **本轮杀伤率作废**(分母不可信,不是扣一分)⇒ FAIL

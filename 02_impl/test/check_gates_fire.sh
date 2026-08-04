@@ -96,10 +96,16 @@ declare -A GREEN_DONE=()
 ensure_green(){ local key="$1" desc="$2" cmd="$3"
   if [ -n "${GREEN_DONE[$key]:-}" ]; then return 0; fi
   GREEN_DONE[$key]=1
-  if ( cd "$BASE/02_impl" && eval "$cmd" ) >/dev/null 2>&1; then
+  local out rc
+  out=$( ( cd "$BASE/02_impl" && eval "$cmd" ) 2>&1 ); rc=$?
+  if [ $rc -eq 0 ]; then
     echo "  [PASS] base:$key  基线上「$desc」是绿的 ⇒ 下面的红可归因于变异"; pass=$((pass+1))
   else
     echo "  [FAIL] base:$key  ⛔ 基线上「$desc」就是红的 ⇒ 该命令的红**不可归因于变异**"
+    # ⚠ 整改:原来这里把输出丢进 /dev/null ⇒ 阴性对照失败时**看不到为什么**。
+    #   一个失败了却不说原因的器械,和不会响的闸门是同一类问题。
+    echo "         ── 退出码 $rc,末 8 行 ──"
+    printf '%s' "$out" | tail -8 | sed 's/^/         /'
     fail=$((fail+1)); fi }
 
 # 闸门必须【因为它自己的失败特征】而变红
