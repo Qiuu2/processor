@@ -364,8 +364,22 @@ OK("EXP-3d", _slope_bad == 0 and _map_bad == 0,
 # ---------------------------------------------------------------- EXP-4
 print("\nEXP-4  群延迟与延迟预算(⚠ 强制两轨,因 PREREG §0 X-1)")
 print("-"*84)
-wg = np.linspace(1e-6, np.pi-1e-6, 400001); fg = wg*FS/(2*np.pi)
-mg = (fg >= 20) & (fg <= 20000)
+# ⭐⭐ 统一评价网格(Y10,2026-08-05 · critic D3D4 m-3)——【带下沿必须是网格点】
+# ⛔ 原先两处网格【互不相同,且都不含带下沿】:
+#   EXP-4  linspace(1e-6, π−1e-6, 400001) ⇒ Δf = 0.060,带内最低点落在 **20.04 Hz**
+#   EXP-8  linspace(2π·20/fs, π−1e-6, 200000) ⇒ 首点浮点上 = 19.999999999999996
+#          ⇒ 被 `f8 >= 20` 掩掉 ⇒ 带内最低点落在 **20.12 Hz**
+# ⇒ 而 LR2(Q=0.5 临界阻尼)的群延迟自 DC 单调下降 ⇒ **峰恒在带下沿**
+#   ⇒ 同一个物理量因此报出两个值:3.744(EXP-4)/ 3.742(EXP-8)。
+# ⇒ ∴ 两处都改成**以评价频带为端点**的网格 ⇒ 20 Hz 与 20 kHz 都是网格点 ⇒ 两处必然一致。
+#   ⛔ 而这【会移动一批数】(凡最大值落在带下沿的量)⇒ 逐条 diff 已随本轮结果落盘。
+BAND_LO, BAND_HI = 20.0, 20000.0
+def band_grid(n):
+    """线性 ω 网格,**两端点恰为评价频带的上下沿** ⇒ ⛔ 不再依赖掩码去逼近带下沿。"""
+    return np.linspace(2*np.pi*BAND_LO/FS, 2*np.pi*BAND_HI/FS, n)
+
+wg = band_grid(400001); fg = wg*FS/(2*np.pi)
+mg = np.ones_like(fg, dtype=bool)          # 网格已按频带裁好 ⇒ 掩码恒真(保留变量名,⛔ 不改下游)
 two_track_worst = 0.0; loc_bad = 0
 print(f"    {'分频':8s} {'fc':>7s} {'max群延迟(样本)':>16s} {'ms':>8s} {'峰值位置Hz':>12s} {'两轨差(样本)':>13s}")
 gd_table = {}
@@ -648,8 +662,8 @@ def gd_curve(secs, wv):
     for b, a in secs:
         _, gg = signal.group_delay((b, a), w=wv); g += gg
     return g
-w8 = np.linspace(2*np.pi*20/FS, np.pi-1e-6, 200000); f8 = w8*FS/(2*np.pi)
-m8 = (f8 >= 20) & (f8 <= 20000)
+w8 = band_grid(200000); f8 = w8*FS/(2*np.pi)   # ⭐ Y10:与 EXP-4 同一套带端点网格
+m8 = np.ones_like(f8, dtype=bool)              # 同上,掩码恒真
 # 我这一侧的典型配置
 items = []
 items.append(("D3 HPF  BW12 @80Hz", [qsec(bw_hp(80.0, 0.7071), 'hp')]))
