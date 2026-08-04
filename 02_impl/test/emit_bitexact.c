@@ -28,8 +28,15 @@ int main(void){
     if (chdsp_limiter_init(&L, look, (uint32_t)(sizeof(look)/sizeof(look[0])),
                            -6.0, 1.0, 50.0) != 0) { return 4; }
     L.enabled = 1u; chdsp_sat_reset(&s);
+    /* ⚠ 激励必须**真的把限幅器推过阈值**,否则 gdb 恒 0 ⇒ T3 变成"两列 0 对表",
+     *   那正是我这几轮反复栽的假绿形态。xs 幅度约 ±0.25(−12 dBFS),而阈值 −6 dBFS
+     *   ⇒ 首版恒 0(实测 20000 个样本只有 1 个取值)。⇒ 放大 4× 到满量程级。
+     *   ⇒ py 轨同样放大;而"是否真的动了"由 T3 的前提自检断言。 */
     for(i=0;i<20000;i++){
-        (void)chdsp_limiter_process1(&L, chdsp_smp_from_raw(xs[i]), &s, &gdb);
+        int64_t v = (int64_t)xs[i] * 4;
+        if (v >  2147483647LL) { v =  2147483647LL; }
+        if (v < -2147483648LL) { v = -2147483648LL; }
+        (void)chdsp_limiter_process1(&L, chdsp_smp_from_raw((int32_t)v), &s, &gdb);
         fprintf(fl,"%d\n",(int)chdsp_db_raw(gdb));
     }
     fclose(fi);fclose(fo);fclose(fd);fclose(fl);
